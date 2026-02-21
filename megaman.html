@@ -503,10 +503,6 @@
     }
   }, {passive:false});
 
-    if(touch.moved){
-      clearTimeout(touch.longPressTimer);
-    }
-  }, {passive:false});
 
   canvas.addEventListener("pointerup", (e)=>{
     if(!touch.active || e.pointerId !== touch.pid) return;

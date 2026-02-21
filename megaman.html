@@ -456,52 +456,52 @@
   }, {passive:false});
 
   canvas.addEventListener("pointermove", (e)=>{
-  if(!touch.active || e.pointerId !== touch.pid) return;
-  e.preventDefault();
-
-  const p = canvasPoint(e);
-  const dx = p.x - touch.startX;
-  const dy = p.y - touch.startY;
-  const dt = performance.now() - touch.startT;
-
-  touch.lastX = p.x;
-  touch.lastY = p.y;
-
-  if(Math.hypot(dx, dy) > TAP_MAX_MOVE){
-    touch.moved = true;
-    clearTimeout(touch.longPressTimer);
-  }
-
-  // ★角度つき上スワイプでジャンプ（斜めOK）
-  if(!touch.didSwipeJump && dt < SWIPE_MAX_MS){
-    if(dy < -SWIPE_UP_MIN){
-      touch.didSwipeJump = true;
+    if(!touch.active || e.pointerId !== touch.pid) return;
+    e.preventDefault();
+  
+    const p = canvasPoint(e);
+    const dx = p.x - touch.startX;
+    const dy = p.y - touch.startY;
+    const dt = performance.now() - touch.startT;
+  
+    touch.lastX = p.x;
+    touch.lastY = p.y;
+  
+    if(Math.hypot(dx, dy) > TAP_MAX_MOVE){
+      touch.moved = true;
       clearTimeout(touch.longPressTimer);
-      cancelCharge();
-
-      if(player.onGround){
-        const len = Math.hypot(dx, dy) || 1;
-        const nx = dx / len;
-        const ny = dy / len; // 上方向はマイナス
-
-        const jumpV = 1110; // ジャンプ力
-        const sideV = 220;  // 横方向の斜め補正
-
-        player.vy = ny * jumpV;
-        player.vx += nx * sideV;
-        player.onGround = false;
+    }
+  
+    // ★角度つき上スワイプでジャンプ（斜めOK）
+    if(!touch.didSwipeJump && dt < SWIPE_MAX_MS){
+      if(dy < -SWIPE_UP_MIN){
+        touch.didSwipeJump = true;
+        clearTimeout(touch.longPressTimer);
+        cancelCharge();
+  
+        if(player.onGround){
+          const len = Math.hypot(dx, dy) || 1;
+          const nx = dx / len;
+          const ny = dy / len; // 上方向はマイナス
+  
+          const jumpV = 1110; // ジャンプ力
+          const sideV = 220;  // 横方向の斜め補正
+  
+          player.vy = ny * jumpV;
+          player.vx += nx * sideV;
+          player.onGround = false;
+        }
       }
     }
-  }
-
-  // 指ドラッグ移動（横）
-  if(Math.abs(dx) < STEER_DEADZONE){
-    touch.steer = 0;
-  }else{
-    const half = canvas._cssW * 0.35;
-    touch.steer = Math.max(-1, Math.min(1, dx / half));
-  }
-}, {passive:false});
+  
+    // 指ドラッグ移動（横）
+    if(Math.abs(dx) < STEER_DEADZONE){
+      touch.steer = 0;
+    }else{
+      const half = canvas._cssW * 0.35;
+      touch.steer = Math.max(-1, Math.min(1, dx / half));
+    }
+  }, {passive:false});
 
     if(touch.moved){
       clearTimeout(touch.longPressTimer);

@@ -117,6 +117,12 @@
       background: linear-gradient(180deg, #0c1220 0%, #0a0f1b 100%);
       border: 1px solid rgba(255,255,255,.08);
       box-shadow: inset 0 0 0 1px rgba(255,255,255,.03);
+
+      /* ★スマホ操作で誤爆する「スクロール/拡大」を殺す */
+      touch-action: none;
+      -webkit-user-select: none;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
     }
     .stats{
       display:grid;
@@ -262,6 +268,8 @@
             <span class="kbd">X</span>右回転 /
             <span class="kbd">C</span>ホールド /
             <span class="kbd">P</span>ポーズ
+            <br>
+            スマホ：盤面を<span class="kbd">ドラッグ</span>で左右、<span class="kbd">下ドラッグ</span>でソフト、<span class="kbd">上フリック</span>でハード、<span class="kbd">タップ</span>回転、<span class="kbd">2回タップ</span>ホールド
           </div>
         </div>
       </div>
@@ -374,16 +382,11 @@
   let cell = Math.floor(canvas.width / W);
 
   function resize(){
-    // Keep aspect for H:W = 20:10 => 2:1
     const rect = canvas.getBoundingClientRect();
     const pxW = Math.max(260, Math.floor(rect.width));
     canvas.width = pxW;
     canvas.height = Math.floor(pxW * 2);
     cell = Math.floor(canvas.width / W);
-
-    // Next/Hold crisp
-    // (keep fixed but scale with DPR)
-    // We'll just redraw in their fixed internal size.
   }
   window.addEventListener("resize", resize);
   resize();
@@ -401,7 +404,6 @@
   };
 
   // 4x4 matrices per rotation
-  // 1 means filled
   const SHAPES = {
     I: [
       [
@@ -704,7 +706,7 @@
     piece = {
       kind,
       rot: 0,
-      x: 3,        // tuned for 4x4
+      x: 3,
       y: 0,
       color: COLORS[kind]
     };
@@ -739,7 +741,7 @@
         const x = p.x + c;
         const y = p.y + r;
         if(y>=0 && y<BH && x>=0 && x<W){
-          board[y][x] = p.kind; // store kind as id
+          board[y][x] = p.kind;
         }
       }
     }
@@ -756,16 +758,14 @@
     return false;
   }
 
-  function tryRotate(dir){ // dir: +1 right, -1 left
+  function tryRotate(dir){
     if(state !== "PLAYING") return;
     const old = piece.rot;
     const nr = (old + dir + 4) % 4;
 
-    // O is symmetric; still okay
     if(!collides(piece, 0, 0, nr)){
       piece.rot = nr; sfxRotate(); return;
     }
-    // simple wall kicks
     const kicks = [
       {x: 1, y: 0}, {x:-1,y:0}, {x: 2, y:0}, {x:-2,y:0}, {x:0,y:-1}
     ];
@@ -794,22 +794,11 @@
     lockPiece(true);
   }
 
-  function softDropTick(dt){
-    if(!heldDown) return 0;
-    // accelerate by additional falls
-    // We'll just reduce effective interval in update() by checking heldDown there
-    return 0;
-  }
-
   function lockPiece(hard=false){
-    // place
     place(piece);
     sfxLock();
-
-    // particles at base
     spawnLockParticles(piece);
 
-    // clear lines
     const cleared = clearLines();
     if(cleared > 0){
       sfxClear(cleared);
@@ -842,17 +831,14 @@
     }
     if(!full.length) return 0;
 
-    // flash rows (visible only)
     for(const y of full){
       if(y >= HIDDEN) flashRows.push({y, t:0});
     }
 
-    // remove rows
     for(const y of full){
       board.splice(y, 1);
       board.unshift(new Array(W).fill(0));
     }
-    // small bonus particles
     spawnClearParticles(full);
     return full.length;
   }
@@ -878,7 +864,6 @@
   }
 
   function dropIntervalMs(){
-    // starts 800ms, down to 80ms
     const ms = 800 - (level-1) * 55;
     return Math.max(80, ms);
   }
@@ -929,44 +914,33 @@
     }else if(state === "PAUSED"){
       setState("PLAYING");
       toast("RESUME");
-      // avoid time jump
       lastTime = performance.now();
     }
   }
 
   // ====== Drawing ======
-  function clearCanvas2D(c, w, h){
-    c.clearRect(0,0,w,h);
-  }
-
   function drawCell(g, x, y, size, kind, alpha=1){
     const color = kind ? COLORS[kind] : "#000";
     g.save();
     g.globalAlpha = alpha;
 
-    // main
     const px = x*size;
     const py = y*size;
 
-    // subtle shadow
     g.fillStyle = "rgba(0,0,0,0.22)";
     g.fillRect(px+2, py+3, size-2, size-2);
 
-    // block body
     g.fillStyle = color;
     g.fillRect(px, py, size-1, size-1);
 
-    // highlight top/left
     g.fillStyle = "rgba(255,255,255,0.22)";
     g.fillRect(px, py, size-1, 3);
     g.fillRect(px, py, 3, size-1);
 
-    // shade bottom/right
     g.fillStyle = "rgba(0,0,0,0.20)";
     g.fillRect(px, py+size-5, size-1, 4);
     g.fillRect(px+size-5, py, 4, size-1);
 
-    // border
     g.strokeStyle = "rgba(255,255,255,0.18)";
     g.strokeRect(px+0.5, py+0.5, size-2, size-2);
 
@@ -994,11 +968,9 @@
   }
 
   function drawBoard(){
-    // background vignette
     const w = canvas.width, h = canvas.height;
     ctx.clearRect(0,0,w,h);
 
-    // soft glow
     const grad = ctx.createRadialGradient(w*0.5,h*0.15, 10, w*0.5,h*0.15, h*0.95);
     grad.addColorStop(0, "rgba(122,167,255,0.12)");
     grad.addColorStop(1, "rgba(0,0,0,0)");
@@ -1007,7 +979,6 @@
 
     drawGrid();
 
-    // fixed blocks
     for(let y=HIDDEN;y<BH;y++){
       for(let x=0;x<W;x++){
         const k = board[y][x];
@@ -1052,7 +1023,6 @@
         const x = piece.x + c;
         const y = gy + r - HIDDEN;
         if(y < 0 || y >= H) continue;
-        // ghost as border only
         const px = x*cell;
         const py = y*cell;
         ctx.strokeStyle = "rgba(255,255,255,0.35)";
@@ -1066,7 +1036,6 @@
   function drawFlash(dt){
     if(!flashRows.length) return;
     for(const f of flashRows) f.t += dt;
-    // keep 180ms
     flashRows = flashRows.filter(f => f.t < 180);
 
     ctx.save();
@@ -1081,7 +1050,6 @@
   }
 
   function spawnLockParticles(p){
-    // create small burst around bottom blocks
     const m = SHAPES[p.kind][p.rot];
     const color = COLORS[p.kind];
     for(let r=0;r<4;r++){
@@ -1131,7 +1099,7 @@
     ctx.save();
     for(const p of particles){
       p.t += dt;
-      p.vy += 0.0009 * dt * cell; // gravity
+      p.vy += 0.0009 * dt * cell;
       p.x += p.vx * dt;
       p.y += p.vy * dt;
       const a = Math.max(0, 1 - (p.t / p.life));
@@ -1144,7 +1112,6 @@
   }
 
   function drawNextHold(){
-    // Next canvas
     xNext.clearRect(0,0,cNext.width,cNext.height);
     xNext.fillStyle = "rgba(0,0,0,0.12)";
     xNext.fillRect(0,0,cNext.width,cNext.height);
@@ -1170,14 +1137,12 @@
       if(!k) continue;
       const ox = 14;
       const oy = 14 + i*60;
-      // label
       xNext.fillStyle = "rgba(255,255,255,0.60)";
       xNext.font = "12px system-ui, -apple-system, sans-serif";
       xNext.fillText(`#${i+1}`, ox, oy+12);
       drawMini(xNext, k, ox+28, oy, scale);
     }
 
-    // Hold canvas
     xHold.clearRect(0,0,cHold.width,cHold.height);
     xHold.fillStyle = "rgba(0,0,0,0.12)";
     xHold.fillRect(0,0,cHold.width,cHold.height);
@@ -1199,7 +1164,6 @@
       drawGhost();
       drawPiece(piece, 0, 1);
     }else if(state === "PAUSED"){
-      // show still frame
       drawGhost();
       drawPiece(piece, 0, 1);
       ctx.save();
@@ -1225,7 +1189,6 @@
       ctx.fillText("Start / Restart で再開", (W*cell)/2, (H*cell)/2 + 18);
       ctx.restore();
     }else{
-      // READY
       ctx.save();
       ctx.fillStyle = "rgba(0,0,0,0.25)";
       ctx.fillRect(0,0,W*cell,H*cell);
@@ -1245,7 +1208,6 @@
   function update(dt){
     if(state !== "PLAYING") return;
 
-    // handle left/right hold
     holdTime += dt;
     let dir = 0;
     if(heldLeft && !heldRight) dir = -1;
@@ -1256,7 +1218,6 @@
       if(dir !== 0) tryMove(dir, 0);
     }else if(dir !== 0){
       if(holdTime > DAS){
-        // after DAS, repeat every ARR
         const t = holdTime - DAS;
         const steps = Math.floor(t / ARR);
         const prevSteps = Math.floor((t - dt) / ARR);
@@ -1266,7 +1227,6 @@
       }
     }
 
-    // drop interval
     const base = dropIntervalMs();
     const interval = heldDown ? Math.max(35, base * 0.13) : base;
 
@@ -1276,7 +1236,7 @@
       if(!collides(piece, 0, 1, piece.rot)){
         piece.y += 1;
         if(heldDown){
-          score += 1; // soft drop reward
+          score += 1;
           bumpStats();
         }
       }else{
@@ -1287,7 +1247,7 @@
   }
 
   function loop(t){
-    const dt = Math.min(34, t - lastTime); // clamp to avoid huge jumps
+    const dt = Math.min(34, t - lastTime);
     lastTime = t;
     update(dt);
     render(dt);
@@ -1296,18 +1256,16 @@
 
   // ====== Inputs ======
   window.addEventListener("keydown", (e) => {
-    if(e.repeat && (e.code==="Space")) return; // avoid repeated hard drop
+    if(e.repeat && (e.code==="Space")) return;
     if(e.code === "KeyP"){
       togglePause(); return;
     }
     if(e.code === "Enter"){
-      // quick start
       if(state !== "PLAYING") startFromUserGesture();
       return;
     }
 
     if(state === "READY" || state === "GAMEOVER"){
-      // allow some keys to start
       if(["ArrowLeft","ArrowRight","ArrowDown","Space","KeyZ","KeyX","KeyC"].includes(e.code)){
         startFromUserGesture();
       }
@@ -1377,6 +1335,124 @@
     if(state!=="PLAYING") startFromUserGesture();
     hold();
   });
+
+  // ★スマホ操作：盤面を指で直接操作（追従っぽい）
+  // - 横ドラッグ：セル単位で移動
+  // - 下ドラッグ：ソフトドロップ（heldDown）
+  // - 上フリック：ハードドロップ
+  // - タップ：回転（右）
+  // - 2回タップ：ホールド
+  const TOUCH = {
+    active: false,
+    id: null,
+    startX: 0,
+    startY: 0,
+    lastX: 0,
+    lastY: 0,
+    accumX: 0,
+    accumY: 0,
+    startT: 0,
+    moved: false,
+    lastTapT: 0,
+  };
+
+  function canvasPoint(e){
+    const r = canvas.getBoundingClientRect();
+    return { x: e.clientX - r.left, y: e.clientY - r.top };
+  }
+
+  function startTouch(e){
+    if(TOUCH.active) return;
+    e.preventDefault();
+
+    if(state !== "PLAYING") startFromUserGesture();
+
+    const p = canvasPoint(e);
+    TOUCH.active = true;
+    TOUCH.id = e.pointerId;
+    TOUCH.startX = TOUCH.lastX = p.x;
+    TOUCH.startY = TOUCH.lastY = p.y;
+    TOUCH.accumX = 0;
+    TOUCH.accumY = 0;
+    TOUCH.startT = performance.now();
+    TOUCH.moved = false;
+
+    canvas.setPointerCapture?.(e.pointerId);
+  }
+
+  function moveTouch(e){
+    if(!TOUCH.active || e.pointerId !== TOUCH.id) return;
+    e.preventDefault();
+
+    const p = canvasPoint(e);
+    const dx = p.x - TOUCH.lastX;
+    const dy = p.y - TOUCH.lastY;
+    TOUCH.lastX = p.x;
+    TOUCH.lastY = p.y;
+
+    TOUCH.accumX += dx;
+    TOUCH.accumY += dy;
+
+    if(Math.abs(TOUCH.accumX) + Math.abs(TOUCH.accumY) > 6) TOUCH.moved = true;
+
+    // 横移動の感度（小さいほど敏感）
+    const stepX = cell * 0.55;
+    while(TOUCH.accumX > stepX){
+      tryMove(+1, 0);
+      TOUCH.accumX -= stepX;
+    }
+    while(TOUCH.accumX < -stepX){
+      tryMove(-1, 0);
+      TOUCH.accumX += stepX;
+    }
+
+    // 下ドラッグでソフト（しきい値でON/OFF）
+    if(TOUCH.accumY > cell * 0.25){
+      heldDown = true;
+    } else if(TOUCH.accumY < cell * 0.10){
+      heldDown = false;
+    }
+  }
+
+  function endTouch(e){
+    if(!TOUCH.active || e.pointerId !== TOUCH.id) return;
+    e.preventDefault();
+
+    const tNow = performance.now();
+    const totalDX = TOUCH.lastX - TOUCH.startX;
+    const totalDY = TOUCH.lastY - TOUCH.startY;
+    const dt = tNow - TOUCH.startT;
+
+    heldDown = false;
+
+    // 上フリック（速く＆一定距離）
+    if(TOUCH.moved && totalDY < -cell * 1.2 && dt < 220){
+      hardDrop();
+      TOUCH.active = false;
+      return;
+    }
+
+    // タップ/ダブルタップ
+    const tapLike = !TOUCH.moved && Math.abs(totalDX) < 10 && Math.abs(totalDY) < 10 && dt < 220;
+
+    if(tapLike){
+      const since = tNow - TOUCH.lastTapT;
+      if(since < 280){
+        hold();
+        TOUCH.lastTapT = 0;
+      }else{
+        tryRotate(+1);
+        TOUCH.lastTapT = tNow;
+      }
+    }
+
+    TOUCH.active = false;
+  }
+
+  canvas.addEventListener("pointerdown", startTouch, {passive:false});
+  canvas.addEventListener("pointermove", moveTouch, {passive:false});
+  canvas.addEventListener("pointerup", endTouch, {passive:false});
+  canvas.addEventListener("pointercancel", endTouch, {passive:false});
 
   // Buttons
   const btnStart = document.getElementById("btnStart");

@@ -1457,7 +1457,7 @@
     heldDown = false;
 
     // up flick -> hard drop
-    if(TOUCH.moved && totalDY < -cell * 1.2 && dt < 220){
+    if(TOUCH.moved && totalDY < +cell * 1.2 && dt < 220){
       hardDrop();
       TOUCH.active = false;
       return;

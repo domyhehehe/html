@@ -227,8 +227,8 @@
   <div class="wrap">
     <header>
       <div class="title">
-        <b>Puyo-ish PLUS（1ファイル版）</b>
-        <span>OJAMA / 連鎖ディレイ / ちぎり風回転 / ロックディレイ / 色数変更</span>
+        <b>Puyo-ish PLUS(1ファイル版)</b>
+        <span>OJAMA / 連鎖ディレイ / ちぎり風回転 / ロックディレイ / 色数変更</span>
       </div>
       <div class="btnrow">
         <button class="small ok" id="btnStart">Start / Restart</button>
@@ -257,14 +257,14 @@
             <button id="tDrop">HARD DROP</button>
           </div>
           <div class="hint">
-            キー：<span class="kbd">← →</span>移動 /
+            キー:<span class="kbd">← →</span>移動 /
             <span class="kbd">↓</span>ソフト /
-            <span class="kbd">Space</span>ハード /
+            <span class="kbd">Space</span>ハード /
             <span class="kbd">Z</span>左回転 /
             <span class="kbd">X</span>右回転 /
-            <span class="kbd">P</span>ポーズ
+            <span class="kbd">P</span>ポーズ
             <br>
-            スマホ：盤面<span class="kbd">左右ドラッグ</span>で移動、<span class="kbd">下ドラッグ</span>でソフト、<span class="kbd">上フリック</span>でハード、<span class="kbd">タップ</span>回転
+            スマホ:盤面<span class="kbd">左右ドラッグ</span>で移動、<span class="kbd">下ドラッグ</span>でソフト、<span class="kbd">上フリック</span>でハード、<span class="kbd">タップ</span>回転
           </div>
         </div>
       </div>
@@ -272,14 +272,14 @@
 
     <aside class="grid">
       <section class="panel">
-        <div class="hd"><b>NEXT</b><span class="hint">次のペア</span></div>
+        <div class="hd"><b>NEXT</b><span class="hint">次のペア</span></div>
         <div class="bd">
           <canvas id="next" width="280" height="180"></canvas>
         </div>
       </section>
 
       <section class="panel">
-        <div class="hd"><b>STATS</b><span class="hint">保存：localStorage</span></div>
+        <div class="hd"><b>STATS</b><span class="hint">保存:localStorage</span></div>
         <div class="bd stats">
           <div class="stat"><div class="k">SCORE</div><div class="v" id="vScore">0</div></div>
           <div class="stat"><div class="k">HIGH</div><div class="v" id="vHigh">0</div></div>
@@ -292,20 +292,20 @@
             <span class="hint"><b id="vOjama">0</b></span>
           </div>
           <div class="meter"><div id="ojamaBar"></div></div>
-          <div class="hint" style="margin-top:8px">※一定時間ごとに降る。レベルが上がるほど増える</div>
+          <div class="hint" style="margin-top:8px">※一定時間ごとに降る。レベルが上がるほど増える</div>
         </div>
       </section>
 
       <section class="panel">
-        <div class="hd"><b>SETTINGS</b><span class="hint">見た目＆難易度</span></div>
+        <div class="hd"><b>SETTINGS</b><span class="hint">見た目&難易度</span></div>
         <div class="bd">
           <div class="row">
             <label class="switch"><input type="checkbox" id="sGrid" /> 格子</label>
-            <label class="switch"><input type="checkbox" id="sGhost" /> ゴースト</label>
+            <label class="switch"><input type="checkbox" id="sGhost" /> ゴースト</label>
           </div>
           <div style="height:10px"></div>
           <div class="row">
-            <label class="switch"><input type="checkbox" id="sSound" /> サウンド</label>
+            <label class="switch"><input type="checkbox" id="sSound" /> サウンド</label>
             <div class="row" style="gap:8px">
               <span class="hint">音量</span>
               <input type="range" id="sVol" min="0" max="100" value="35" />
@@ -322,11 +322,11 @@
           </div>
           <div style="height:10px"></div>
           <div class="row">
-            <label class="switch"><input type="checkbox" id="sOjama" checked /> おじゃまON</label>
-            <span class="hint">（サバイバル）</span>
+            <label class="switch"><input type="checkbox" id="sOjama" checked /> おじゃまON</label>
+            <span class="hint">(サバイバル)</span>
           </div>
           <div style="height:10px"></div>
-          <div class="hint">※iOS簡易WebViewでも「開始優先」。音は死んでも進行する</div>
+          <div class="hint">※iOS簡易WebViewでも「開始優先」。音は死んでも進行する</div>
         </div>
       </section>
     </aside>
@@ -508,7 +508,7 @@
   let particles = [];
 
   // ====== "Puyo-ness" timing: lock delay & chain pacing ======
-  const LOCK_DELAY_MS = 360;     // 着地しても少しだけ動ける
+  const LOCK_DELAY_MS = 360;     // 着地しても少しだけ動ける
   let lockTimer = 0;
   let grounded = false;
 
@@ -521,10 +521,10 @@
 
   // ====== OJAMA ======
   let ojamaQueue = 0;         // 降らせ待ちの個数
-  let ojamaAcc = 0;           // 時間経過で増やす
-  let ojamaInterval = 12000;  // ms（レベルで短くする）
-  let ojamaBurstMax = 6;      // 一回で落ちる上限（詰み防止のため）
-  let pendingOjamaDrop = 0;   // 処理タイミング用
+  let ojamaAcc = 0;           // 時間経過で増やす
+  let ojamaInterval = 12000;  // ms(レベルで短くする)
+  let ojamaBurstMax = 6;      // 一回で落ちる上限(詰み防止のため)
+  let pendingOjamaDrop = 0;   // 処理タイミング用
 
   function setOjamaUI(){
     ui.vOjama.textContent = String(ojamaQueue|0);
@@ -612,7 +612,7 @@
     return false;
   }
 
-  // ====== Rotation (ちぎり風：壁蹴り＆押し上げ強化) ======
+  // ====== Rotation (ちぎり風:壁蹴り&押し上げ強化) ======
   // turn: +1 right, -1 left
   function tryRotate(turn){
     if(state !== "PLAYING") return;
@@ -632,7 +632,7 @@
     const kicks = [
       {x: 1, y: 0},
       {x:-1, y: 0},
-      {x: 0, y:-1},   // push up (段差で回しやすい)
+      {x: 0, y:-1},   // push up (段差で回しやすい)
       {x: 0, y:-2},
       {x: 2, y: 0},
       {x:-2, y: 0},
@@ -758,7 +758,7 @@
     let cleared = 0;
     let clearedOjama = 0;
 
-    // ぷよ消し + 隣接おじゃま消し（ぷよぷよっぽい）
+    // ぷよ消し + 隣接おじゃま消し(ぷよぷよっぽい)
     const markOjama = [];
     const dirs = [[1,0],[-1,0],[0,1],[0,-1]];
 
@@ -793,7 +793,7 @@
   }
 
   // ====== Chain step system ======
-  // “今の盤面で消えるものがあるか”を評価して、あったら段階的に処理する
+  // “今の盤面で消えるものがあるか”を評価して、あったら段階的に処理する
   let currentChain = 0;
   let pendingGroups = null;
 
@@ -817,7 +817,7 @@
 
       const moved = applyGravity();
       if(moved){
-        // 落ちたら、次の判定の前に一瞬待つ（FALL_WAIT継続）
+        // 落ちたら、次の判定の前に一瞬待つ(FALL_WAIT継続)
         chainPhase = "FALL_WAIT";
         return;
       }
@@ -825,7 +825,7 @@
       // 落ち切ったら、消える判定へ
       pendingGroups = findGroups();
       if(!pendingGroups.length){
-        // 連鎖終了 → おじゃま落下処理 → 新ペア
+        // 連鎖終了 → おじゃま落下処理 → 新ペア
         chainPhase = "NONE";
         finishLockSequence();
         return;
@@ -882,7 +882,7 @@
       dropOjama(pendingOjamaDrop);
       pendingOjamaDrop = 0;
 
-      // もしおじゃまで消える連結ができたら、そのまま連鎖解決へ
+      // もしおじゃまで消える連結ができたら、そのまま連鎖解決へ
       const g = findGroups();
       if(g.length){
         beginChainResolve();
@@ -1141,7 +1141,7 @@
 
   function drawGhost(){
     if(!settings.showGhost) return;
-    if(chainPhase !== "NONE") return; // 演出中は非表示のほうが見やすい
+    if(chainPhase !== "NONE") return; // 演出中は非表示のほうが見やすい
     const g = ghostPositions();
     if(g.py >= HIDDEN) drawPuyo(ctx, g.px, g.py-HIDDEN, cell, pair.a, 0.25);
     if(g.cy >= HIDDEN) drawPuyo(ctx, g.cx, g.cy-HIDDEN, cell, pair.b, 0.25);
@@ -1236,12 +1236,12 @@
       }
     }else if(state === "PAUSED"){
       drawGhost(); drawPair();
-      drawOverlayText("PAUSED", "Pause でもどる");
+      drawOverlayText("PAUSED", "Pause でもどる");
     }else if(state === "GAMEOVER"){
       drawGhost(); drawPair();
-      drawOverlayText("GAME OVER", "Start / Restart で再開");
+      drawOverlayText("GAME OVER", "Start / Restart で再開");
     }else{
-      drawOverlayText("READY", "Start / Restart で開始");
+      drawOverlayText("READY", "Start / Restart で開始");
     }
 
     drawParticles(dt);
@@ -1442,8 +1442,8 @@
     while(TOUCH.accumX < -stepX){ tryMove(-1, 0); TOUCH.accumX += stepX; }
 
     // down drag -> soft
-    if(TOUCH.accumY > cell * 0.25) heldDown = true;
-    else if(TOUCH.accumY < cell * 0.08) heldDown = false;
+    if(TOUCH.accumY < -cell * 0.25) heldDown = true;
+    else if(TOUCH.accumY < -cell * 0.08) heldDown = false;
   }
   function endTouch(e){
     if(!TOUCH.active || e.pointerId !== TOUCH.id) return;
@@ -1457,7 +1457,7 @@
     heldDown = false;
 
     // up flick -> hard drop
-    if(TOUCH.moved && totalDY < +cell * 1.2 && dt < 220){
+    if(TOUCH.moved && totalDY < -cell * 1.2 && dt < 220){
       hardDrop();
       TOUCH.active = false;
       return;
@@ -1481,7 +1481,7 @@
   const btnReset = document.getElementById("btnReset");
 
   function startFromUserGesture(){
-    // 開始優先（音は後）
+    // 開始優先(音は後)
     resetGame();
     ensureAudio();
     try{

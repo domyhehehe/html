@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no"/>
-<title>SquareMan X-ish（スマホ指操作＋チャージ＋下スワイプジャンプ）</title>
+<title>SquareMan X-ish（上スワイプジャンプ／平坦マップ）</title>
 <style>
   :root{
     --bg:#0b0f17;
@@ -112,8 +112,8 @@
   <div class="wrap">
     <header>
       <div class="title">
-        <b>SquareMan X-ish（指操作：移動/タップ射撃/長押しチャージ/下スワイプジャンプ）</b>
-        <span>PC: ←→/Z/X/Shift　スマホ: 指ドラッグで移動・タップ射撃・長押し→離すでタメ・下スワイプでジャンプ</span>
+        <b>SquareMan X-ish（上スワイプ：ジャンプ／タップ：射撃／長押し→離す：チャージ）</b>
+        <span>PC: ←→/Z/X/Shift　スマホ: 指ドラッグ移動・タップ射撃・長押し→離すチャージ・上スワイプでジャンプ</span>
       </div>
       <div style="display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end">
         <button id="btnStart">Start / Restart</button>
@@ -132,7 +132,7 @@
         <div class="hint" style="margin-top:10px">
           ・敵に触れるとダメージ（無敵時間あり）<br>
           ・タップ：ショット / 長押し→離す：チャージショット<br>
-          ・下スワイプ：ジャンプ（ぷよぷよの“下にシュッ”と同じ）<br>
+          ・上スワイプ：ジャンプ（シュッと上）<br>
           ・穴に落ちたら即死（落下死） / ゴールに触れたらクリア
         </div>
       </div>
@@ -148,8 +148,8 @@
       </div>
       <div class="bd">
         <div class="hint">
-          チャージは短め（気持ちよさ重視）にしてあるだに。<br>
-          もっと“ロックマンっぽく”するなら「武器切替」「ボス部屋」「E缶」あたりが効く。
+          マップは「平坦寄り＋穴＋低い段差」だけにして詰みを消しただに。<br>
+          次は「坂」「エレベータ」「武器切替」「ボス部屋」あたりを足すと一気にロックマン味が出る。
         </div>
       </div>
     </aside>
@@ -196,25 +196,28 @@
   // ====== World ======
   const TILE = 32;
 
+  // ★ほぼ平坦な一本道ステージ（詰まない）
+  // 記号: #=地面  .=空  S=開始  G=ゴール  E=敵
+  // ※穴は「#がない区間」を作って落下死になる
   const levelStr = [
-    "........................................................................................................",
-    "........................................................................................................",
-    "........................................................................................................",
-    "......................E.........................................................E......................",
-    "..................#####.....................#####......................................................",
-    ".............................................................#####......................................",
-    "...........E..............................................................E............................",
-    "........#########....................#####....................#####..................#####..............",
-    ".................................................#####..................................................",
-    ".....S....................#####...........................................#####....................G....",
-    "####################.......................###########..............###############..............########",
-    "####################..............#####..........................#####.............#####........########",
-    "####################............................E.............#####.....................#####..########",
-    "####################....#####.............#############....#####....#####....#####..............########",
-    "####################...........................................................................########",
-    "###############....###########...........######....######...........#########....#######....############",
-    "###############....###########....^^^....######....######....^^^....#########....#######....############",
-    "###############....###########...........######....######...........#########....#######....############",
+    "................................................................................................................",
+    "................................................................................................................",
+    "................................................................................................................",
+    "................................................................................................................",
+    "................................................................................................................",
+    "................................................................................................................",
+    "................................................................................................................",
+    "................................................................................................................",
+    "................................................................................................................",
+    "................................................................................................................",
+    "................................................................................................................",
+    "................................................................................................................",
+    "................................................................................................................",
+    "................................................................................................................",
+    "....................#.............#.............#.............#.............#.............#....................",
+    ".....S..............#......E......#........E....#......E......#........E....#......E......#...............G....",
+    "#####################..######..########..######..########..######..########..######..########..#################",
+    "#####################..######..########..######..########..######..########..######..########..#################",
   ];
 
   const H = levelStr.length;
@@ -228,7 +231,7 @@
 
   // ====== Entities ======
   const player = {
-    x: 2*TILE, y: 8*TILE,
+    x: 2*TILE, y: 10*TILE,
     w: 18, h: 28,
     vx: 0, vy: 0,
     dir: 1,
@@ -239,7 +242,6 @@
     crouch: false,
     shootCd: 0,
     animT: 0,
-    // charge
     charging: false,
     chargeT: 0,
   };
@@ -253,9 +255,9 @@
   function findStart(){
     for(let y=0;y<H;y++){
       const ix = levelStr[y].indexOf("S");
-      if(ix >= 0) return { x: ix*TILE + 8, y: y*TILE - 10 };
+      if(ix >= 0) return { x: ix*TILE + 8, y: y*TILE - 12 };
     }
-    return { x: 2*TILE, y: 8*TILE };
+    return { x: 2*TILE, y: 10*TILE };
   }
 
   function spawnEnemiesFromMap(){
@@ -264,7 +266,7 @@
       for(let x=0;x<W;x++){
         if(levelStr[y][x] === "E"){
           enemies.push({
-            x: x*TILE + 8, y: y*TILE + 8,
+            x: x*TILE + 8, y: y*TILE + 6,
             w: 18, h: 18,
             vx: (Math.random()<0.5 ? -1:1) * 70,
             vy: 0,
@@ -344,19 +346,16 @@
     lastY: 0,
     startT: 0,
     moved: false,
-    chargingArmed: false,
     longPressTimer: null,
-    // 移動用: 指の横ズレを -1..+1 に正規化して speed に反映
     steer: 0,
-    // 下スワイプ判定
     didSwipeJump: false,
   };
 
   const TAP_MAX_MS = 220;
   const TAP_MAX_MOVE = 12;     // px
-  const SWIPE_DOWN_MIN = 45;   // px
+  const SWIPE_UP_MIN = 45;     // ★上スワイプ最小距離（逆にした）
   const SWIPE_MAX_MS = 260;
-  const LONGPRESS_MS = 260;    // これ超えたらチャージ開始（離したときタメ発射）
+  const LONGPRESS_MS = 260;
   const STEER_DEADZONE = 8;
 
   function canvasPoint(evt){
@@ -369,7 +368,6 @@
 
   function beginCharge(){
     if(state !== "PLAYING") return;
-    touch.chargingArmed = true;
     player.charging = true;
     player.chargeT = 0;
   }
@@ -378,30 +376,24 @@
     if(state !== "PLAYING") return;
     if(!player.charging) return;
 
-    // チャージ量に応じて威力/サイズ変化（上限）
     const t = Math.min(player.chargeT, 1.2);
     const power = (t < 0.25) ? 1 : (t < 0.7 ? 2 : 3);
     fireShot(power);
 
     player.charging = false;
     player.chargeT = 0;
-    touch.chargingArmed = false;
   }
 
   function cancelCharge(){
     player.charging = false;
     player.chargeT = 0;
-    touch.chargingArmed = false;
   }
 
-  // 「タップ射撃」も「チャージ解放射撃」もここに統一
   function fireShot(power){
     if(power <= 1){
-      // 通常弾はクールダウンを使う
       if(player.shootCd > 0) return;
       player.shootCd = 0.16;
     }else{
-      // チャージ弾は少し重め
       if(player.shootCd > 0) return;
       player.shootCd = 0.22;
     }
@@ -440,7 +432,6 @@
 
     if(state !== "PLAYING"){
       startFromUserGesture();
-      // すぐ操作したいので継続
     }
 
     const p = canvasPoint(e);
@@ -454,10 +445,8 @@
     touch.didSwipeJump = false;
     cancelCharge();
 
-    // 長押しでチャージ開始
     clearTimeout(touch.longPressTimer);
     touch.longPressTimer = setTimeout(() => {
-      // ほぼ動いてない＆まだタップ判定の範囲ならチャージ開始
       if(!touch.active) return;
       if(touch.moved) return;
       beginCharge();
@@ -479,10 +468,10 @@
       touch.moved = true;
     }
 
-    // 下スワイプでジャンプ（早めに発動）
+    // ★上スワイプでジャンプ（dy がマイナス方向に大きい）
     const dt = performance.now() - touch.startT;
     if(!touch.didSwipeJump && dt < SWIPE_MAX_MS){
-      if(dy > SWIPE_DOWN_MIN && Math.abs(dy) > Math.abs(dx) * 1.2){
+      if(dy < -SWIPE_UP_MIN && Math.abs(dy) > Math.abs(dx) * 1.2){
         touch.didSwipeJump = true;
         clearTimeout(touch.longPressTimer);
         cancelCharge();
@@ -490,22 +479,16 @@
       }
     }
 
-    // 指ドラッグによる移動：横ズレを -1..+1 にして steer として利用
-    //（下スワイプ中でも横ズレは拾うけど、ジャンプ発動後は大きく動かなくてもOK）
+    // 指ドラッグ移動（横ズレ）
     if(Math.abs(dx) < STEER_DEADZONE){
       touch.steer = 0;
     }else{
-      const half = canvas._cssW * 0.35; // これ以上ズレても最大扱い
+      const half = canvas._cssW * 0.35;
       touch.steer = Math.max(-1, Math.min(1, dx / half));
     }
 
-    // 移動してるなら、チャージは開始しない（誤爆防止）
     if(touch.moved){
       clearTimeout(touch.longPressTimer);
-      if(player.charging){
-        // チャージ中に動き始めたら継続はOK（Xっぽい）
-        // ただし過敏ならここでcancelCharge()にしてもいい
-      }
     }
   }, {passive:false});
 
@@ -519,20 +502,16 @@
     const dy = touch.lastY - touch.startY;
     clearTimeout(touch.longPressTimer);
 
-    // チャージ中なら、離した瞬間にタメ発射
     if(player.charging){
       endChargeAndFire();
     }else{
-      // 下スワイプジャンプした直後は「タップ射撃」を抑制（誤爆防止）
       if(!touch.didSwipeJump){
-        // タップ（短時間＆移動少）なら射撃
         if(dt <= TAP_MAX_MS && Math.hypot(dx,dy) <= TAP_MAX_MOVE*1.6){
           fireShot(1);
         }
       }
     }
 
-    // 解除
     touch.active = false;
     touch.pid = null;
     touch.steer = 0;
@@ -612,18 +591,6 @@
     }
   }
 
-  function spikeCheck(){
-    const footY = Math.floor((player.y + player.h)/TILE);
-    const leftX = Math.floor(player.x / TILE);
-    const rightX = Math.floor((player.x + player.w - 1)/TILE);
-    for(let tx=leftX; tx<=rightX; tx++){
-      if(tileAt(tx, footY) === "^"){
-        damagePlayer(1);
-        break;
-      }
-    }
-  }
-
   function damagePlayer(n){
     if(player.inv > 0) return;
     player.hp -= n;
@@ -647,30 +614,23 @@
     if(player.inv > 0) player.inv = Math.max(0, player.inv - dt);
     if(player.shootCd > 0) player.shootCd = Math.max(0, player.shootCd - dt);
 
-    // チャージ時間
     if(player.charging){
       player.chargeT = Math.min(1.4, player.chargeT + dt);
     }
 
-    // crouch/dashはPCのみ（指操作だと誤爆しやすいので自動ダッシュにしない）
     player.crouch = !!key.down;
     player.dash = !!key.dash;
 
     // ====== 移動入力の統合 ======
-    // PC: left/right
-    // スマホ: steer(-1..+1) → 速度に変換
     const accelGround = 1800, accelAir = 1050;
-    const maxV = 185;              // 基本速度
-    const maxVTouch = 210;         // 指操作はちょい速め
+    const maxV = 185;
+    const maxVTouch = 210;
     let target = 0;
 
     if(touch.active){
       const s = touch.steer;
-      if(Math.abs(s) > 0.02){
-        target = s * maxVTouch;
-      }else{
-        target = 0;
-      }
+      if(Math.abs(s) > 0.02) target = s * maxVTouch;
+      else target = 0;
     }else{
       if(key.left && !key.right) target = -maxV;
       if(key.right && !key.left) target = +maxV;
@@ -690,7 +650,7 @@
       else player.vx -= Math.sign(player.vx) * step;
     }
 
-    // ====== ジャンプ（PC: Z、スマホ: 下スワイプでjumpPressが立つ） ======
+    // ====== ジャンプ ======
     if(key.jump){
       if(player.onGround){
         player.vy = -370;
@@ -704,7 +664,6 @@
 
     moveAndCollide(player, player.vx*dt, player.vy*dt);
 
-    spikeCheck();
     goalCheck();
 
     // 落下死
@@ -737,6 +696,7 @@
 
       moveAndCollide(e, e.vx*dt, e.vy*dt);
 
+      // 平坦マップなので、端で折り返し＆穴で落ちる前に折り返し
       const aheadX = (e.vx > 0) ? (e.x + e.w + 2) : (e.x - 2);
       const footY  = e.y + e.h + 2;
       const txA = Math.floor(aheadX / TILE);
@@ -789,7 +749,7 @@
     player.animT += dt * (Math.abs(player.vx) > 10 ? 8 : 3);
   }
 
-  // ====== Render helpers ======
+  // ====== Render ======
   function shadowEllipse(g, x, y, w, h){
     g.save();
     g.globalAlpha = 0.25;
@@ -815,29 +775,23 @@
     const PINK  = "rgba(255,158,207,0.92)";
     const OUT   = "rgba(0,0,0,0.35)";
 
-    // body
     g.fillStyle = BLUE;
     g.fillRect(px+4, py+10, W-8, H-12);
 
-    // head
     g.fillStyle = WHITE;
     g.fillRect(px+6, py+0, W-12, 12);
 
-    // forehead
     g.fillStyle = YELL;
     g.fillRect(px+6, py+4, W-12, 3);
 
-    // arms
     g.fillStyle = PINK;
     g.fillRect(px+W-4, py+12, 4, 8);
     g.fillRect(px+0,    py+12, 4, 8);
 
-    // feet
     g.fillStyle = PINK;
     g.fillRect(px+5, py+H-4, 5, 4);
     g.fillRect(px+W-10, py+H-4, 5, 4);
 
-    // charge effect (キラッと)
     if(player.charging){
       const t = Math.min(1, player.chargeT / 0.9);
       g.save();
@@ -879,18 +833,6 @@
       ctx.fillText("GOAL", px+4, py+18);
       return;
     }
-    if(ch === "^"){
-      ctx.fillStyle = "rgba(255,107,122,0.18)";
-      ctx.fillRect(px, py, TILE, TILE);
-      ctx.strokeStyle = "rgba(255,107,122,0.75)";
-      ctx.beginPath();
-      ctx.moveTo(px+4, py+TILE-4);
-      ctx.lineTo(px+TILE/2, py+6);
-      ctx.lineTo(px+TILE-4, py+TILE-4);
-      ctx.closePath();
-      ctx.stroke();
-      return;
-    }
     if(ch === "S"){
       ctx.fillStyle = "rgba(122,167,255,0.10)";
       ctx.fillRect(px, py, TILE, TILE);
@@ -901,6 +843,21 @@
       ctx.fillText("START", px+3, py+18);
       return;
     }
+  }
+
+  function overlay(title, sub){
+    const cw = canvas._cssW, ch = canvas._cssH;
+    ctx.save();
+    ctx.fillStyle = "rgba(0,0,0,0.50)";
+    ctx.fillRect(0,0,cw,ch);
+    ctx.fillStyle = "rgba(255,255,255,0.92)";
+    ctx.font = "900 34px system-ui, -apple-system, sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText(title, cw/2, ch/2 - 10);
+    ctx.fillStyle = "rgba(255,255,255,0.75)";
+    ctx.font = "14px system-ui, -apple-system, sans-serif";
+    ctx.fillText(sub, cw/2, ch/2 + 18);
+    ctx.restore();
   }
 
   function render(){
@@ -936,7 +893,6 @@
       }
     }
 
-    // enemies
     for(const e of enemies){
       if(!e.alive) continue;
       ctx.save();
@@ -948,31 +904,18 @@
       ctx.restore();
     }
 
-    // bullets
     for(const b of bullets){
       if(b.life <= 0) continue;
       const dmg = b.dmg || 1;
-      ctx.fillStyle = (dmg===1) ? "rgba(255,255,255,0.92)" : "rgba(255,255,255,0.95)";
+      ctx.fillStyle = "rgba(255,255,255,0.92)";
       ctx.fillRect(b.x, b.y, b.w, b.h);
       ctx.fillStyle = (dmg===1) ? "rgba(122,167,255,0.55)" : "rgba(78,229,154,0.55)";
       ctx.fillRect(b.x, b.y, b.w, 2);
     }
 
-    // player
     shadowEllipse(ctx, player.x-10, player.y-4, player.w+20, player.h+14);
     const blink = (player.inv > 0) ? (Math.floor(timeSec*20)%2===0 ? 0.35 : 1) : 1;
     drawPlayer(ctx, player.x, player.y, player.dir, player.crouch, blink);
-
-    // touch hint overlay（指が乗ってる間、移動方向をうっすら表示）
-    if(touch.active){
-      ctx.save();
-      const cx = touch.startX + camX;
-      const cy = touch.startY + camY;
-      ctx.globalAlpha = 0.20;
-      ctx.fillStyle = "rgba(122,167,255,1)";
-      ctx.fillRect(cx-14, cy-14, 28, 28);
-      ctx.restore();
-    }
 
     ctx.restore();
 
@@ -987,21 +930,17 @@
     }
   }
 
-  function overlay(title, sub){
-    const cw = canvas._cssW, ch = canvas._cssH;
-    ctx.save();
-    ctx.fillStyle = "rgba(0,0,0,0.50)";
-    ctx.fillRect(0,0,cw,ch);
-    ctx.fillStyle = "rgba(255,255,255,0.92)";
-    ctx.font = "900 34px system-ui, -apple-system, sans-serif";
-    ctx.textAlign = "center";
-    ctx.fillText(title, cw/2, ch/2 - 10);
-    ctx.fillStyle = "rgba(255,255,255,0.75)";
-    ctx.font = "14px system-ui, -apple-system, sans-serif";
-    ctx.fillText(sub, cw/2, ch/2 + 18);
-    ctx.restore();
+  // ====== Init & Loop ======
+  function init(){
+    spawnEnemiesFromMap();
+    setState("READY");
+    ui.vHp.textContent = "5";
+    ui.vKills.textContent = "0";
+    ui.vTime.textContent = "0.0";
+    render();
   }
 
+  let lastTime = 0;
   function loop(tms){
     const now = tms / 1000;
     if(!lastTime) lastTime = now;
@@ -1011,16 +950,6 @@
     if(state === "PLAYING") update(dt);
     render();
     requestAnimationFrame(loop);
-  }
-
-  // ====== Init ======
-  function init(){
-    spawnEnemiesFromMap();
-    setState("READY");
-    ui.vHp.textContent = "5";
-    ui.vKills.textContent = "0";
-    ui.vTime.textContent = "0.0";
-    render();
   }
 
   init();

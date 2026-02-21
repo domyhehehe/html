@@ -279,7 +279,8 @@
   const W = levelStr[0].length;
 
   function tileAt(tx, ty){
-    if(tx<0||ty<0||tx>=W||ty>=H) return "#";
+   if(ty >= H) return "."; // ←これが重要（底抜け）
+   if(tx<0 || ty<0 || tx>=W) return "#";
     return levelStr[ty][tx];
   }
   function solidAt(tx, ty){ return tileAt(tx, ty) === "#"; }

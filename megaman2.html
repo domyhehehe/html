@@ -1,0 +1,1525 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no"/>
+<title>SquareMan X-ish（ステージ選択／坂／エレベータ／ボス扉）</title>
+<style>
+  :root{
+    --bg:#0b0f17;
+    --panel:#121a2a;
+    --text:#e7eefc;
+    --muted:#9fb0d4;
+    --accent:#7aa7ff;
+    --danger:#ff6b7a;
+    --ok:#4ee59a;
+    --shadow: rgba(0,0,0,.35);
+    --radius:16px;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0;
+    background: radial-gradient(1200px 800px at 30% 10%, #182447 0%, var(--bg) 55%) fixed;
+    color:var(--text);
+    font-family: system-ui, -apple-system, "Hiragino Sans", "Noto Sans JP", sans-serif;
+    -webkit-font-smoothing: antialiased;
+    touch-action: none;
+    user-select:none;
+  }
+  .wrap{
+    max-width: 1100px;
+    margin:0 auto;
+    padding: 14px;
+    display:grid;
+    gap: 12px;
+    grid-template-columns: 1fr 320px;
+    align-items:start;
+  }
+  header{
+    grid-column:1 / -1;
+    display:flex; align-items:center; justify-content:space-between;
+    gap:10px;
+    padding: 12px 14px;
+    background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.02));
+    border: 1px solid rgba(255,255,255,.08);
+    border-radius: var(--radius);
+    box-shadow: 0 12px 35px var(--shadow);
+  }
+  header .title{ display:flex; flex-direction:column; gap:2px; }
+  header .title b{ font-size: 16px; letter-spacing:.3px; }
+  header .title span{ font-size: 12px; color: var(--muted); }
+  button{
+    border: 1px solid rgba(255,255,255,.12);
+    background: linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.03));
+    color: var(--text);
+    padding: 10px 12px;
+    border-radius: 12px;
+    cursor:pointer;
+    box-shadow: 0 10px 22px rgba(0,0,0,.22);
+    -webkit-tap-highlight-color: transparent;
+    font-weight:800;
+  }
+  button:active{ transform: translateY(1px) scale(.99); }
+  .panel{
+    background: linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.02));
+    border: 1px solid rgba(255,255,255,.08);
+    border-radius: var(--radius);
+    box-shadow: 0 12px 35px var(--shadow);
+    overflow:hidden;
+  }
+  .panel .hd{
+    padding: 10px 12px;
+    display:flex; align-items:center; justify-content:space-between;
+    background: rgba(0,0,0,.18);
+    border-bottom: 1px solid rgba(255,255,255,.06);
+    font-size: 13px;
+  }
+  .panel .bd{ padding: 10px 12px; }
+
+  canvas{
+    width: 100%;
+    height: auto;
+    display:block;
+    border-radius: 14px;
+    background: linear-gradient(180deg, #0c1220 0%, #0a0f1b 100%);
+    border: 1px solid rgba(255,255,255,.08);
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,.03);
+    touch-action: none;
+  }
+
+  .hud{
+    display:grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  .stat{
+    padding: 10px 12px;
+    background: rgba(0,0,0,.18);
+    border: 1px solid rgba(255,255,255,.06);
+    border-radius: 14px;
+  }
+  .k{ font-size: 11px; color: var(--muted); }
+  .v{ font-size: 18px; font-weight: 900; margin-top:2px; letter-spacing:.2px; }
+  .hint{ font-size: 12px; color: var(--muted); line-height:1.35; }
+
+  /* ====== on-screen controls ====== */
+  .controls{
+    margin-top:12px;
+    display:grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  .pad{
+    display:grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    align-content:start;
+  }
+  .pad button{
+    padding: 14px 0;
+    border-radius: 14px;
+    font-size: 14px;
+  }
+  .actions{
+    display:grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    align-content:start;
+  }
+  .actions button{
+    padding: 14px 0;
+    border-radius: 14px;
+    font-size: 14px;
+  }
+  .actions button.wide{ grid-column:1/-1; }
+
+  /* ====== Stage Select Modal ====== */
+  .modal{
+    position:fixed;
+    inset:0;
+    display:none;
+    align-items:center;
+    justify-content:center;
+    padding: 16px;
+    background: rgba(0,0,0,.45);
+    z-index: 50;
+  }
+  .modal.show{ display:flex; }
+  .modalCard{
+    width:min(720px, 100%);
+    border-radius: 18px;
+    background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.02));
+    border: 1px solid rgba(255,255,255,.10);
+    box-shadow: 0 22px 70px rgba(0,0,0,.45);
+    overflow:hidden;
+  }
+  .modalHd{
+    padding: 14px 16px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    background: rgba(0,0,0,.22);
+    border-bottom: 1px solid rgba(255,255,255,.08);
+  }
+  .modalHd b{ font-size: 14px; letter-spacing:.2px; }
+  .modalBd{
+    padding: 14px 16px;
+    display:grid;
+    gap: 10px;
+  }
+  .stageBtn{
+    text-align:left;
+    padding: 12px 12px;
+    border-radius: 14px;
+    border: 1px solid rgba(255,255,255,.12);
+    background: rgba(0,0,0,.18);
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,.04);
+  }
+  .stageBtn b{ display:block; font-size: 14px; }
+  .stageBtn span{ display:block; margin-top:4px; font-size: 12px; color: var(--muted); line-height:1.35; }
+
+  /* ====== Fade ====== */
+  .fade{
+    position:fixed;
+    inset:0;
+    pointer-events:none;
+    background: rgba(0,0,0,0);
+    transition: background .28s ease;
+    z-index: 60;
+  }
+  .fade.on{ background: rgba(0,0,0,0.88); }
+
+  @media (max-width: 920px){
+    .wrap{ grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div class="title">
+        <b>SquareMan X-ish（ステージ選択／坂／エレベータ／ボス扉）</b>
+        <span>PC: ←→ / Z(ジャンプ) / X(ショット) / Shift(ダッシュ) / P(ポーズ)　スマホ: 画面ボタン or 指ドラッグ移動 / タップ射撃 / 長押し→離すチャージ / 上スワイプジャンプ</span>
+      </div>
+      <div style="display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end">
+        <button id="btnStage">Stage Select</button>
+        <button id="btnStart">Start / Restart</button>
+        <button id="btnPause">Pause</button>
+      </div>
+    </header>
+
+    <section class="panel">
+      <div class="hd">
+        <b>STAGE</b>
+        <span id="stateText" style="color:var(--muted); font-weight:800">READY</span>
+      </div>
+      <div class="bd">
+        <canvas id="game" width="960" height="540"></canvas>
+
+        <div class="hint" style="margin-top:10px">
+          記号：# 地面 / / \ 坂 / D ボス扉 / G クリアゴール / E 敵 / S 開始 / M 昇降足場（ステージ定義側で生成）<br>
+          ボス扉：触れる→歩いて入る→暗転→ボス部屋へ（演出）
+        </div>
+      </div>
+    </section>
+
+    <aside class="panel">
+      <div class="hd"><b>HUD</b><span class="hint">簡易ステータス</span></div>
+      <div class="bd hud">
+        <div class="stat"><div class="k">HP</div><div class="v" id="vHp">5</div></div>
+        <div class="stat"><div class="k">KILLS</div><div class="v" id="vKills">0</div></div>
+        <div class="stat"><div class="k">TIME</div><div class="v" id="vTime">0.0</div></div>
+        <div class="stat"><div class="k">STATE</div><div class="v" id="vState">READY</div></div>
+      </div>
+
+      <div class="bd">
+        <div class="hint">
+          ジャンプ難しい対策で「JUMPボタン」継続。<br>
+          坂は“地面と同じ”感覚で歩けるように、足元吸着を入れてあるだに。
+        </div>
+
+        <div class="controls">
+          <div class="pad">
+            <button id="btnLeft">←</button>
+            <button id="btnStop">■</button>
+            <button id="btnRight">→</button>
+            <button id="btnDown" style="grid-column:1/-1;">↓（しゃがみ）</button>
+          </div>
+          <div class="actions">
+            <button id="btnJump">JUMP</button>
+            <button id="btnDash">DASH</button>
+            <button id="btnShot" class="wide">SHOT（押し：連射／長押し→離す：チャージ）</button>
+          </div>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <!-- Stage Select Modal -->
+  <div id="modal" class="modal">
+    <div class="modalCard">
+      <div class="modalHd">
+        <b>STAGE SELECT</b>
+        <button id="btnCloseModal" class="small">close</button>
+      </div>
+      <div class="modalBd" id="stageList"></div>
+    </div>
+  </div>
+
+  <div id="fade" class="fade"></div>
+
+<script>
+(() => {
+  "use strict";
+
+  // ====== Canvas ======
+  const canvas = document.getElementById("game");
+  const ctx = canvas.getContext("2d");
+
+  function resize(){
+    const rect = canvas.getBoundingClientRect();
+    const w = Math.max(320, Math.floor(rect.width));
+    const dpr = (window.devicePixelRatio || 1);
+    canvas.width  = w * dpr;
+    canvas.height = Math.floor(w * 0.56) * dpr;
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+    canvas._cssW = w;
+    canvas._cssH = Math.floor(w * 0.56);
+  }
+  window.addEventListener("resize", resize);
+  resize();
+
+  // ====== UI ======
+  const ui = {
+    stateText: document.getElementById("stateText"),
+    vHp: document.getElementById("vHp"),
+    vKills: document.getElementById("vKills"),
+    vTime: document.getElementById("vTime"),
+    vState: document.getElementById("vState"),
+    btnStage: document.getElementById("btnStage"),
+    btnStart: document.getElementById("btnStart"),
+    btnPause: document.getElementById("btnPause"),
+    btnLeft: document.getElementById("btnLeft"),
+    btnRight: document.getElementById("btnRight"),
+    btnStop: document.getElementById("btnStop"),
+    btnDown: document.getElementById("btnDown"),
+    btnJump: document.getElementById("btnJump"),
+    btnDash: document.getElementById("btnDash"),
+    btnShot: document.getElementById("btnShot"),
+    modal: document.getElementById("modal"),
+    stageList: document.getElementById("stageList"),
+    btnCloseModal: document.getElementById("btnCloseModal"),
+    fade: document.getElementById("fade"),
+  };
+
+  let state = "READY"; // READY | PLAYING | PAUSED | DOOR | CLEAR | GAMEOVER | SELECT
+  function setState(s){
+    state = s;
+    ui.stateText.textContent = s;
+    ui.vState.textContent = s;
+  }
+
+  // ====== World ======
+  const TILE = 32;
+
+  // ====== Stages ======
+  // 記号：
+  // # solid, . empty, S start, G goal, E enemy, D door, / \ slopes
+  // エレベータは stage.platforms で定義（見た目は M として置いてもいいが処理は platforms）
+  const STAGES = [
+    {
+      id:"stg1",
+      name:"STAGE 1: FLAT + HOLES",
+      desc:"平坦＋穴＋低い段差。入口はゴール（G）。",
+      toBoss:false,
+      map: [
+        "................................................................................................................",
+        "................................................................................................................",
+        "................................................................................................................",
+        "................................................................................................................",
+        "................................................................................................................",
+        "................................................................................................................",
+        "................................................................................................................",
+        "................................................................................................................",
+        "................................................................................................................",
+        "................................................................................................................",
+        "................................................................................................................",
+        "................................................................................................................",
+        "................................................................................................................",
+        "................................................................................................................",
+        "....................#.............#.............#.............#.............#.............#....................",
+        ".....S..............#......E......#........E....#......E......#........E....#......E......#...............G....",
+        "#####################..######..########..######..########..######..########..######..########..#################",
+        "#####################..######..########..######..########..######..########..######..########..#################",
+      ],
+      platforms: []
+    },
+    {
+      id:"stg2",
+      name:"STAGE 2: SLOPES + ELEVATOR",
+      desc:"坂（/ \\）と昇降足場で “それっぽい” 動き。",
+      toBoss:true,
+      // 右端に D（ボス扉）
+      map: [
+        "................................................................................................................",
+        "................................................................................................................",
+        "................................................................................................................",
+        "................................................................................................................",
+        "................................................................................................................",
+        "................................................................................................................",
+        "................................................................................................................",
+        "................................................................................................................",
+        "................................................................................................................",
+        "................................................................................................................",
+        "................................................................................................................",
+        "....................../########\\............................................................../########\\.....",
+        "...................../..........\\............................................................/..........\\....",
+        "..................../............\\........................................................../............\\...",
+        ".............#####./..............\\#####.............................#####................../..............\\..",
+        ".....S.............#.......E...........#..................E...........#.....................#..........E....D..",
+        "####################....................##############################.......................##################",
+        "####################....................##############################.......................##################",
+      ],
+      platforms: [
+        // 昇降足場：x,y はタイル座標、wTiles は横幅、range は上下移動幅（px）、speed px/s
+        { xTile: 40, yTile: 11, wTiles: 4, range: 96, speed: 70 },
+        { xTile: 62, yTile: 10, wTiles: 3, range: 128, speed: 85 },
+      ]
+    },
+    {
+      id:"boss",
+      name:"BOSS ROOM (DEMO)",
+      desc:"ボス部屋デモ。扉から入るとここ。",
+      toBoss:false,
+      map: [
+        "................................................................................................................",
+        "................................................................................................................",
+        "................................................................................................................",
+        "................................................................................................................",
+        "................................................................................................................",
+        "................................................................................................................",
+        "................................................................................................................",
+        "................................................................................................................",
+        "................................................................................................................",
+        "................................................................................................................",
+        "................................................................................................................",
+        "...................................................######.......................................................",
+        "...................................................#....#.......................................................",
+        "...................................................#....#.......................................................",
+        ".....S.............................................#....#.................................................G.....",
+        "###############################..###################....############################..###########################",
+        "###############################..###################....############################..###########################",
+        "###############################..###################....############################..###########################",
+      ],
+      platforms: []
+    }
+  ];
+
+  let currentStageIndex = 0;
+  let levelStr = STAGES[0].map;
+  let H = levelStr.length;
+  let W = levelStr[0].length;
+
+  // ====== Tiles ======
+  function tileAt(tx, ty){
+    // 下だけは空にしないと落下できない
+    if(ty >= H) return ".";
+    if(tx < 0 || ty < 0 || tx >= W) return "#";
+    return levelStr[ty][tx];
+  }
+  function solidAt(tx, ty){
+    const t = tileAt(tx, ty);
+    return t === "#";
+  }
+  function isSlope(t){ return t === "/" || t === "\\"; }
+
+  // ====== Entities ======
+  const player = {
+    x: 2*TILE, y: 10*TILE,
+    w: 18, h: 28,
+    vx: 0, vy: 0,
+    dir: 1,
+    onGround: false,
+    hp: 5,
+    inv: 0,
+    dash: false,
+    crouch: false,
+    shootCd: 0,
+    animT: 0,
+    charging: false,
+    chargeT: 0,
+  };
+
+  let kills = 0;
+  let timeSec = 0;
+
+  const bullets = [];
+  const enemies = [];
+  const platforms = []; // moving platforms
+
+  // Door / transition
+  const door = { active:false, x:0, y:0, w:TILE, h:TILE*2, toStageIndex:2, t:0 };
+
+  function findStart(){
+    for(let y=0;y<H;y++){
+      const ix = levelStr[y].indexOf("S");
+      if(ix >= 0) return { x: ix*TILE + 8, y: y*TILE - 12 };
+    }
+    return { x: 2*TILE, y: 10*TILE };
+  }
+
+  function findDoor(){
+    for(let y=0;y<H;y++){
+      const ix = levelStr[y].indexOf("D");
+      if(ix >= 0){
+        return { x: ix*TILE, y: y*TILE - TILE }; // 2タイル扉想定
+      }
+    }
+    return null;
+  }
+
+  function spawnEnemiesFromMap(){
+    enemies.length = 0;
+    for(let y=0;y<H;y++){
+      for(let x=0;x<W;x++){
+        if(levelStr[y][x] === "E"){
+          enemies.push({
+            x: x*TILE + 8, y: y*TILE + 6,
+            w: 18, h: 18,
+            vx: (Math.random()<0.5 ? -1:1) * 70,
+            vy: 0,
+            hp: 2,
+            alive: true,
+            hurt: 0
+          });
+        }
+      }
+    }
+  }
+
+  function spawnPlatformsForStage(stage){
+    platforms.length = 0;
+    for(const p of stage.platforms || []){
+      const x = p.xTile*TILE;
+      const y = p.yTile*TILE;
+      platforms.push({
+        x, y,
+        w: p.wTiles*TILE,
+        h: 10,
+        baseY: y,
+        range: p.range,
+        speed: p.speed,
+        dir: 1, // +1 down, -1 up
+        vy: 0,
+      });
+    }
+  }
+
+  function loadStage(index){
+    currentStageIndex = index;
+    const st = STAGES[index];
+    levelStr = st.map;
+    H = levelStr.length;
+    W = levelStr[0].length;
+
+    bullets.length = 0;
+    kills = 0;
+    timeSec = 0;
+
+    spawnEnemiesFromMap();
+    spawnPlatformsForStage(st);
+
+    // door set
+    door.active = false;
+    const d = findDoor();
+    if(d){
+      door.active = true;
+      door.x = d.x;
+      door.y = d.y;
+      door.w = TILE;
+      door.h = TILE*2;
+      door.t = 0;
+      // toBoss: boss index固定（2）
+      door.toStageIndex = st.toBoss ? 2 : index; // st.toBossの時だけbossへ
+    }
+
+    const s = findStart();
+    player.x = s.x;
+    player.y = s.y;
+    player.vx = 0; player.vy = 0;
+    player.dir = 1;
+    player.onGround = false;
+    player.hp = 5;
+    player.inv = 0;
+    player.dash = false;
+    player.crouch = false;
+    player.shootCd = 0;
+    player.animT = 0;
+    player.charging = false;
+    player.chargeT = 0;
+
+    setState("PLAYING");
+    ui.fade.classList.remove("on");
+  }
+
+  function resetToSelect(){
+    setState("SELECT");
+    showStageModal(true);
+  }
+
+  // ====== Input ======
+  const key = { left:false, right:false, down:false, jump:false, shot:false, dash:false };
+
+  function pressOnceJump(){
+    key.jump = true;
+    setTimeout(()=> key.jump = false, 50);
+  }
+
+  // keyboard
+  window.addEventListener("keydown", (e)=>{
+    if(e.code==="KeyP"){ togglePause(); return; }
+
+    if(state==="READY" || state==="GAMEOVER" || state==="CLEAR" || state==="SELECT"){
+      if(["ArrowLeft","ArrowRight","ArrowDown","KeyZ","KeyX","ShiftLeft","ShiftRight","Enter","Space"].includes(e.code)){
+        if(state==="SELECT") return; // 選択はUIで
+      }
+    }
+    if(state!=="PLAYING") return;
+
+    switch(e.code){
+      case "ArrowLeft": key.left=true; e.preventDefault(); break;
+      case "ArrowRight": key.right=true; e.preventDefault(); break;
+      case "ArrowDown": key.down=true; e.preventDefault(); break;
+      case "KeyZ": key.jump=true; e.preventDefault(); break;
+      case "KeyX": key.shot=true; e.preventDefault(); break;
+      case "ShiftLeft":
+      case "ShiftRight": key.dash=true; break;
+    }
+  }, {passive:false});
+
+  window.addEventListener("keyup", (e)=>{
+    switch(e.code){
+      case "ArrowLeft": key.left=false; break;
+      case "ArrowRight": key.right=false; break;
+      case "ArrowDown": key.down=false; break;
+      case "KeyZ": key.jump=false; break;
+      case "KeyX": key.shot=false; break;
+      case "ShiftLeft":
+      case "ShiftRight": key.dash=false; break;
+    }
+  });
+
+  // on-screen buttons
+  function bindHold(btn, onDown, onUp){
+    const down = (e)=>{ e.preventDefault(); onDown(); };
+    const up = (e)=>{ e.preventDefault(); onUp(); };
+    btn.addEventListener("pointerdown", down, {passive:false});
+    btn.addEventListener("pointerup", up, {passive:false});
+    btn.addEventListener("pointercancel", up, {passive:false});
+    btn.addEventListener("pointerleave", up, {passive:false});
+  }
+
+  bindHold(ui.btnLeft,  ()=>{ if(state!=="PLAYING") return; key.left=true; },  ()=>{ key.left=false; });
+  bindHold(ui.btnRight, ()=>{ if(state!=="PLAYING") return; key.right=true; }, ()=>{ key.right=false; });
+  bindHold(ui.btnDown,  ()=>{ if(state!=="PLAYING") return; key.down=true; },  ()=>{ key.down=false; });
+  ui.btnStop.addEventListener("click", (e)=>{ e.preventDefault(); key.left=false; key.right=false; }, {passive:false});
+
+  ui.btnJump.addEventListener("click", (e)=>{
+    e.preventDefault();
+    if(state!=="PLAYING") return;
+    pressOnceJump();
+  }, {passive:false});
+
+  bindHold(ui.btnDash, ()=>{ if(state!=="PLAYING") return; key.dash=true; }, ()=>{ key.dash=false; });
+
+  // shot: 押しっぱ=通常連射、長押し→離す=チャージ
+  let shotHoldTimer = null;
+  let shotHeld = false;
+  bindHold(ui.btnShot,
+    ()=>{
+      if(state!=="PLAYING") return;
+      shotHeld = true;
+      key.shot = true;
+      clearTimeout(shotHoldTimer);
+      shotHoldTimer = setTimeout(()=>{
+        if(!shotHeld) return;
+        beginCharge();
+      }, 260);
+    },
+    ()=>{
+      shotHeld = false;
+      clearTimeout(shotHoldTimer);
+      key.shot = false;
+      if(player.charging) endChargeAndFire();
+    }
+  );
+
+  // touch gesture on canvas
+  const touch = {
+    active: false,
+    pid: null,
+    startX: 0,
+    startY: 0,
+    lastX: 0,
+    lastY: 0,
+    startT: 0,
+    moved: false,
+    longPressTimer: null,
+    steer: 0,
+    didSwipeJump: false,
+  };
+
+  const TAP_MAX_MS = 220;
+  const TAP_MAX_MOVE = 12;
+  const SWIPE_UP_MIN = 40;
+  const SWIPE_MAX_MS = 280;
+  const LONGPRESS_MS = 260;
+  const STEER_DEADZONE = 8;
+
+  function canvasPoint(evt){
+    const r = canvas.getBoundingClientRect();
+    return { x: (evt.clientX - r.left), y: (evt.clientY - r.top) };
+  }
+
+  function beginCharge(){
+    if(state !== "PLAYING") return;
+    player.charging = true;
+    player.chargeT = 0;
+  }
+
+  function endChargeAndFire(){
+    if(state !== "PLAYING") return;
+    if(!player.charging) return;
+    const t = Math.min(player.chargeT, 1.2);
+    const power = (t < 0.25) ? 1 : (t < 0.7 ? 2 : 3);
+    fireShot(power);
+    player.charging = false;
+    player.chargeT = 0;
+  }
+
+  function cancelCharge(){
+    player.charging = false;
+    player.chargeT = 0;
+  }
+
+  function fireShot(power){
+    if(power <= 1){
+      if(player.shootCd > 0) return;
+      player.shootCd = 0.12;
+    }else{
+      if(player.shootCd > 0) return;
+      player.shootCd = 0.22;
+    }
+
+    const bx = (player.dir===1) ? (player.x + player.w + 2) : (player.x - 6);
+    const by = player.y + (player.crouch ? 16 : 10);
+
+    const size = (power===1) ? {w:6,h:4} : (power===2 ? {w:10,h:7} : {w:14,h:9});
+    const speed = (power===1) ? 520 : (power===2 ? 470 : 430);
+    const life  = (power===1) ? 1.2 : 1.35;
+
+    bullets.push({
+      x: bx, y: by - (size.h-4)*0.5,
+      w: size.w, h: size.h,
+      vx: player.dir * speed,
+      life,
+      dmg: power
+    });
+  }
+
+  function togglePause(){
+    if(state === "PLAYING"){ setState("PAUSED"); }
+    else if(state === "PAUSED"){ setState("PLAYING"); lastTime = performance.now()/1000; }
+  }
+
+  ui.btnStart.addEventListener("click", ()=>{
+    // リスタートは「今のステージを最初から」
+    loadStage(currentStageIndex);
+  });
+  ui.btnPause.addEventListener("click", ()=> togglePause());
+
+  ui.btnStage.addEventListener("click", ()=>{
+    showStageModal(true);
+  });
+
+  // Canvas gestures
+  canvas.addEventListener("pointerdown", (e)=>{
+    e.preventDefault();
+    canvas.setPointerCapture(e.pointerId);
+
+    if(state !== "PLAYING") return;
+
+    const p = canvasPoint(e);
+    touch.active = true;
+    touch.pid = e.pointerId;
+    touch.startX = touch.lastX = p.x;
+    touch.startY = touch.lastY = p.y;
+    touch.startT = performance.now();
+    touch.moved = false;
+    touch.steer = 0;
+    touch.didSwipeJump = false;
+    cancelCharge();
+
+    clearTimeout(touch.longPressTimer);
+    touch.longPressTimer = setTimeout(() => {
+      if(!touch.active) return;
+      if(touch.moved) return;
+      beginCharge();
+    }, LONGPRESS_MS);
+  }, {passive:false});
+
+  canvas.addEventListener("pointermove", (e)=>{
+    if(!touch.active || e.pointerId !== touch.pid) return;
+    e.preventDefault();
+
+    const p = canvasPoint(e);
+    const dx = p.x - touch.startX;
+    const dy = p.y - touch.startY;
+    touch.lastX = p.x;
+    touch.lastY = p.y;
+
+    if(Math.hypot(dx, dy) > TAP_MAX_MOVE){
+      touch.moved = true;
+    }
+
+    // 上スワイプ：上成分が強ければOK
+    const dt = performance.now() - touch.startT;
+    if(!touch.didSwipeJump && dt < SWIPE_MAX_MS){
+      const up = -dy;
+      if(up > SWIPE_UP_MIN){
+        if(up > Math.abs(dx) * 0.75){
+          touch.didSwipeJump = true;
+          clearTimeout(touch.longPressTimer);
+          cancelCharge();
+          pressOnceJump();
+        }
+      }
+    }
+
+    // ドラッグ移動
+    if(Math.abs(dx) < STEER_DEADZONE){
+      touch.steer = 0;
+    }else{
+      const half = canvas._cssW * 0.35;
+      touch.steer = Math.max(-1, Math.min(1, dx / half));
+    }
+
+    if(touch.moved){
+      clearTimeout(touch.longPressTimer);
+    }
+  }, {passive:false});
+
+  canvas.addEventListener("pointerup", (e)=>{
+    if(!touch.active || e.pointerId !== touch.pid) return;
+    e.preventDefault();
+
+    const endT = performance.now();
+    const dt = endT - touch.startT;
+    const dx = touch.lastX - touch.startX;
+    const dy = touch.lastY - touch.startY;
+    clearTimeout(touch.longPressTimer);
+
+    if(player.charging){
+      endChargeAndFire();
+    }else{
+      if(!touch.didSwipeJump){
+        if(dt <= TAP_MAX_MS && Math.hypot(dx,dy) <= TAP_MAX_MOVE*1.6){
+          fireShot(1);
+        }
+      }
+    }
+
+    touch.active = false;
+    touch.pid = null;
+    touch.steer = 0;
+  }, {passive:false});
+
+  canvas.addEventListener("pointercancel", (e)=>{
+    if(e.pointerId !== touch.pid) return;
+    clearTimeout(touch.longPressTimer);
+    cancelCharge();
+    touch.active = false;
+    touch.pid = null;
+    touch.steer = 0;
+  }, {passive:false});
+
+  // ====== Stage Select UI ======
+  function showStageModal(on){
+    ui.modal.classList.toggle("show", !!on);
+    if(on) setState("SELECT");
+    else if(state==="SELECT") setState("READY");
+  }
+
+  ui.btnCloseModal.addEventListener("click", ()=> showStageModal(false));
+
+  function buildStageList(){
+    ui.stageList.innerHTML = "";
+    STAGES.forEach((st, i)=>{
+      const btn = document.createElement("button");
+      btn.className = "stageBtn";
+      btn.innerHTML = `<b>${st.name}</b><span>${st.desc}</span>`;
+      btn.addEventListener("click", ()=>{
+        showStageModal(false);
+        // fade-in then load
+        fadeTo(() => loadStage(i));
+      });
+      ui.stageList.appendChild(btn);
+    });
+  }
+
+  function fadeTo(fn){
+    ui.fade.classList.add("on");
+    setTimeout(()=>{
+      try{ fn(); }catch(_){}
+      setTimeout(()=> ui.fade.classList.remove("on"), 140);
+    }, 220);
+  }
+
+  buildStageList();
+
+  // ====== Collision helpers ======
+  function rectsOverlap(a,b){
+    return (a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y);
+  }
+
+  // Platform collision (top only)
+  function platformTopCollision(ent, dy){
+    ent._onPlatform = null;
+    if(dy <= 0) return false;
+
+    const feetY = ent.y + ent.h;
+    const nextFeetY = feetY + dy;
+
+    for(const p of platforms){
+      // AABB overlap in X (using next x)
+      const entL = ent.x;
+      const entR = ent.x + ent.w;
+      const pL = p.x;
+      const pR = p.x + p.w;
+
+      if(entR <= pL || entL >= pR) continue;
+
+      const pTop = p.y;
+      const pBottom = p.y + p.h;
+
+      // If crossing platform top this frame
+      if(feetY <= pTop && nextFeetY >= pTop){
+        // land
+        ent.y = pTop - ent.h;
+        ent.vy = 0;
+        ent.onGround = true;
+        ent._onPlatform = p;
+        return true;
+      }
+    }
+    return false;
+  }
+
+  function moveAndCollide(ent, dx, dy){
+    // X
+    ent.x += dx;
+    if(dx !== 0){
+      const left   = Math.floor(ent.x / TILE);
+      const right  = Math.floor((ent.x + ent.w - 1) / TILE);
+      const top    = Math.floor(ent.y / TILE);
+      const bottom = Math.floor((ent.y + ent.h - 1) / TILE);
+
+      for(let ty=top; ty<=bottom; ty++){
+        if(dx > 0){
+          if(solidAt(right, ty)){
+            ent.x = right*TILE - ent.w;
+            ent.vx = 0;
+            break;
+          }
+        }else{
+          if(solidAt(left, ty)){
+            ent.x = (left+1)*TILE;
+            ent.vx = 0;
+            break;
+          }
+        }
+      }
+    }
+
+    // Y
+    ent.y += dy;
+    ent.onGround = false;
+
+    // platforms first (top land)
+    if(dy > 0){
+      // undo y then test with dy (so we can compute crossing)
+      ent.y -= dy;
+      if(platformTopCollision(ent, dy)){
+        // already placed on platform
+        return;
+      }
+      ent.y += dy;
+    }
+
+    if(dy !== 0){
+      const left   = Math.floor(ent.x / TILE);
+      const right  = Math.floor((ent.x + ent.w - 1) / TILE);
+      const top    = Math.floor(ent.y / TILE);
+      const bottom = Math.floor((ent.y + ent.h - 1) / TILE);
+
+      for(let tx=left; tx<=right; tx++){
+        if(dy > 0){
+          if(solidAt(tx, bottom)){
+            ent.y = bottom*TILE - ent.h;
+            ent.vy = 0;
+            ent.onGround = true;
+            break;
+          }
+        }else{
+          if(solidAt(tx, top)){
+            ent.y = (top+1)*TILE;
+            ent.vy = 0;
+            break;
+          }
+        }
+      }
+    }
+  }
+
+  // ====== Slopes ======
+  // 坂タイル上にいる時、足元を吸着して「歩ける地形」にする
+  function applySlope(ent){
+    // feet center
+    const cx = ent.x + ent.w*0.5;
+    const fx = Math.floor(cx / TILE);
+    const fy = Math.floor((ent.y + ent.h + 1) / TILE); // ちょい下
+    const t = tileAt(fx, fy);
+    if(!isSlope(t)) return;
+
+    const tileLeft = fx*TILE;
+    const tileTop  = fy*TILE;
+    const withinX = cx - tileLeft; // 0..TILE
+
+    // surface y at feet
+    let surf;
+    if(t === "\\"){
+      // rises to right: left low, right high
+      // bottom at tileTop+TILE, top at tileTop
+      surf = tileTop + (TILE - withinX);
+    }else{
+      // "/" rises to left: left high, right low
+      surf = tileTop + withinX;
+    }
+
+    const desiredY = surf - ent.h;
+
+    // only snap when falling / close enough
+    if(ent.vy >= 0 && ent.y <= desiredY + 8){
+      ent.y = desiredY;
+      ent.vy = 0;
+      ent.onGround = true;
+    }
+  }
+
+  // ====== Goal / Door ======
+  function goalCheck(){
+    const tx = Math.floor((player.x + player.w/2)/TILE);
+    const ty = Math.floor((player.y + player.h/2)/TILE);
+    if(tileAt(tx, ty) === "G"){
+      setState("CLEAR");
+    }
+  }
+
+  function doorCheck(){
+    if(!door.active) return false;
+    const a = { x: player.x, y: player.y, w: player.w, h: player.h };
+    const d = { x: door.x + 4, y: door.y + 8, w: door.w - 8, h: door.h - 16 };
+    if(rectsOverlap(a, d)){
+      // start door sequence
+      setState("DOOR");
+      door.t = 0;
+      return true;
+    }
+    return false;
+  }
+
+  function damagePlayer(n){
+    if(player.inv > 0) return;
+    player.hp -= n;
+    player.inv = 0.9;
+    player.vy = -220;
+    player.vx = -player.dir * 130;
+    if(player.hp <= 0){
+      setState("GAMEOVER");
+    }
+  }
+
+  // ====== Game Loop ======
+  let lastTime = 0;
+
+  function fellOutOfWorld(){
+    const worldH = H * TILE;
+    return (player.y + player.h) > (worldH + 2);
+  }
+
+  function updatePlatforms(dt){
+    for(const p of platforms){
+      // move up/down between baseY-range..baseY+range
+      const targetTop = p.baseY - p.range;
+      const targetBot = p.baseY + p.range;
+
+      const prevY = p.y;
+      p.y += p.dir * p.speed * dt;
+      if(p.y < targetTop){ p.y = targetTop; p.dir = +1; }
+      if(p.y > targetBot){ p.y = targetBot; p.dir = -1; }
+
+      p.vy = (p.y - prevY) / Math.max(1e-6, dt);
+    }
+  }
+
+  function update(dt){
+    if(state !== "PLAYING" && state !== "DOOR") return;
+
+    timeSec += dt;
+    ui.vTime.textContent = timeSec.toFixed(1);
+
+    if(player.inv > 0) player.inv = Math.max(0, player.inv - dt);
+    if(player.shootCd > 0) player.shootCd = Math.max(0, player.shootCd - dt);
+
+    if(player.charging){
+      player.chargeT = Math.min(1.4, player.chargeT + dt);
+    }
+
+    // update platforms always (even door)
+    updatePlatforms(dt);
+
+    // DOOR演出中は入力ロック、扉へ歩いて吸い込み→暗転→ロード
+    if(state === "DOOR"){
+      door.t += dt;
+
+      // 1) player auto-walk to door center
+      const targetX = door.x + door.w*0.5 - player.w*0.5;
+      const dx = targetX - player.x;
+      player.vx = Math.max(-120, Math.min(120, dx * 4));
+      player.dir = (player.vx>=0) ? 1 : -1;
+
+      // 2) keep gravity
+      player.vy += 980 * dt;
+      player.vy = Math.min(player.vy, 900);
+
+      moveAndCollide(player, player.vx*dt, player.vy*dt);
+      applySlope(player);
+
+      // stand on moving platform?
+      if(player._onPlatform){
+        player.y += player._onPlatform.vy * dt;
+      }
+
+      // 3) fade timing
+      if(door.t > 0.35) ui.fade.classList.add("on");
+      if(door.t > 0.62){
+        // switch stage
+        fadeTo(() => loadStage(door.toStageIndex));
+      }
+      return;
+    }
+
+    // ====== movement input ======
+    player.crouch = !!key.down;
+    player.dash = !!key.dash;
+
+    const accelGround = 1800, accelAir = 1050;
+    const maxV = 185;
+    const maxVTouch = 210;
+    let target = 0;
+
+    if(touch.active){
+      const s = touch.steer;
+      if(Math.abs(s) > 0.02) target = s * maxVTouch;
+      else target = 0;
+    }else{
+      if(key.left && !key.right) target = -maxV;
+      if(key.right && !key.left) target = +maxV;
+    }
+
+    const dashMul = player.dash ? 1.45 : 1.0;
+    target *= dashMul;
+
+    if(target !== 0){
+      player.dir = target > 0 ? 1 : -1;
+      const accel = player.onGround ? accelGround : accelAir;
+      const diff = target - player.vx;
+      const step = accel * dt;
+      if(Math.abs(diff) < step) player.vx = target;
+      else player.vx += Math.sign(diff) * step;
+    }else{
+      const fr = player.onGround ? 2400 : 600;
+      const step = fr * dt;
+      if(Math.abs(player.vx) < step) player.vx = 0;
+      else player.vx -= Math.sign(player.vx) * step;
+    }
+
+    // jump
+    if(key.jump){
+      if(player.onGround){
+        player.vy = -370; // 3倍にしたいなら -1110
+        player.onGround = false;
+      }
+    }
+
+    // shoot hold
+    if(key.shot && !player.charging){
+      fireShot(1);
+    }
+
+    // gravity
+    player.vy += 980 * dt;
+    player.vy = Math.min(player.vy, 900);
+
+    moveAndCollide(player, player.vx*dt, player.vy*dt);
+    applySlope(player);
+
+    // ride platform if landed
+    if(player._onPlatform){
+      player.y += player._onPlatform.vy * dt;
+    }
+
+    // fall death
+    if(fellOutOfWorld()){
+      player.hp = 0;
+      setState("GAMEOVER");
+    }
+
+    // door / goal check
+    if(doorCheck()) return;
+    goalCheck();
+
+    // bullets
+    for(const b of bullets){
+      b.x += b.vx * dt;
+      b.life -= dt;
+    }
+    for(const b of bullets){
+      if(b.life <= 0) continue;
+      const tx = Math.floor((b.x + b.w/2)/TILE);
+      const ty = Math.floor((b.y + b.h/2)/TILE);
+      if(solidAt(tx, ty)){
+        b.life = 0;
+      }
+    }
+
+    // enemies
+    for(const e of enemies){
+      if(!e.alive) continue;
+
+      e.vy += 980 * dt;
+      e.vy = Math.min(e.vy, 900);
+
+      moveAndCollide(e, e.vx*dt, e.vy*dt);
+      applySlope(e);
+
+      const aheadX = (e.vx > 0) ? (e.x + e.w + 2) : (e.x - 2);
+      const footY  = e.y + e.h + 2;
+      const txA = Math.floor(aheadX / TILE);
+      const tyF = Math.floor(footY / TILE);
+      const tBelow = tileAt(txA, tyF);
+      if(!(tBelow === "#" || isSlope(tBelow))){
+        e.vx *= -1;
+      }
+
+      const txFront = Math.floor(((e.vx>0) ? (e.x+e.w+1) : (e.x-1))/TILE);
+      const tyMid = Math.floor((e.y + e.h*0.5)/TILE);
+      if(solidAt(txFront, tyMid)){
+        e.vx *= -1;
+      }
+
+      if(e.hurt > 0) e.hurt = Math.max(0, e.hurt - dt);
+      if((e.y + e.h) > (H*TILE + 2)) e.alive = false;
+    }
+
+    // bullet vs enemies
+    for(const b of bullets){
+      if(b.life <= 0) continue;
+      for(const e of enemies){
+        if(!e.alive) continue;
+        if(rectsOverlap(b, e)){
+          b.life = 0;
+          e.hp -= (b.dmg || 1);
+          e.hurt = 0.12;
+          if(e.hp <= 0){
+            e.alive = false;
+            kills++;
+          }
+          break;
+        }
+      }
+    }
+
+    // player vs enemies
+    for(const e of enemies){
+      if(!e.alive) continue;
+      if(rectsOverlap(player, e)){
+        damagePlayer(1);
+        break;
+      }
+    }
+
+    ui.vHp.textContent = String(Math.max(0, player.hp|0));
+    ui.vKills.textContent = String(kills|0);
+
+    player.animT += dt * (Math.abs(player.vx) > 10 ? 8 : 3);
+  }
+
+  // ====== Render ======
+  function shadowEllipse(g, x, y, w, h){
+    g.save();
+    g.globalAlpha = 0.25;
+    g.fillStyle = "rgba(0,0,0,0.55)";
+    g.beginPath();
+    g.ellipse(x + w*0.52, y + h*0.90, w*0.45, h*0.12, 0, 0, Math.PI*2);
+    g.fill();
+    g.restore();
+  }
+
+  function drawPlayer(g, x, y, dir, crouch, blinkAlpha){
+    const Wp = 22, Hh = crouch ? 22 : 28;
+    const px = Math.round(x - 2);
+    const py = Math.round(y + (crouch ? 6 : 0));
+
+    g.save();
+    g.globalAlpha = blinkAlpha;
+
+    const WHITE = "rgba(255,255,255,0.92)";
+    const YELL  = "rgba(255,210,90,0.95)";
+    const BLUE  = "rgba(11,102,255,0.92)";
+    const PINK  = "rgba(255,158,207,0.92)";
+    const OUT   = "rgba(0,0,0,0.35)";
+
+    g.fillStyle = BLUE;
+    g.fillRect(px+4, py+10, Wp-8, Hh-12);
+
+    g.fillStyle = WHITE;
+    g.fillRect(px+6, py+0, Wp-12, 12);
+
+    g.fillStyle = YELL;
+    g.fillRect(px+6, py+4, Wp-12, 3);
+
+    g.fillStyle = PINK;
+    g.fillRect(px+Wp-4, py+12, 4, 8);
+    g.fillRect(px+0,    py+12, 4, 8);
+
+    g.fillStyle = PINK;
+    g.fillRect(px+5, py+Hh-4, 5, 4);
+    g.fillRect(px+Wp-10, py+Hh-4, 5, 4);
+
+    if(player.charging){
+      const t = Math.min(1, player.chargeT / 0.9);
+      g.save();
+      g.globalAlpha = 0.15 + 0.35*t;
+      g.fillStyle = "rgba(122,167,255,1)";
+      g.fillRect(px+2, py+2, Wp-4, 2);
+      g.fillRect(px+2, py+Hh-6, Wp-4, 2);
+      g.restore();
+    }
+
+    g.strokeStyle = OUT;
+    g.lineWidth = 1;
+    g.strokeRect(px+4+0.5, py+10+0.5, Wp-8-1, Hh-12-1);
+    g.strokeRect(px+6+0.5, py+0+0.5, Wp-12-1, 12-1);
+
+    g.restore();
+  }
+
+  function drawTile(x, y, ch){
+    const px = x*TILE;
+    const py = y*TILE;
+
+    if(ch === "#"){
+      ctx.fillStyle = "rgba(255,255,255,0.08)";
+      ctx.fillRect(px, py, TILE, TILE);
+      ctx.strokeStyle = "rgba(255,255,255,0.12)";
+      ctx.strokeRect(px+0.5, py+0.5, TILE-1, TILE-1);
+      ctx.fillStyle = "rgba(122,167,255,0.10)";
+      ctx.fillRect(px+2, py+2, TILE-4, 6);
+      return;
+    }
+    if(ch === "G"){
+      ctx.fillStyle = "rgba(78,229,154,0.16)";
+      ctx.fillRect(px, py, TILE, TILE);
+      ctx.strokeStyle = "rgba(78,229,154,0.55)";
+      ctx.strokeRect(px+0.5, py+0.5, TILE-1, TILE-1);
+      ctx.fillStyle = "rgba(78,229,154,0.85)";
+      ctx.font = "bold 12px system-ui, -apple-system";
+      ctx.fillText("GOAL", px+4, py+18);
+      return;
+    }
+    if(ch === "S"){
+      ctx.fillStyle = "rgba(122,167,255,0.10)";
+      ctx.fillRect(px, py, TILE, TILE);
+      ctx.strokeStyle = "rgba(122,167,255,0.35)";
+      ctx.strokeRect(px+0.5, py+0.5, TILE-1, TILE-1);
+      ctx.fillStyle = "rgba(122,167,255,0.75)";
+      ctx.font = "bold 12px system-ui, -apple-system";
+      ctx.fillText("START", px+3, py+18);
+      return;
+    }
+    if(ch === "D"){
+      // Boss Door
+      ctx.fillStyle = "rgba(255,255,255,0.06)";
+      ctx.fillRect(px, py-TILE, TILE, TILE*2);
+      ctx.strokeStyle = "rgba(122,167,255,0.55)";
+      ctx.strokeRect(px+0.5, py-TILE+0.5, TILE-1, TILE*2-1);
+      ctx.fillStyle = "rgba(122,167,255,0.25)";
+      ctx.fillRect(px+3, py-TILE+3, TILE-6, TILE*2-6);
+      return;
+    }
+    if(ch === "/" || ch === "\\"){
+      ctx.fillStyle = "rgba(255,255,255,0.06)";
+      ctx.fillRect(px, py, TILE, TILE);
+      ctx.strokeStyle = "rgba(255,255,255,0.14)";
+      ctx.strokeRect(px+0.5, py+0.5, TILE-1, TILE-1);
+
+      ctx.strokeStyle = "rgba(122,167,255,0.45)";
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      if(ch === "\\"){
+        ctx.moveTo(px+2, py+TILE-2);
+        ctx.lineTo(px+TILE-2, py+2);
+      }else{
+        ctx.moveTo(px+2, py+2);
+        ctx.lineTo(px+TILE-2, py+TILE-2);
+      }
+      ctx.stroke();
+      ctx.lineWidth = 1;
+    }
+  }
+
+  function drawPlatform(p){
+    ctx.save();
+    ctx.fillStyle = "rgba(255,255,255,0.10)";
+    ctx.fillRect(p.x, p.y, p.w, p.h);
+    ctx.strokeStyle = "rgba(122,167,255,0.35)";
+    ctx.strokeRect(p.x+0.5, p.y+0.5, p.w-1, p.h-1);
+    ctx.fillStyle = "rgba(122,167,255,0.12)";
+    ctx.fillRect(p.x+2, p.y+2, p.w-4, 3);
+    ctx.restore();
+  }
+
+  function overlay(title, sub){
+    const cw = canvas._cssW, ch = canvas._cssH;
+    ctx.save();
+    ctx.fillStyle = "rgba(0,0,0,0.50)";
+    ctx.fillRect(0,0,cw,ch);
+    ctx.fillStyle = "rgba(255,255,255,0.92)";
+    ctx.font = "900 34px system-ui, -apple-system, sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText(title, cw/2, ch/2 - 10);
+    ctx.fillStyle = "rgba(255,255,255,0.75)";
+    ctx.font = "14px system-ui, -apple-system, sans-serif";
+    ctx.fillText(sub, cw/2, ch/2 + 18);
+    ctx.restore();
+  }
+
+  function render(){
+    const cw = canvas._cssW, ch = canvas._cssH;
+    ctx.clearRect(0,0,cw,ch);
+
+    const worldW = W*TILE;
+    const worldH = H*TILE;
+
+    let camX = player.x + player.w/2 - cw*0.42;
+    let camY = player.y + player.h/2 - ch*0.55;
+    camX = Math.max(0, Math.min(worldW - cw, camX));
+    camY = Math.max(0, Math.min(worldH - ch, camY));
+
+    const grad = ctx.createRadialGradient(cw*0.55, ch*0.2, 10, cw*0.55, ch*0.2, ch*0.95);
+    grad.addColorStop(0, "rgba(122,167,255,0.18)");
+    grad.addColorStop(1, "rgba(0,0,0,0)");
+    ctx.fillStyle = grad;
+    ctx.fillRect(0,0,cw,ch);
+
+    ctx.save();
+    ctx.translate(-camX, -camY);
+
+    const x0 = Math.floor(camX / TILE) - 1;
+    const y0 = Math.floor(camY / TILE) - 2;
+    const x1 = Math.floor((camX + cw) / TILE) + 2;
+    const y1 = Math.floor((camY + ch) / TILE) + 3;
+
+    for(let y=y0; y<y1; y++){
+      for(let x=x0; x<x1; x++){
+        const t = tileAt(x,y);
+        if(t !== ".") drawTile(x,y,t);
+      }
+    }
+
+    // platforms
+    for(const p of platforms) drawPlatform(p);
+
+    // enemies
+    for(const e of enemies){
+      if(!e.alive) continue;
+      ctx.save();
+      ctx.globalAlpha = e.hurt>0 ? 0.55 : 1;
+      ctx.fillStyle = "rgba(255,107,122,0.35)";
+      ctx.fillRect(e.x, e.y, e.w, e.h);
+      ctx.strokeStyle = "rgba(255,107,122,0.75)";
+      ctx.strokeRect(e.x+0.5, e.y+0.5, e.w-1, e.h-1);
+      ctx.restore();
+    }
+
+    // bullets
+    for(const b of bullets){
+      if(b.life <= 0) continue;
+      const dmg = b.dmg || 1;
+      ctx.fillStyle = "rgba(255,255,255,0.92)";
+      ctx.fillRect(b.x, b.y, b.w, b.h);
+      ctx.fillStyle = (dmg===1) ? "rgba(122,167,255,0.55)" : "rgba(78,229,154,0.55)";
+      ctx.fillRect(b.x, b.y, b.w, 2);
+    }
+
+    // player
+    shadowEllipse(ctx, player.x-10, player.y-4, player.w+20, player.h+14);
+    const blink = (player.inv > 0) ? (Math.floor(timeSec*20)%2===0 ? 0.35 : 1) : 1;
+    drawPlayer(ctx, player.x, player.y, player.dir, player.crouch, blink);
+
+    ctx.restore();
+
+    if(state === "READY"){
+      overlay("READY", "Stage Select で選択して開始");
+    }else if(state === "SELECT"){
+      overlay("SELECT", "ステージ選択中");
+    }else if(state === "PAUSED"){
+      overlay("PAUSED", "P か Pause でもどる");
+    }else if(state === "GAMEOVER"){
+      overlay("GAME OVER", "Start / Restart で再開（またはStage Select）");
+    }else if(state === "CLEAR"){
+      overlay("CLEAR!", "Stage Select で次へ");
+    }else if(state === "DOOR"){
+      overlay("DOOR", "…入室中…");
+    }
+  }
+
+  // ====== Init & Loop ======
+  function init(){
+    setState("READY");
+    ui.vHp.textContent = "5";
+    ui.vKills.textContent = "0";
+    ui.vTime.textContent = "0.0";
+    render();
+    resetToSelect();
+  }
+
+  function loop(tms){
+    const now = tms / 1000;
+    if(!lastTime) lastTime = now;
+    const dt = Math.min(0.033, now - lastTime);
+    lastTime = now;
+
+    if(state === "PLAYING" || state === "DOOR") update(dt);
+    render();
+    requestAnimationFrame(loop);
+  }
+
+  init();
+  requestAnimationFrame(loop);
+
+})();
+</script>
+</body>
+</html>

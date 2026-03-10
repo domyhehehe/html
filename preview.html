@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <title>HTML Runner Preview</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      min-height: 100%;
+      background: #ffffff;
+    }
+
+    .error_screen {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      padding: 16px;
+      background: #0f172a;
+      color: #e5e7eb;
+      font-family: sans-serif;
+      box-sizing: border-box;
+    }
+
+    .error_title {
+      margin: 0;
+      font-size: 20px;
+    }
+
+    .error_text {
+      margin: 0;
+      line-height: 1.6;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .back_button {
+      appearance: none;
+      border: 1px solid #334155;
+      border-radius: 10px;
+      background: #38bdf8;
+      color: #001018;
+      font-size: 16px;
+      font-weight: bold;
+      padding: 12px 14px;
+      cursor: pointer;
+      width: 100%;
+      max-width: 320px;
+    }
+  </style>
+</head>
+<body>
+  <script>
+    const DEV_MODE = true;
+    const PREVIEW_STORAGE_KEY = "html_runner_preview_payload_v1";
+
+    function assert_true(test_name, condition_value) {
+      if (!condition_value) {
+        throw new Error("Assertion failed: " + test_name);
+      }
+    }
+
+    function parse_preview_payload_text(payload_text) {
+      if (typeof payload_text !== "string") {
+        throw new Error("payload_text must be a string");
+      }
+
+      const parsed_payload = JSON.parse(payload_text);
+
+      if (!parsed_payload || typeof parsed_payload.html_text !== "string") {
+        throw new Error("payload html_text must be a string");
+      }
+
+      return parsed_payload;
+    }
+
+    function test_normal_parses_payload_text() {
+      const payload_text = JSON.stringify({ html_text: "<h1>Hello</h1>" });
+      const parsed_payload = parse_preview_payload_text(payload_text);
+
+      assert_true(
+        "normal_parses_payload_text: html_text matches",
+        parsed_payload.html_text === "<h1>Hello</h1>"
+      );
+    }
+
+    function test_boundary_parses_empty_html_text() {
+      const payload_text = JSON.stringify({ html_text: "" });
+      const parsed_payload = parse_preview_payload_text(payload_text);
+
+      assert_true(
+        "boundary_parses_empty_html_text: empty html allowed",
+        parsed_payload.html_text === ""
+      );
+    }
+
+    function test_error_rejects_invalid_payload_text() {
+      let did_throw_error = false;
+
+      try {
+        parse_preview_payload_text("not-json");
+      } catch (error) {
+        did_throw_error = true;
+      }
+
+      assert_true(
+        "error_rejects_invalid_payload_text: throws",
+        did_throw_error
+      );
+    }
+
+    function run_self_tests() {
+      const tests = [
+        {
+          test_name: "normal_parses_payload_text",
+          test_intent: "通常ケース。保存文字列を復元できること。",
+          test_function: test_normal_parses_payload_text
+        },
+        {
+          test_name: "boundary_parses_empty_html_text",
+          test_intent: "境界ケース。空HTMLを復元できること。",
+          test_function: test_boundary_parses_empty_html_text
+        },
+        {
+          test_name: "error_rejects_invalid_payload_text",
+          test_intent: "エラーケース。不正な保存文字列を拒否すること。",
+          test_function: test_error_rejects_invalid_payload_text
+        }
+      ];
+
+      const fail_list = [];
+
+      for (let index = 0; index < tests.length; index += 1) {
+        const test_item = tests[index];
+
+        try {
+          test_item.test_function();
+        } catch (error) {
+          fail_list.push({
+            test_name: test_item.test_name,
+            expected_value: test_item.test_intent,
+            actual_value: error.message || String(error),
+            stack_text: error.stack || "stack unavailable"
+          });
+        }
+      }
+
+      return {
+        tests_passed: fail_list.length === 0,
+        fail_list: fail_list
+      };
+    }
+
+    function render_error_screen(message_text) {
+      document.body.innerHTML = "";
+
+      const root_box = document.createElement("div");
+      root_box.className = "error_screen";
+
+      const title_element = document.createElement("h1");
+      title_element.className = "error_title";
+      title_element.textContent = "安全停止";
+
+      const text_element = document.createElement("p");
+      text_element.className = "error_text";
+      text_element.textContent = message_text;
+
+      const back_button = document.createElement("button");
+      back_button.className = "back_button";
+      back_button.type = "button";
+      back_button.textContent = "編集ページへ戻る";
+      back_button.onclick = function handle_back() {
+        location.href = "index.html";
+      };
+
+      root_box.appendChild(title_element);
+      root_box.appendChild(text_element);
+      root_box.appendChild(back_button);
+      document.body.appendChild(root_box);
+    }
+
+    function start_preview() {
+      try {
+        if (DEV_MODE) {
+          const test_report = run_self_tests();
+          if (!test_report.tests_passed) {
+            const first_fail_item = test_report.fail_list[0];
+            render_error_screen(
+              "起動前セルフテストに失敗しました。\n" +
+              "first_failed_test: " + first_fail_item.test_name + "\n" +
+              "expected: " + first_fail_item.expected_value + "\n" +
+              "actual: " + first_fail_item.actual_value + "\n" +
+              "stack: " + first_fail_item.stack_text
+            );
+            return;
+          }
+        }
+
+        const payload_text = sessionStorage.getItem(PREVIEW_STORAGE_KEY);
+
+        if (payload_text === null) {
+          render_error_screen("表示するHTMLが見つかりません。index.html から実行してください。");
+          return;
+        }
+
+        const parsed_payload = parse_preview_payload_text(payload_text);
+
+        document.open();
+        document.write(parsed_payload.html_text);
+        document.close();
+      } catch (error) {
+        render_error_screen("実行停止: " + (error.message || String(error)));
+      }
+    }
+
+    start_preview();
+  </script>
+</body>
+</html>

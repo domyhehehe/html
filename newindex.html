@@ -1,24 +1,23 @@
+
+
 <!DOCTYPE html>
 <html lang="ja">
 <head>
   <meta charset="utf-8">
-  <title>Single File HTML / JS / Python IDE</title>
+  <title>HTML / JS / Python Runner Editor</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover, user-scalable=no">
   <style>
     :root {
-      --bg: #0f172a;
-      --panel: #111827;
-      --panel_2: #0b1220;
-      --border: #334155;
-      --text: #e5e7eb;
-      --muted: #94a3b8;
-      --accent: #38bdf8;
-      --success: #22c55e;
-      --warn: #f59e0b;
-      --danger: #ef4444;
-      --editor_bg: #020617;
-      --button_text_dark: #001018;
-      --shadow: 0 10px 24px rgba(0, 0, 0, 0.28);
+      --bg_color: #0f172a;
+      --panel_color: #111827;
+      --border_color: #334155;
+      --text_color: #e5e7eb;
+      --muted_text_color: #94a3b8;
+      --accent_color: #38bdf8;
+      --danger_color: #ef4444;
+      --success_color: #22c55e;
+      --warning_color: #f59e0b;
+      --input_bg_color: #020617;
     }
 
     * {
@@ -30,10 +29,9 @@
       margin: 0;
       padding: 0;
       min-height: 100%;
-      background: var(--bg);
-      color: var(--text);
-      font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Yu Gothic", "Meiryo", sans-serif;
-      overscroll-behavior: none;
+      background: var(--bg_color);
+      color: var(--text_color);
+      font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Yu Gothic", sans-serif;
     }
 
     body {
@@ -42,292 +40,157 @@
       user-select: none;
     }
 
-    input, textarea, select {
+    textarea, select, input {
       -webkit-user-select: text;
       user-select: text;
       font: inherit;
     }
 
-    button, select {
-      touch-action: manipulation;
-      font: inherit;
-    }
-
-    .app {
-      width: 100%;
-      max-width: 1100px;
+    .page_root {
+      max-width: 960px;
       margin: 0 auto;
       padding: 12px;
-      padding-bottom: calc(12px + env(safe-area-inset-bottom));
     }
 
-    .panel {
-      background: var(--panel);
-      border: 1px solid var(--border);
-      border-radius: 14px;
-      box-shadow: var(--shadow);
-      margin-bottom: 12px;
-      overflow: hidden;
-    }
-
-    .panel_header {
-      padding: 12px 14px 10px 14px;
-      border-bottom: 1px solid rgba(148, 163, 184, 0.15);
-      background: linear-gradient(180deg, rgba(56, 189, 248, 0.06), transparent);
-    }
-
-    .title {
-      margin: 0;
-      font-size: 20px;
-      line-height: 1.3;
-    }
-
-    .subtitle {
-      margin: 6px 0 0 0;
-      color: var(--muted);
-      font-size: 13px;
-      line-height: 1.5;
-    }
-
-    .panel_body {
+    .panel_box {
+      background: var(--panel_color);
+      border: 1px solid var(--border_color);
+      border-radius: 12px;
       padding: 12px;
+      margin-bottom: 12px;
     }
 
-    .toolbar {
-      display: grid;
-      grid-template-columns: 1fr;
-      gap: 8px;
-      margin-bottom: 10px;
+    .title_text {
+      margin: 0 0 8px 0;
+      font-size: 20px;
+    }
+
+    .description_text {
+      margin: 0;
+      color: var(--muted_text_color);
+      line-height: 1.5;
+      font-size: 14px;
     }
 
     .toolbar_row {
       display: flex;
       flex-wrap: wrap;
       gap: 8px;
+      margin-bottom: 10px;
       align-items: center;
     }
 
     .select_box,
-    .button {
+    .action_button {
       min-height: 42px;
+      border: 1px solid var(--border_color);
       border-radius: 10px;
-      border: 1px solid var(--border);
-      background: #1e293b;
-      color: var(--text);
-      padding: 10px 12px;
+      padding: 10px 14px;
+      font-size: 14px;
     }
 
     .select_box {
-      min-width: 140px;
-      background: #0f172a;
+      background: var(--input_bg_color);
+      color: var(--text_color);
+      min-width: 160px;
     }
 
-    .button {
-      cursor: pointer;
-      font-weight: 700;
-    }
-
-    .button.primary {
-      background: var(--accent);
-      color: var(--button_text_dark);
-      border-color: transparent;
-    }
-
-    .button.warn {
-      background: var(--warn);
-      color: #2b1800;
-      border-color: transparent;
-    }
-
-    .button.danger {
-      background: var(--danger);
-      color: #fff5f5;
-      border-color: transparent;
-    }
-
-    .button.secondary {
+    .action_button {
       background: #1e293b;
-      color: var(--text);
+      color: var(--text_color);
+      cursor: pointer;
+      font-weight: bold;
     }
 
-    .editor_wrap {
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      overflow: hidden;
-      background: var(--editor_bg);
+    .primary_button {
+      background: var(--accent_color);
+      color: #001018;
+      border-color: transparent;
     }
 
-    .editor_header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 8px;
-      padding: 8px 10px;
-      border-bottom: 1px solid rgba(148, 163, 184, 0.15);
-      background: #08101d;
+    .warning_button {
+      background: var(--warning_color);
+      color: #221300;
+      border-color: transparent;
     }
 
-    .editor_label {
-      font-size: 13px;
-      color: var(--muted);
+    .danger_button {
+      background: var(--danger_color);
+      color: #fff7f7;
+      border-color: transparent;
     }
 
-    .editor_meta {
-      font-size: 12px;
-      color: var(--muted);
-    }
-
-    .editor {
+    .editor_textarea {
       width: 100%;
-      min-height: 280px;
+      min-height: 320px;
       resize: vertical;
-      border: 0;
-      outline: 0;
+      background: var(--input_bg_color);
+      color: var(--text_color);
+      border: 1px solid var(--border_color);
+      border-radius: 10px;
       padding: 12px;
-      background: var(--editor_bg);
-      color: var(--text);
       font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
       font-size: 14px;
-      line-height: 1.55;
+      line-height: 1.5;
     }
 
-    .status {
+    .status_box {
       margin-top: 10px;
-      min-height: 22px;
+      min-height: 24px;
+      white-space: pre-wrap;
+      line-height: 1.5;
       font-size: 14px;
-      line-height: 1.5;
-      white-space: pre-wrap;
     }
 
-    .status.ok { color: var(--success); }
-    .status.warn { color: var(--warn); }
-    .status.error { color: var(--danger); }
-
-    .split {
-      display: grid;
-      grid-template-columns: 1fr;
-      gap: 12px;
+    .status_success {
+      color: var(--success_color);
     }
 
-    .viewer_box,
-    .console_box {
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      overflow: hidden;
-      background: var(--panel_2);
+    .status_error {
+      color: var(--danger_color);
     }
 
-    .box_header {
-      padding: 8px 10px;
-      font-size: 13px;
-      color: var(--muted);
-      border-bottom: 1px solid rgba(148, 163, 184, 0.15);
-      background: #08101d;
-    }
-
-    .preview_frame {
-      display: block;
-      width: 100%;
-      height: 380px;
-      border: 0;
-      background: white;
-    }
-
-    .console {
-      min-height: 180px;
-      max-height: 320px;
-      overflow: auto;
-      margin: 0;
-      padding: 12px;
-      background: #020617;
-      color: #dbeafe;
-      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-      font-size: 13px;
-      line-height: 1.5;
-      white-space: pre-wrap;
-      word-break: break-word;
-    }
-
-    .hint {
-      margin-top: 8px;
-      color: var(--muted);
-      font-size: 12px;
-      line-height: 1.5;
-    }
-
-    @media (min-width: 920px) {
-      .split {
-        grid-template-columns: 1fr 1fr;
-      }
-
-      .preview_frame {
-        height: 520px;
-      }
+    .status_warn {
+      color: var(--warning_color);
     }
   </style>
 </head>
 <body>
-  <div class="app">
-    <section class="panel">
-      <div class="panel_header">
-        <h1 class="title">Single File HTML / JS / Python IDE</h1>
-        <p class="subtitle">単一 index.html で動く軽量IDEです。HTML と JavaScript は iframe 内で実行し、Python は Pyodide を使ってブラウザ内で実行します。</p>
-      </div>
-      <div class="panel_body">
-        <div class="toolbar">
-          <div class="toolbar_row">
-            <select id="language_select" class="select_box" aria-label="language">
-              <option value="html">HTML</option>
-              <option value="javascript">JavaScript</option>
-              <option value="python">Python</option>
-            </select>
-            <button id="sample_button" class="button secondary" type="button">サンプル読込</button>
-            <button id="run_button" class="button primary" type="button">実行</button>
-            <button id="reload_preview_button" class="button secondary" type="button">プレビュー再読込</button>
-            <button id="copy_button" class="button secondary" type="button">コードコピー</button>
-            <button id="reset_button" class="button warn" type="button">初期化</button>
-            <button id="clear_button" class="button danger" type="button">全削除</button>
-          </div>
-        </div>
-
-        <div class="editor_wrap">
-          <div class="editor_header">
-            <div class="editor_label">コード入力</div>
-            <div id="editor_meta" class="editor_meta">mode: HTML</div>
-          </div>
-          <textarea id="code_input" class="editor" spellcheck="false"></textarea>
-        </div>
-
-        <div id="status_box" class="status ok"></div>
-        <div class="hint">Python は CDN から Pyodide を読み込むため、オフラインでは動きません。HTML / JavaScript はローカルでも動きます。JavaScript の無限ループは完全停止できないので、固まったら「プレビュー再読込」を押してください。</div>
-      </div>
+  <div class="page_root">
+    <section class="panel_box">
+      <h1 class="title_text">HTML / JS / Python Runner Editor</h1>
+      <p class="description_text">
+        コードを入力して「preview.htmlで実行」を押すと、sessionStorageに保存して preview.html に遷移します。
+        HTML / JavaScript / Python を切り替えできます。Python は preview.html 側で Pyodide を読み込みます。
+      </p>
     </section>
 
-    <section class="panel">
-      <div class="panel_body">
-        <div class="split">
-          <div class="viewer_box">
-            <div class="box_header">プレビュー</div>
-            <iframe id="preview_frame" class="preview_frame" sandbox="allow-scripts allow-modals" referrerpolicy="no-referrer" title="preview"></iframe>
-          </div>
-          <div class="console_box">
-            <div class="box_header">コンソール / 実行ログ</div>
-            <pre id="console_output" class="console"></pre>
-          </div>
-        </div>
+    <section class="panel_box">
+      <div class="toolbar_row">
+        <select id="language_select" class="select_box" aria-label="language select">
+          <option value="html">HTML</option>
+          <option value="javascript">JavaScript</option>
+          <option value="python">Python</option>
+        </select>
+
+        <button id="sample_button" class="action_button" type="button">サンプル読込</button>
+        <button id="open_preview_button" class="action_button primary_button" type="button">preview.htmlで実行</button>
+        <button id="reset_button" class="action_button warning_button" type="button">初期化</button>
+        <button id="clear_button" class="action_button danger_button" type="button">全削除</button>
       </div>
+
+      <textarea id="code_input" class="editor_textarea" spellcheck="false"></textarea>
+      <div id="status_box" class="status_box status_success"></div>
     </section>
   </div>
 
   <script>
-    (function () {
-      "use strict";
+    const STORAGE_KEY_MODE = "runner_mode_v1";
+    const STORAGE_KEY_CODE_PREFIX = "runner_code_v1__";
+    const STORAGE_KEY_PREVIEW_PAYLOAD = "runner_preview_payload_v1";
 
-      const STORAGE_KEY_MODE = "single_file_ide_mode_v1";
-      const STORAGE_KEY_CODE_PREFIX = "single_file_ide_code_v1__";
-
-      const SAMPLE_CODE = {
-        html: `<!DOCTYPE html>
+    const SAMPLE_CODE = {
+      html: `<!DOCTYPE html>
 <html lang="ja">
 <head>
   <meta charset="utf-8">
@@ -335,9 +198,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
     body {
-      font-family: sans-serif;
-      padding: 24px;
       margin: 0;
+      padding: 24px;
+      font-family: sans-serif;
       background: linear-gradient(180deg, #f8fafc, #dbeafe);
       color: #0f172a;
     }
@@ -347,39 +210,30 @@
       background: white;
       border-radius: 16px;
       padding: 20px;
-      box-shadow: 0 12px 30px rgba(0,0,0,0.12);
-    }
-    button {
-      border: 0;
-      border-radius: 10px;
-      padding: 10px 14px;
-      font-size: 16px;
-      background: #38bdf8;
-      color: #001018;
-      font-weight: bold;
+      box-shadow: 0 12px 28px rgba(0,0,0,0.12);
     }
   </style>
 </head>
 <body>
   <div class="card">
     <h1>Hello HTML</h1>
-    <p>これは HTML モードです。普通のWebページとして描画されます。</p>
+    <p>これは HTML モードです。</p>
     <button onclick="document.body.style.background='#fde68a'">背景変更</button>
   </div>
 </body>
 </html>`,
 
-        javascript: `const root = document.getElementById("app");
+      javascript: `const app = document.getElementById("app");
 
 let count = 0;
 
 function render() {
-  root.innerHTML = \`
+  app.innerHTML = \`
     <div style="font-family:sans-serif;padding:24px;background:linear-gradient(180deg,#f8fafc,#dcfce7);min-height:100vh;">
-      <div style="max-width:520px;margin:0 auto;background:white;padding:20px;border-radius:16px;box-shadow:0 12px 30px rgba(0,0,0,0.12);">
+      <div style="max-width:520px;margin:0 auto;background:white;padding:20px;border-radius:16px;box-shadow:0 12px 28px rgba(0,0,0,0.12);">
         <h1>Hello JavaScript</h1>
-        <p>カウント: <strong>\${count}</strong></p>
-        <button id="inc_btn" style="border:0;border-radius:10px;padding:10px 14px;font-size:16px;background:#38bdf8;color:#001018;font-weight:bold;">+1</button>
+        <p>count: <strong>\${count}</strong></p>
+        <button id="inc_btn">+1</button>
       </div>
     </div>
   \`;
@@ -394,7 +248,7 @@ function render() {
 console.log("JavaScript sample started");
 render();`,
 
-        python: `from js import document
+      python: `from js import document
 
 count = 0
 
@@ -403,11 +257,10 @@ def render():
     app = document.getElementById("app")
     app.innerHTML = f"""
     <div style="font-family:sans-serif;padding:24px;background:linear-gradient(180deg,#eff6ff,#ede9fe);min-height:100vh;">
-      <div style="max-width:520px;margin:0 auto;background:white;padding:20px;border-radius:16px;box-shadow:0 12px 30px rgba(0,0,0,0.12);">
+      <div style="max-width:520px;margin:0 auto;background:white;padding:20px;border-radius:16px;box-shadow:0 12px 28px rgba(0,0,0,0.12);">
         <h1>Hello Python</h1>
-        <p>これは Pyodide 上の Python です。</p>
-        <p>カウント: <strong>{count}</strong></p>
-        <button id="inc_btn" style="border:0;border-radius:10px;padding:10px 14px;font-size:16px;background:#38bdf8;color:#001018;font-weight:bold;">+1</button>
+        <p>count: <strong>{count}</strong></p>
+        <button id="inc_btn">+1</button>
       </div>
     </div>
     """
@@ -422,397 +275,130 @@ def render():
 
 print("Python sample started")
 render()`
-      };
+    };
 
-      const state = {
-        current_mode: "html"
-      };
+    const elements = {
+      language_select: document.getElementById("language_select"),
+      code_input: document.getElementById("code_input"),
+      sample_button: document.getElementById("sample_button"),
+      open_preview_button: document.getElementById("open_preview_button"),
+      reset_button: document.getElementById("reset_button"),
+      clear_button: document.getElementById("clear_button"),
+      status_box: document.getElementById("status_box")
+    };
 
-      function get_el(id) {
-        return document.getElementById(id);
-      }
+    const app_state = {
+      current_mode: "html"
+    };
 
-      const elements = {
-        language_select: get_el("language_select"),
-        sample_button: get_el("sample_button"),
-        run_button: get_el("run_button"),
-        reload_preview_button: get_el("reload_preview_button"),
-        copy_button: get_el("copy_button"),
-        reset_button: get_el("reset_button"),
-        clear_button: get_el("clear_button"),
-        code_input: get_el("code_input"),
-        status_box: get_el("status_box"),
-        preview_frame: get_el("preview_frame"),
-        console_output: get_el("console_output"),
-        editor_meta: get_el("editor_meta")
-      };
-
-      function set_status(message, type) {
-        elements.status_box.textContent = message;
-        elements.status_box.className = "status " + (type || "ok");
-      }
-
-      function set_console_text(text) {
-        elements.console_output.textContent = text || "";
-        elements.console_output.scrollTop = elements.console_output.scrollHeight;
-      }
-
-      function append_console_line(line) {
-        if (elements.console_output.textContent.length > 0) {
-          elements.console_output.textContent += "\n";
-        }
-        elements.console_output.textContent += line;
-        elements.console_output.scrollTop = elements.console_output.scrollHeight;
-      }
-
-      function get_storage_code_key(mode) {
-        return STORAGE_KEY_CODE_PREFIX + mode;
-      }
-
-      function save_current_code() {
-        const mode = state.current_mode;
-        localStorage.setItem(get_storage_code_key(mode), elements.code_input.value);
-      }
-
-      function load_code_for_mode(mode) {
-        const saved = localStorage.getItem(get_storage_code_key(mode));
-        if (typeof saved === "string") {
-          return saved;
-        }
-        return SAMPLE_CODE[mode];
-      }
-
-      function save_mode(mode) {
-        localStorage.setItem(STORAGE_KEY_MODE, mode);
-      }
-
-      function update_editor_meta() {
-        const map = {
-          html: "mode: HTML",
-          javascript: "mode: JavaScript",
-          python: "mode: Python"
-        };
-        elements.editor_meta.textContent = map[state.current_mode] || "";
-      }
-
-      function switch_mode(next_mode) {
-        save_current_code();
-        state.current_mode = next_mode;
-        save_mode(next_mode);
-        elements.code_input.value = load_code_for_mode(next_mode);
-        elements.language_select.value = next_mode;
-        update_editor_meta();
-        set_status("モードを切り替えました。", "ok");
-      }
-
-      function js_string_literal(text) {
-        return JSON.stringify(String(text));
-      }
-
-      function indent_code(text, spaces) {
-        const pad = " ".repeat(spaces);
-        return String(text).split("\n").map(function (line) {
-          return pad + line;
-        }).join("\n");
-      }
-
-      function build_html_srcdoc(user_code) {
-        return String(user_code);
-      }
-
-      function build_javascript_srcdoc(user_code) {
-        return `<!DOCTYPE html>
-<html lang="ja">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>JS Preview</title>
-  <style>
-    html, body {
-      margin: 0;
-      min-height: 100%;
-      background: #ffffff;
+    function set_status(message_text, status_type) {
+      elements.status_box.textContent = message_text;
+      elements.status_box.className = "status_box " + status_type;
     }
-  </style>
-</head>
-<body>
-  <div id="app"></div>
-  <script>
-    (function () {
-      const send = function (kind, message) {
-        parent.postMessage({ source: "single_file_ide_preview", kind: kind, message: message }, "*");
-      };
 
-      const original_log = console.log.bind(console);
-      const original_error = console.error.bind(console);
-      const original_warn = console.warn.bind(console);
+    function get_code_storage_key(mode) {
+      return STORAGE_KEY_CODE_PREFIX + mode;
+    }
 
-      function stringify_arg(arg) {
-        try {
-          if (typeof arg === "string") return arg;
-          return JSON.stringify(arg);
-        } catch (error) {
-          return String(arg);
-        }
+    function save_current_code() {
+      localStorage.setItem(get_code_storage_key(app_state.current_mode), elements.code_input.value);
+      localStorage.setItem(STORAGE_KEY_MODE, app_state.current_mode);
+    }
+
+    function load_code_for_mode(mode) {
+      const saved_code = localStorage.getItem(get_code_storage_key(mode));
+      if (typeof saved_code === "string") {
+        return saved_code;
+      }
+      return SAMPLE_CODE[mode];
+    }
+
+    function switch_mode(next_mode) {
+      save_current_code();
+      app_state.current_mode = next_mode;
+      elements.language_select.value = next_mode;
+      elements.code_input.value = load_code_for_mode(next_mode);
+      set_status("モードを切り替えました。", "status_success");
+    }
+
+    function create_preview_payload_text(mode, code_text) {
+      return JSON.stringify({
+        mode: mode,
+        code_text: code_text
+      });
+    }
+
+    function open_preview_page() {
+      try {
+        save_current_code();
+
+        const payload_text = create_preview_payload_text(
+          app_state.current_mode,
+          elements.code_input.value
+        );
+
+        sessionStorage.setItem(STORAGE_KEY_PREVIEW_PAYLOAD, payload_text);
+        location.href = "newpreview.html";
+      } catch (error) {
+        set_status("preview.html起動失敗: " + (error.message || String(error)), "status_error");
+      }
+    }
+
+    function load_sample() {
+      elements.code_input.value = SAMPLE_CODE[app_state.current_mode];
+      save_current_code();
+      set_status("サンプルコードを読み込みました。", "status_success");
+    }
+
+    function reset_code() {
+      const ok = window.confirm("現在モードのコードをサンプルに戻します。よろしいですか？");
+      if (!ok) {
+        set_status("初期化をキャンセルしました。", "status_warn");
+        return;
       }
 
-      console.log = function () {
-        const text = Array.from(arguments).map(stringify_arg).join(" ");
-        send("log", text);
-        original_log.apply(console, arguments);
-      };
+      elements.code_input.value = SAMPLE_CODE[app_state.current_mode];
+      save_current_code();
+      set_status("サンプルに戻しました。", "status_success");
+    }
 
-      console.warn = function () {
-        const text = Array.from(arguments).map(stringify_arg).join(" ");
-        send("warn", text);
-        original_warn.apply(console, arguments);
-      };
+    function clear_code() {
+      const ok = window.confirm("現在モードのコードを空にします。よろしいですか？");
+      if (!ok) {
+        set_status("全削除をキャンセルしました。", "status_warn");
+        return;
+      }
 
-      console.error = function () {
-        const text = Array.from(arguments).map(stringify_arg).join(" ");
-        send("error", text);
-        original_error.apply(console, arguments);
-      };
+      elements.code_input.value = "";
+      save_current_code();
+      set_status("コードを空にしました。", "status_success");
+    }
 
-      window.addEventListener("error", function (event) {
-        send("error", "Uncaught Error: " + (event.message || "unknown error"));
+    function bind_events() {
+      elements.language_select.addEventListener("change", function () {
+        switch_mode(elements.language_select.value);
       });
 
-      window.addEventListener("unhandledrejection", function (event) {
-        const reason = event.reason && event.reason.message ? event.reason.message : String(event.reason);
-        send("error", "Unhandled Promise Rejection: " + reason);
+      elements.code_input.addEventListener("input", function () {
+        save_current_code();
       });
 
-      send("status", "JavaScript preview started");
-
-      try {
-${indent_code(user_code, 8)}
-      } catch (error) {
-        send("error", error && error.stack ? error.stack : String(error));
-      }
-    })();
-  </script>
-</body>
-</html>`;
-      }
-
-      function build_python_srcdoc(user_code) {
-        const pyodide_cdn = "https://cdn.jsdelivr.net/pyodide/v0.27.7/full/pyodide.js";
-        return `<!DOCTYPE html>
-<html lang="ja">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Python Preview</title>
-  <style>
-    html, body {
-      margin: 0;
-      min-height: 100%;
-      background: #ffffff;
+      elements.sample_button.addEventListener("click", load_sample);
+      elements.open_preview_button.addEventListener("click", open_preview_page);
+      elements.reset_button.addEventListener("click", reset_code);
+      elements.clear_button.addEventListener("click", clear_code);
     }
-  </style>
-</head>
-<body>
-  <div id="app"></div>
-  <script>
-    (async function () {
-      const send = function (kind, message) {
-        parent.postMessage({ source: "single_file_ide_preview", kind: kind, message: message }, "*");
-      };
 
-      function load_script(src) {
-        return new Promise(function (resolve, reject) {
-          const script = document.createElement("script");
-          script.src = src;
-          script.onload = resolve;
-          script.onerror = function () {
-            reject(new Error("Failed to load: " + src));
-          };
-          document.head.appendChild(script);
-        });
-      }
+    function start_app() {
+      const saved_mode = localStorage.getItem(STORAGE_KEY_MODE);
+      app_state.current_mode = SAMPLE_CODE[saved_mode] ? saved_mode : "html";
+      elements.language_select.value = app_state.current_mode;
+      elements.code_input.value = load_code_for_mode(app_state.current_mode);
+      bind_events();
+      set_status("準備完了。preview.htmlで実行できます。", "status_success");
+    }
 
-      send("status", "Pyodide loading...");
-
-      try {
-        await load_script(${js_string_literal(pyodide_cdn)});
-        const pyodide = await loadPyodide();
-
-        pyodide.setStdout({
-          batched: function (text) {
-            send("log", text);
-          }
-        });
-
-        pyodide.setStderr({
-          batched: function (text) {
-            send("error", text);
-          }
-        });
-
-        const python_code = ${js_string_literal(user_code)};
-        send("status", "Python running...");
-        await pyodide.runPythonAsync(python_code);
-        send("status", "Python finished");
-      } catch (error) {
-        send("error", error && error.stack ? error.stack : String(error));
-      }
-    })();
-  </script>
-</body>
-</html>`;
-      }
-
-      function build_srcdoc(mode, code) {
-        if (mode === "html") return build_html_srcdoc(code);
-        if (mode === "javascript") return build_javascript_srcdoc(code);
-        if (mode === "python") return build_python_srcdoc(code);
-        throw new Error("unsupported mode: " + mode);
-      }
-
-      function clear_console() {
-        set_console_text("");
-      }
-
-      function run_code() {
-        save_current_code();
-        clear_console();
-
-        const mode = state.current_mode;
-        const code = elements.code_input.value;
-
-        try {
-          const srcdoc = build_srcdoc(mode, code);
-          elements.preview_frame.srcdoc = srcdoc;
-
-          if (mode === "html") {
-            set_status("HTML を描画しました。", "ok");
-          } else if (mode === "javascript") {
-            set_status("JavaScript を実行しました。", "ok");
-            append_console_line("[status] JavaScript iframe created");
-          } else if (mode === "python") {
-            set_status("Python を実行しています。初回は Pyodide 読み込みに少し時間がかかります。", "warn");
-            append_console_line("[status] Python iframe created");
-          }
-        } catch (error) {
-          set_status("実行失敗: " + (error.message || String(error)), "error");
-          append_console_line("[error] " + (error.stack || error.message || String(error)));
-        }
-      }
-
-      function reload_preview() {
-        const blank = '<!DOCTYPE html><html><head><meta charset="utf-8"><title>blank</title></head><body></body></html>';
-        elements.preview_frame.srcdoc = blank;
-        set_status("プレビューを再読込しました。", "ok");
-        append_console_line("[status] preview reloaded");
-      }
-
-      async function copy_code() {
-        try {
-          await navigator.clipboard.writeText(elements.code_input.value);
-          set_status("コードをコピーしました。", "ok");
-        } catch (error) {
-          set_status("コピー失敗: " + (error.message || String(error)), "error");
-        }
-      }
-
-      function confirm_reset() {
-        return window.confirm("現在モードのコードをサンプルに戻します。よろしいですか？");
-      }
-
-      function confirm_clear() {
-        return window.confirm("現在モードのコードを空にします。よろしいですか？");
-      }
-
-      function reset_current_mode_code() {
-        if (!confirm_reset()) {
-          set_status("初期化をキャンセルしました。", "warn");
-          return;
-        }
-        elements.code_input.value = SAMPLE_CODE[state.current_mode];
-        save_current_code();
-        set_status("サンプルコードに戻しました。", "ok");
-      }
-
-      function clear_current_mode_code() {
-        if (!confirm_clear()) {
-          set_status("全削除をキャンセルしました。", "warn");
-          return;
-        }
-        elements.code_input.value = "";
-        save_current_code();
-        set_status("コードを空にしました。", "ok");
-      }
-
-      function load_sample() {
-        elements.code_input.value = SAMPLE_CODE[state.current_mode];
-        save_current_code();
-        set_status("サンプルコードを読み込みました。", "ok");
-      }
-
-      function handle_message(event) {
-        const data = event.data;
-        if (!data || data.source !== "single_file_ide_preview") {
-          return;
-        }
-
-        if (data.kind === "log") {
-          append_console_line("[log] " + data.message);
-          return;
-        }
-
-        if (data.kind === "warn") {
-          append_console_line("[warn] " + data.message);
-          return;
-        }
-
-        if (data.kind === "error") {
-          append_console_line("[error] " + data.message);
-          set_status("実行中にエラーが発生しました。", "error");
-          return;
-        }
-
-        if (data.kind === "status") {
-          append_console_line("[status] " + data.message);
-        }
-      }
-
-      function bind_events() {
-        elements.language_select.addEventListener("change", function () {
-          switch_mode(elements.language_select.value);
-        });
-
-        elements.code_input.addEventListener("input", function () {
-          save_current_code();
-        });
-
-        elements.sample_button.addEventListener("click", load_sample);
-        elements.run_button.addEventListener("click", run_code);
-        elements.reload_preview_button.addEventListener("click", reload_preview);
-        elements.copy_button.addEventListener("click", copy_code);
-        elements.reset_button.addEventListener("click", reset_current_mode_code);
-        elements.clear_button.addEventListener("click", clear_current_mode_code);
-
-        window.addEventListener("message", handle_message);
-      }
-
-      function start() {
-        const saved_mode = localStorage.getItem(STORAGE_KEY_MODE);
-        state.current_mode = saved_mode || "html";
-        if (!SAMPLE_CODE[state.current_mode]) {
-          state.current_mode = "html";
-        }
-
-        elements.language_select.value = state.current_mode;
-        elements.code_input.value = load_code_for_mode(state.current_mode);
-        update_editor_meta();
-        bind_events();
-        set_status("準備完了。モードを選んで実行してください。", "ok");
-        reload_preview();
-      }
-
-      start();
-    })();
+    start_app();
   </script>
 </body>
 </html>

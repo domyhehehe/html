@@ -236,4 +236,237 @@
       );
     }
 
-    function test_boundary_creates_clear
+    function test_boundary_creates_clear_confirm_message() {
+      const message_text = create_confirm_message_text("clear");
+
+      assert_true(
+        "boundary_creates_clear_confirm_message: matches clear message",
+        message_text === "全削除して本当によいですか？入力中のHTMLは空になります。"
+      );
+    }
+
+    function test_error_rejects_unknown_confirm_action() {
+      let did_throw_error = false;
+
+      try {
+        create_confirm_message_text("unknown");
+      } catch (error) {
+        did_throw_error = true;
+      }
+
+      assert_true(
+        "error_rejects_unknown_confirm_action: throws",
+        did_throw_error
+      );
+    }
+
+    function run_self_tests() {
+      const tests = [
+        {
+          test_name: "normal_creates_reset_confirm_message",
+          test_intent: "通常ケース。reset指定で初期化確認メッセージを返すこと。",
+          test_function: test_normal_creates_reset_confirm_message
+        },
+        {
+          test_name: "boundary_creates_clear_confirm_message",
+          test_intent: "境界ケース。clear指定で全削除確認メッセージを返すこと。",
+          test_function: test_boundary_creates_clear_confirm_message
+        },
+        {
+          test_name: "error_rejects_unknown_confirm_action",
+          test_intent: "エラーケース。未対応アクションを拒否すること。",
+          test_function: test_error_rejects_unknown_confirm_action
+        }
+      ];
+
+      const pass_list = [];
+      const fail_list = [];
+
+      for (let index = 0; index < tests.length; index += 1) {
+        const test_item = tests[index];
+
+        try {
+          test_item.test_function();
+          pass_list.push("PASS: " + test_item.test_name);
+        } catch (error) {
+          fail_list.push({
+            test_name: test_item.test_name,
+            expected_value: test_item.test_intent,
+            actual_value: error.message || String(error),
+            stack_text: error.stack || "stack unavailable"
+          });
+        }
+      }
+
+      return {
+        tests_passed: fail_list.length === 0,
+        total_test_count: tests.length,
+        pass_list: pass_list,
+        fail_list: fail_list
+      };
+    }
+
+    function get_elements() {
+      return {
+        html_input: document.getElementById("html_input"),
+        open_preview_button: document.getElementById("open_preview_button"),
+        test_button: document.getElementById("test_button"),
+        reset_button: document.getElementById("reset_button"),
+        clear_button: document.getElementById("clear_button"),
+        status_box: document.getElementById("status_box"),
+        report_box: document.getElementById("report_box")
+      };
+    }
+
+    function set_status(elements, message_text, is_error) {
+      elements.status_box.textContent = message_text;
+      elements.status_box.className = is_error
+        ? "status_box status_error"
+        : "status_box status_success";
+    }
+
+    function render_test_report(elements, test_report) {
+      const lines = [];
+      lines.push("SELF-TEST REPORT");
+      lines.push("total: " + test_report.total_test_count);
+      lines.push("passed: " + test_report.pass_list.length);
+      lines.push("failed: " + test_report.fail_list.length);
+      lines.push("");
+
+      if (test_report.pass_list.length > 0) {
+        lines.push("[PASS]");
+        for (let index = 0; index < test_report.pass_list.length; index += 1) {
+          lines.push(test_report.pass_list[index]);
+        }
+        lines.push("");
+      }
+
+      if (test_report.fail_list.length > 0) {
+        lines.push("[FAIL]");
+        for (let index = 0; index < test_report.fail_list.length; index += 1) {
+          const fail_item = test_report.fail_list[index];
+          lines.push("name: " + fail_item.test_name);
+          lines.push("expected: " + fail_item.expected_value);
+          lines.push("actual: " + fail_item.actual_value);
+          lines.push("stack: " + fail_item.stack_text);
+          lines.push("");
+        }
+        lines.push("first_failed_test: " + test_report.fail_list[0].test_name);
+      }
+
+      elements.report_box.textContent = lines.join("\n");
+    }
+
+    function stop_safely(elements, test_report) {
+      app_state.tests_passed = false;
+      render_test_report(elements, test_report);
+      set_status(elements, "セルフテスト失敗。安全停止中です。", true);
+    }
+
+    function run_tests_and_update_ui(elements) {
+      const test_report = run_self_tests();
+      app_state.tests_passed = test_report.tests_passed;
+      render_test_report(elements, test_report);
+
+      if (!test_report.tests_passed) {
+        stop_safely(elements, test_report);
+        return false;
+      }
+
+      set_status(elements, "セルフテスト成功。別ページ実行が可能です。", false);
+      return true;
+    }
+
+    function open_preview_page(elements) {
+      try {
+        const input_html_text = elements.html_input.value;
+        const payload_text = create_preview_payload_text(input_html_text);
+        save_preview_payload_text(PREVIEW_STORAGE_KEY, payload_text);
+        location.href = "preview.html";
+      } catch (error) {
+        set_status(elements, "実行停止: " + (error.message || String(error)), true);
+      }
+    }
+
+    function reset_html_input(elements) {
+      elements.html_input.value = DEFAULT_HTML_TEXT;
+      set_status(elements, "初期HTMLに戻しました。", false);
+    }
+
+    function clear_html_input(elements) {
+      elements.html_input.value = "";
+      set_status(elements, "HTMLを全削除しました。", false);
+    }
+
+    function unbind_events() {
+      if (!app_state.bound_elements) {
+        return;
+      }
+
+      app_state.bound_elements.open_preview_button.onclick = null;
+      app_state.bound_elements.test_button.onclick = null;
+      app_state.bound_elements.reset_button.onclick = null;
+      app_state.bound_elements.clear_button.onclick = null;
+      app_state.bound_elements = null;
+    }
+
+    function bind_events(elements) {
+      unbind_events();
+
+      elements.open_preview_button.onclick = function handle_open_preview() {
+        if (!app_state.tests_passed) {
+          set_status(elements, "セルフテストが通るまで実行できません。", true);
+          return;
+        }
+
+        open_preview_page(elements);
+      };
+
+      elements.test_button.onclick = function handle_test() {
+        run_tests_and_update_ui(elements);
+      };
+
+      elements.reset_button.onclick = function handle_reset() {
+        const is_confirmed = confirm_destructive_action("reset");
+
+        if (!is_confirmed) {
+          set_status(elements, "初期化をキャンセルしました。", false);
+          return;
+        }
+
+        reset_html_input(elements);
+      };
+
+      elements.clear_button.onclick = function handle_clear() {
+        const is_confirmed = confirm_destructive_action("clear");
+
+        if (!is_confirmed) {
+          set_status(elements, "全削除をキャンセルしました。", false);
+          return;
+        }
+
+        clear_html_input(elements);
+      };
+
+      app_state.bound_elements = elements;
+    }
+
+    function start_app() {
+      const elements = get_elements();
+      bind_events(elements);
+
+      if (DEV_MODE) {
+        const tests_passed = run_tests_and_update_ui(elements);
+        if (!tests_passed) {
+          return;
+        }
+      } else {
+        app_state.tests_passed = true;
+        set_status(elements, "DEV_MODE OFF。実行可能です。", false);
+      }
+    }
+
+    start_app();
+  </script>
+</body>
+</html>

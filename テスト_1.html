@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <title>HTML Runner</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    :root {
+      --bg_color: #0f172a;
+      --panel_color: #111827;
+      --border_color: #334155;
+      --text_color: #e5e7eb;
+      --muted_text_color: #94a3b8;
+      --accent_color: #38bdf8;
+      --danger_color: #ef4444;
+      --success_color: #22c55e;
+      --input_bg_color: #020617;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg_color);
+      color: var(--text_color);
+      font-family: sans-serif;
+    }
+
+    .page_root {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 12px;
+    }
+
+    .panel_box {
+      background: var(--panel_color);
+      border: 1px solid var(--border_color);
+      border-radius: 12px;
+      padding: 12px;
+      margin-bottom: 12px;
+    }
+
+    .title_text {
+      margin: 0 0 8px 0;
+      font-size: 20px;
+    }
+
+    .description_text {
+      margin: 0;
+      color: var(--muted_text_color);
+      line-height: 1.5;
+      font-size: 14px;
+    }
+
+    .editor_textarea {
+      width: 100%;
+      min-height: 240px;
+      resize: vertical;
+      background: var(--input_bg_color);
+      color: var(--text_color);
+      border: 1px solid var(--border_color);
+      border-radius: 10px;
+      padding: 12px;
+      font-family: monospace;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    .button_row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 10px;
+    }
+
+    .action_button {
+      border: 1px solid var(--border_color);
+      border-radius: 10px;
+      background: #1e293b;
+      color: var(--text_color);
+      padding: 10px 14px;
+      font-size: 14px;
+      cursor: pointer;
+    }
+
+    .primary_button {
+      background: var(--accent_color);
+      color: #001018;
+      border-color: transparent;
+      font-weight: bold;
+    }
+
+    .status_box {
+      margin-top: 10px;
+      min-height: 24px;
+      white-space: pre-wrap;
+      line-height: 1.5;
+      font-size: 14px;
+    }
+
+    .status_success {
+      color: var(--success_color);
+    }
+
+    .status_error {
+      color: var(--danger_color);
+    }
+
+    .report_box {
+      margin-top: 10px;
+      background: var(--input_bg_color);
+      border: 1px solid var(--border_color);
+      border-radius: 10px;
+      padding: 10px;
+      white-space: pre-wrap;
+      font-family: monospace;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .preview_iframe {
+      width: 100%;
+      min-height: 360px;
+      border: 1px solid var(--border_color);
+      border-radius: 10px;
+      background: white;
+    }
+  </style>
+</head>
+<body>
+  <div class="page_root">
+    <section class="panel_box">
+      <h1 class="title_text">HTML Runner</h1>
+      <p class="description_text">
+        下にHTMLを書いて「実行」を押すと、下のiframeで動作します。
+        DEV_MODEがONのときは起動前にセルフテストを実行し、失敗時は安全停止します。
+      </p>
+    </section>
+
+    <section class="panel_box">
+      <h2 class="title_text">HTML入力</h2>
+      <textarea id="html_input" class="editor_textarea"><h1>Hello</h1>
+<p>ここにHTMLを書いて実行できます。</p>
+<button onclick="document.body.style.background='lavender'">背景変更</button></textarea>
+
+      <div class="button_row">
+        <button id="run_button" class="action_button primary_button" type="button">実行</button>
+        <button id="test_button" class="action_button" type="button">セルフテスト再実行</button>
+        <button id="reset_button" class="action_button" type="button">初期化</button>
+      </div>
+
+      <div id="status_box" class="status_box"></div>
+      <div id="report_box" class="report_box"></div>
+    </section>
+
+    <section class="panel_box">
+      <h2 class="title_text">プレビュー</h2>
+      <iframe id="preview_iframe" class="preview_iframe" sandbox="allow-scripts"></iframe>
+    </section>
+  </div>
+
+  <script>
+    const DEV_MODE = true;
+
+    const DEFAULT_HTML_TEXT = `<h1>Hello</h1>
+<p>ここにHTMLを書いて実行できます。</p>
+<button onclick="document.body.style.background='lavender'">背景変更</button>`;
+
+    const app_state = {
+      tests_passed: false,
+      bound_elements: null
+    };
+
+    function assert_true(test_name, condition_value) {
+      if (!condition_value) {
+        throw new Error("Assertion failed: " + test_name);
+      }
+    }
+
+    function build_preview_document(input_html_text) {
+      if (typeof input_html_text !== "string") {
+        throw new Error("input_html_text must be a string");
+      }
+
+      return (
+        "<!DOCTYPE html>" +
+        "<html>" +
+        "<head>" +
+        '<meta charset="utf-8">' +
+        '<meta name="viewport" content="width=device-width, initial-scale=1">' +
+        "<title>Preview</title>" +
+        "</head>" +
+        "<body>" +
+        input_html_text +
+        "</body>" +
+        "</html>"
+      );
+    }
+
+    function test_normal_builds_full_document_from_html() {
+      const input_html = "<h1>Hello</h1>";
+      const output_html = build_preview_document(input_html);
+
+      assert_true(
+        "normal_builds_full_document_from_html: has doctype",
+        output_html.includes("<!DOCTYPE html>")
+      );
+
+      assert_true(
+        "normal_builds_full_document_from_html: has input body content",
+        output_html.includes("<h1>Hello</h1>")
+      );
+    }
+
+    function test_boundary_builds_document_from_empty_html() {
+      const input_html = "";
+      const output_html = build_preview_document(input_html);
+
+      assert_true(
+        "boundary_builds_document_from_empty_html: has body tags",
+        output_html.includes("<body>") && output_html.includes("</body>")
+      );
+    }
+
+    function test_error_rejects_non_string_html() {
+      let did_throw_error = false;
+
+      try {
+        build_preview_document(null);
+      } catch (error) {
+        did_throw_error = true;
+      }
+
+      assert_true(
+        "error_rejects_non_string_html: throws",
+        did_throw_error
+      );
+    }
+
+    function run_self_tests() {
+      const tests = [
+        {
+          test_name: "normal_builds_full_document_from_html",
+          test_intent: "通常ケース。入力HTMLが文書に入ること。",
+          test_function: test_normal_builds_full_document_from_html
+        },
+        {
+          test_name: "boundary_builds_document_from_empty_html",
+          test_intent: "境界ケース。空文字でも文書が作れること。",
+          test_function: test_boundary_builds_document_from_empty_html
+        },
+        {
+          test_name: "error_rejects_non_string_html",
+          test_intent: "エラーケース。非文字列入力を拒否すること。",
+          test_function: test_error_rejects_non_string_html
+        }
+      ];
+
+      const pass_list = [];
+      const fail_list = [];
+
+      for (let index = 0; index < tests.length; index += 1) {
+        const test_item = tests[index];
+        try {
+          test_item.test_function();
+          pass_list.push("PASS: " + test_item.test_name);
+        } catch (error) {
+          fail_list.push({
+            test_name: test_item.test_name,
+            expected_value: test_item.test_intent,
+            actual_value: error.message || String(error),
+            stack_text: error.stack || "stack unavailable"
+          });
+        }
+      }
+
+      return {
+        tests_passed: fail_list.length === 0,
+        total_test_count: tests.length,
+        pass_list: pass_list,
+        fail_list: fail_list
+      };
+    }
+
+    function get_elements() {
+      return {
+        html_input: document.getElementById("html_input"),
+        run_button: document.getElementById("run_button"),
+        test_button: document.getElementById("test_button"),
+        reset_button: document.getElementById("reset_button"),
+        status_box: document.getElementById("status_box"),
+        report_box: document.getElementById("report_box"),
+        preview_iframe: document.getElementById("preview_iframe")
+      };
+    }
+
+    function set_status(elements, message_text, is_error) {
+      elements.status_box.textContent = message_text;
+      elements.status_box.className = is_error
+        ? "status_box status_error"
+        : "status_box status_success";
+    }
+
+    function clear_preview(elements) {
+      elements.preview_iframe.srcdoc = build_preview_document("");
+    }
+
+    function render_test_report(elements, test_report) {
+      const lines = [];
+      lines.push("SELF-TEST REPORT");
+      lines.push("total: " + test_report.total_test_count);
+      lines.push("passed: " + test_report.pass_list.length);
+      lines.push("failed: " + test_report.fail_list.length);
+      lines.push("");
+
+      if (test_report.pass_list.length > 0) {
+        lines.push("[PASS]");
+        for (let index = 0; index < test_report.pass_list.length; index += 1) {
+          lines.push(test_report.pass_list[index]);
+        }
+        lines.push("");
+      }
+
+      if (test_report.fail_list.length > 0) {
+        lines.push("[FAIL]");
+        for (let index = 0; index < test_report.fail_list.length; index += 1) {
+          const fail_item = test_report.fail_list[index];
+          lines.push("name: " + fail_item.test_name);
+          lines.push("expected: " + fail_item.expected_value);
+          lines.push("actual: " + fail_item.actual_value);
+          lines.push("stack: " + fail_item.stack_text);
+          lines.push("");
+        }
+        lines.push("first_failed_test: " + test_report.fail_list[0].test_name);
+      }
+
+      elements.report_box.textContent = lines.join("\n");
+    }
+
+    function run_preview(elements) {
+      try {
+        const input_html_text = elements.html_input.value;
+        const preview_document = build_preview_document(input_html_text);
+        elements.preview_iframe.srcdoc = preview_document;
+        set_status(elements, "プレビューを更新しました。", false);
+      } catch (error) {
+        clear_preview(elements);
+        set_status(elements, "実行停止: " + (error.message || String(error)), true);
+      }
+    }
+
+    function stop_safely(elements, test_report) {
+      app_state.tests_passed = false;
+      clear_preview(elements);
+      render_test_report(elements, test_report);
+      set_status(elements, "セルフテスト失敗。安全停止中です。", true);
+    }
+
+    function run_tests_and_update_ui(elements) {
+      const test_report = run_self_tests();
+      app_state.tests_passed = test_report.tests_passed;
+      render_test_report(elements, test_report);
+
+      if (!test_report.tests_passed) {
+        stop_safely(elements, test_report);
+        return false;
+      }
+
+      set_status(elements, "セルフテスト成功。実行可能です。", false);
+      return true;
+    }
+
+    function unbind_events() {
+      if (!app_state.bound_elements) {
+        return;
+      }
+
+      app_state.bound_elements.run_button.onclick = null;
+      app_state.bound_elements.test_button.onclick = null;
+      app_state.bound_elements.reset_button.onclick = null;
+      app_state.bound_elements = null;
+    }
+
+    function bind_events(elements) {
+      unbind_events();
+
+      elements.run_button.onclick = function () {
+        if (!app_state.tests_passed) {
+          set_status(elements, "セルフテストが通るまで実行できません。", true);
+          return;
+        }
+        run_preview(elements);
+      };
+
+      elements.test_button.onclick = function () {
+        run_tests_and_update_ui(elements);
+      };
+
+      elements.reset_button.onclick = function () {
+        elements.html_input.value = DEFAULT_HTML_TEXT;
+        set_status(elements, "初期HTMLに戻しました。", false);
+      };
+
+      app_state.bound_elements = elements;
+    }
+
+    function start_app() {
+      const elements = get_elements();
+      bind_events(elements);
+
+      if (DEV_MODE) {
+        const tests_passed = run_tests_and_update_ui(elements);
+        if (!tests_passed) {
+          return;
+        }
+      } else {
+        app_state.tests_passed = true;
+        set_status(elements, "DEV_MODE OFF。実行可能です。", false);
+      }
+
+      run_preview(elements);
+    }
+
+    start_app();
+  </script>
+</body>
+</html>

@@ -1,5 +1,3 @@
-
-
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -160,8 +158,8 @@
     <section class="panel_box">
       <h1 class="title_text">HTML / JS / Python Runner Editor</h1>
       <p class="description_text">
-        コードを入力して「preview.htmlで実行」を押すと、sessionStorageに保存して preview.html に遷移します。
-        HTML / JavaScript / Python を切り替えできます。Python は preview.html 側で Pyodide を読み込みます。
+        コードを入力して「newpreview.htmlで実行」を押すと、sessionStorage に保存して newpreview.html に遷移します。
+        HTML / JavaScript / Python を切り替えできます。Python は newpreview.html 側で Pyodide を読み込みます。
       </p>
     </section>
 
@@ -174,7 +172,7 @@
         </select>
 
         <button id="sample_button" class="action_button" type="button">サンプル読込</button>
-        <button id="open_preview_button" class="action_button primary_button" type="button">preview.htmlで実行</button>
+        <button id="open_preview_button" class="action_button primary_button" type="button">newpreview.htmlで実行</button>
         <button id="reset_button" class="action_button warning_button" type="button">初期化</button>
         <button id="clear_button" class="action_button danger_button" type="button">全削除</button>
       </div>
@@ -340,7 +338,7 @@ render()`
         sessionStorage.setItem(STORAGE_KEY_PREVIEW_PAYLOAD, payload_text);
         location.href = "newpreview.html";
       } catch (error) {
-        set_status("preview.html起動失敗: " + (error.message || String(error)), "status_error");
+        set_status("newpreview.html起動失敗: " + (error.message || String(error)), "status_error");
       }
     }
 
@@ -395,7 +393,7 @@ render()`
       elements.language_select.value = app_state.current_mode;
       elements.code_input.value = load_code_for_mode(app_state.current_mode);
       bind_events();
-      set_status("準備完了。preview.htmlで実行できます。", "status_success");
+      set_status("準備完了。newpreview.htmlで実行できます。", "status_success");
     }
 
     start_app();

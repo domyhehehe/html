@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <title>Runner Preview</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover, user-scalable=no">
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      min-height: 100%;
+      background: #ffffff;
+    }
+
+    .error_screen {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      padding: 16px;
+      background: #0f172a;
+      color: #e5e7eb;
+      font-family: sans-serif;
+      box-sizing: border-box;
+    }
+
+    .error_title {
+      margin: 0;
+      font-size: 20px;
+    }
+
+    .error_text {
+      margin: 0;
+      white-space: pre-wrap;
+      line-height: 1.5;
+      color: #cbd5e1;
+    }
+
+    .back_button {
+      appearance: none;
+      border: 0;
+      border-radius: 10px;
+      background: #38bdf8;
+      color: #001018;
+      font-weight: bold;
+      font-size: 16px;
+      padding: 12px 16px;
+      width: fit-content;
+    }
+
+    #console_box {
+      background: #020617;
+      color: #dbeafe;
+      padding: 12px;
+      border-radius: 10px;
+      white-space: pre-wrap;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+  </style>
+</head>
+<body>
+  <script>
+    const STORAGE_KEY_PREVIEW_PAYLOAD = "runner_preview_payload_v1";
+
+    function escape_html(text) {
+      return String(text)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;");
+    }
+
+    function show_error_screen(title_text, body_text) {
+      document.body.innerHTML = `
+        <div class="error_screen">
+          <h1 class="error_title">${escape_html(title_text)}</h1>
+          <p class="error_text">${escape_html(body_text)}</p>
+          <button class="back_button" id="back_button" type="button">戻る</button>
+        </div>
+      `;
+
+      document.getElementById("back_button").onclick = function () {
+        history.back();
+      };
+    }
+
+    function parse_payload() {
+      const payload_text = sessionStorage.getItem(STORAGE_KEY_PREVIEW_PAYLOAD);
+
+      if (typeof payload_text !== "string" || payload_text.length === 0) {
+        throw new Error("sessionStorage にプレビュー用データがありません。index.html から起動してください。");
+      }
+
+      const payload = JSON.parse(payload_text);
+
+      if (!payload || typeof payload.mode !== "string" || typeof payload.code_text !== "string") {
+        throw new Error("プレビュー用データが不正です。");
+      }
+
+      return payload;
+    }
+
+    function indent_code(text, spaces) {
+      const pad = " ".repeat(spaces);
+      return String(text).split("\n").map(function (line) {
+        return pad + line;
+      }).join("\n");
+    }
+
+    function js_string_literal(text) {
+      return JSON.stringify(String(text));
+    }
+
+    function build_javascript_document(user_code) {
+      return `<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <title>JavaScript Preview</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    html, body {
+      margin: 0;
+      min-height: 100%;
+      background: #ffffff;
+    }
+    #console_box {
+      position: fixed;
+      left: 8px;
+      right: 8px;
+      bottom: 8px;
+      max-height: 40vh;
+      overflow: auto;
+      background: rgba(2, 6, 23, 0.92);
+      color: #dbeafe;
+      padding: 12px;
+      border-radius: 10px;
+      white-space: pre-wrap;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 13px;
+      line-height: 1.5;
+      box-sizing: border-box;
+    }
+  </style>
+</head>
+<body>
+  <div id="app"></div>
+  <pre id="console_box"></pre>
+  <script>
+    const console_box = document.getElementById("console_box");
+
+    function append_console_line(line) {
+      if (console_box.textContent.length > 0) {
+        console_box.textContent += "\\n";
+      }
+      console_box.textContent += line;
+      console_box.scrollTop = console_box.scrollHeight;
+    }
+
+    const original_log = console.log.bind(console);
+    const original_warn = console.warn.bind(console);
+    const original_error = console.error.bind(console);
+
+    function stringify_arg(arg) {
+      try {
+        if (typeof arg === "string") {
+          return arg;
+        }
+        return JSON.stringify(arg);
+      } catch (error) {
+        return String(arg);
+      }
+    }
+
+    console.log = function () {
+      const text = Array.from(arguments).map(stringify_arg).join(" ");
+      append_console_line("[log] " + text);
+      original_log.apply(console, arguments);
+    };
+
+    console.warn = function () {
+      const text = Array.from(arguments).map(stringify_arg).join(" ");
+      append_console_line("[warn] " + text);
+      original_warn.apply(console, arguments);
+    };
+
+    console.error = function () {
+      const text = Array.from(arguments).map(stringify_arg).join(" ");
+      append_console_line("[error] " + text);
+      original_error.apply(console, arguments);
+    };
+
+    window.addEventListener("error", function (event) {
+      append_console_line("[error] Uncaught Error: " + (event.message || "unknown error"));
+    });
+
+    window.addEventListener("unhandledrejection", function (event) {
+      const reason = event.reason && event.reason.message ? event.reason.message : String(event.reason);
+      append_console_line("[error] Unhandled Promise Rejection: " + reason);
+    });
+
+    append_console_line("[status] JavaScript preview started");
+
+    try {
+${indent_code(user_code, 6)}
+    } catch (error) {
+      append_console_line("[error] " + (error.stack || error.message || String(error)));
+    }
+  <\/script>
+</body>
+</html>`;
+    }
+
+    function build_python_document(user_code) {
+      const pyodide_cdn = "https://cdn.jsdelivr.net/pyodide/v0.27.7/full/pyodide.js";
+
+      return `<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <title>Python Preview</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    html, body {
+      margin: 0;
+      min-height: 100%;
+      background: #ffffff;
+    }
+    #console_box {
+      position: fixed;
+      left: 8px;
+      right: 8px;
+      bottom: 8px;
+      max-height: 40vh;
+      overflow: auto;
+      background: rgba(2, 6, 23, 0.92);
+      color: #dbeafe;
+      padding: 12px;
+      border-radius: 10px;
+      white-space: pre-wrap;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 13px;
+      line-height: 1.5;
+      box-sizing: border-box;
+    }
+  </style>
+</head>
+<body>
+  <div id="app"></div>
+  <pre id="console_box"></pre>
+  <script>
+    (async function () {
+      const console_box = document.getElementById("console_box");
+
+      function append_console_line(line) {
+        if (console_box.textContent.length > 0) {
+          console_box.textContent += "\\n";
+        }
+        console_box.textContent += line;
+        console_box.scrollTop = console_box.scrollHeight;
+      }
+
+      function load_script(src) {
+        return new Promise(function (resolve, reject) {
+          const script = document.createElement("script");
+          script.src = src;
+          script.onload = resolve;
+          script.onerror = function () {
+            reject(new Error("Failed to load: " + src));
+          };
+          document.head.appendChild(script);
+        });
+      }
+
+      append_console_line("[status] Pyodide loading...");
+
+      try {
+        await load_script(${js_string_literal(pyodide_cdn)});
+        const pyodide = await loadPyodide();
+
+        pyodide.setStdout({
+          batched: function (text) {
+            append_console_line("[log] " + text);
+          }
+        });
+
+        pyodide.setStderr({
+          batched: function (text) {
+            append_console_line("[error] " + text);
+          }
+        });
+
+        append_console_line("[status] Python running...");
+        await pyodide.runPythonAsync(${js_string_literal(user_code)});
+        append_console_line("[status] Python finished");
+      } catch (error) {
+        append_console_line("[error] " + (error.stack || error.message || String(error)));
+      }
+    })();
+  <\/script>
+</body>
+</html>`;
+    }
+
+    function start_preview() {
+      let payload;
+
+      try {
+        payload = parse_payload();
+      } catch (error) {
+        show_error_screen("起動失敗", error.message || String(error));
+        return;
+      }
+
+      if (payload.mode === "html") {
+        document.open();
+        document.write(payload.code_text);
+        document.close();
+        return;
+      }
+
+      if (payload.mode === "javascript") {
+        const html_text = build_javascript_document(payload.code_text);
+        document.open();
+        document.write(html_text);
+        document.close();
+        return;
+      }
+
+      if (payload.mode === "python") {
+        const html_text = build_python_document(payload.code_text);
+        document.open();
+        document.write(html_text);
+        document.close();
+        return;
+      }
+
+      show_error_screen("起動失敗", "未対応モードです: " + payload.mode);
+    }
+
+    start_preview();
+  </script>
+</body>
+</html>

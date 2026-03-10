@@ -108,8 +108,7 @@
     }
 
     .select_box,
-    .button,
-    .input_box {
+    .button {
       min-height: 42px;
       border-radius: 10px;
       border: 1px solid var(--border);
@@ -200,17 +199,9 @@
       white-space: pre-wrap;
     }
 
-    .status.ok {
-      color: var(--success);
-    }
-
-    .status.warn {
-      color: var(--warn);
-    }
-
-    .status.error {
-      color: var(--danger);
-    }
+    .status.ok { color: var(--success); }
+    .status.warn { color: var(--warn); }
+    .status.error { color: var(--danger); }
 
     .split {
       display: grid;
@@ -317,15 +308,8 @@
         <div class="split">
           <div class="viewer_box">
             <div class="box_header">プレビュー</div>
-            <iframe
-              id="preview_frame"
-              class="preview_frame"
-              sandbox="allow-scripts allow-modals"
-              referrerpolicy="no-referrer"
-              title="preview"
-            ></iframe>
+            <iframe id="preview_frame" class="preview_frame" sandbox="allow-scripts allow-modals" referrerpolicy="no-referrer" title="preview"></iframe>
           </div>
-
           <div class="console_box">
             <div class="box_header">コンソール / 実行ログ</div>
             <pre id="console_output" class="console"></pre>
@@ -475,7 +459,7 @@ render()`
 
       function append_console_line(line) {
         if (elements.console_output.textContent.length > 0) {
-          elements.console_output.textContent += "\\n";
+          elements.console_output.textContent += "\n";
         }
         elements.console_output.textContent += line;
         elements.console_output.scrollTop = elements.console_output.scrollHeight;
@@ -521,15 +505,15 @@ render()`
         set_status("モードを切り替えました。", "ok");
       }
 
-      function html_escape(value) {
-        return String(value)
-          .replace(/&/g, "&amp;")
-          .replace(/</g, "&lt;")
-          .replace(/>/g, "&gt;");
-      }
-
       function js_string_literal(text) {
         return JSON.stringify(String(text));
+      }
+
+      function indent_code(text, spaces) {
+        const pad = " ".repeat(spaces);
+        return String(text).split("\n").map(function (line) {
+          return pad + line;
+        }).join("\n");
       }
 
       function build_html_srcdoc(user_code) {
@@ -556,7 +540,7 @@ render()`
   <script>
     (function () {
       const send = function (kind, message) {
-        parent.postMessage({ source: "single_file_ide_preview", kind, message }, "*");
+        parent.postMessage({ source: "single_file_ide_preview", kind: kind, message: message }, "*");
       };
 
       const original_log = console.log.bind(console);
@@ -633,7 +617,7 @@ ${indent_code(user_code, 8)}
   <script>
     (async function () {
       const send = function (kind, message) {
-        parent.postMessage({ source: "single_file_ide_preview", kind, message }, "*");
+        parent.postMessage({ source: "single_file_ide_preview", kind: kind, message: message }, "*");
       };
 
       function load_script(src) {
@@ -666,16 +650,9 @@ ${indent_code(user_code, 8)}
           }
         });
 
-        window.__ide_bridge_log__ = function () {
-          const text = Array.from(arguments).join(" ");
-          send("log", text);
-        };
-
         const python_code = ${js_string_literal(user_code)};
         send("status", "Python running...");
-
         await pyodide.runPythonAsync(python_code);
-
         send("status", "Python finished");
       } catch (error) {
         send("error", error && error.stack ? error.stack : String(error));
@@ -684,13 +661,6 @@ ${indent_code(user_code, 8)}
   </script>
 </body>
 </html>`;
-      }
-
-      function indent_code(text, spaces) {
-        const pad = " ".repeat(spaces);
-        return String(text).split("\\n").map(function (line) {
-          return pad + line;
-        }).join("\\n");
       }
 
       function build_srcdoc(mode, code) {
@@ -731,7 +701,7 @@ ${indent_code(user_code, 8)}
       }
 
       function reload_preview() {
-        const blank = "<!DOCTYPE html><html><head><meta charset='utf-8'><title>blank</title></head><body></body></html>";
+        const blank = '<!DOCTYPE html><html><head><meta charset="utf-8"><title>blank</title></head><body></body></html>';
         elements.preview_frame.srcdoc = blank;
         set_status("プレビューを再読込しました。", "ok");
         append_console_line("[status] preview reloaded");

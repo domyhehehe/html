@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="utf-8">
-  <title>HTML Runner</title>
+  <title>HTML Runner Editor</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
     :root {
@@ -56,7 +56,7 @@
 
     .editor_textarea {
       width: 100%;
-      min-height: 240px;
+      min-height: 280px;
       resize: vertical;
       background: var(--input_bg_color);
       color: var(--text_color);
@@ -119,22 +119,14 @@
       font-size: 13px;
       line-height: 1.5;
     }
-
-    .preview_iframe {
-      width: 100%;
-      min-height: 360px;
-      border: 1px solid var(--border_color);
-      border-radius: 10px;
-      background: white;
-    }
   </style>
 </head>
 <body>
   <div class="page_root">
     <section class="panel_box">
-      <h1 class="title_text">HTML Runner</h1>
+      <h1 class="title_text">HTML Runner Editor</h1>
       <p class="description_text">
-        下にHTMLを書いて「実行」を押すと、下のiframeで動作します。
+        下にHTMLを書いて「別ページで実行」を押すと、preview.html に遷移して全画面表示します。
         DEV_MODEがONのときは起動前にセルフテストを実行し、失敗時は安全停止します。
       </p>
     </section>
@@ -142,11 +134,11 @@
     <section class="panel_box">
       <h2 class="title_text">HTML入力</h2>
       <textarea id="html_input" class="editor_textarea"><h1>Hello</h1>
-<p>ここにHTMLを書いて実行できます。</p>
+<p>このHTMLは別ページで全画面表示されます。</p>
 <button onclick="document.body.style.background='lavender'">背景変更</button></textarea>
 
       <div class="button_row">
-        <button id="run_button" class="action_button primary_button" type="button">実行</button>
+        <button id="open_preview_button" class="action_button primary_button" type="button">別ページで実行</button>
         <button id="test_button" class="action_button" type="button">セルフテスト再実行</button>
         <button id="reset_button" class="action_button" type="button">初期化</button>
       </div>
@@ -154,18 +146,14 @@
       <div id="status_box" class="status_box"></div>
       <div id="report_box" class="report_box"></div>
     </section>
-
-    <section class="panel_box">
-      <h2 class="title_text">プレビュー</h2>
-      <iframe id="preview_iframe" class="preview_iframe" sandbox="allow-scripts"></iframe>
-    </section>
   </div>
 
   <script>
     const DEV_MODE = true;
+    const PREVIEW_STORAGE_KEY = "html_runner_preview_payload_v1";
 
     const DEFAULT_HTML_TEXT = `<h1>Hello</h1>
-<p>ここにHTMLを書いて実行できます。</p>
+<p>このHTMLは別ページで全画面表示されます。</p>
 <button onclick="document.body.style.background='lavender'">背景変更</button>`;
 
     const app_state = {
@@ -179,62 +167,63 @@
       }
     }
 
-    function build_preview_document(input_html_text) {
+    function create_preview_payload_text(input_html_text) {
       if (typeof input_html_text !== "string") {
         throw new Error("input_html_text must be a string");
       }
 
-      return (
-        "<!DOCTYPE html>" +
-        "<html>" +
-        "<head>" +
-        '<meta charset="utf-8">' +
-        '<meta name="viewport" content="width=device-width, initial-scale=1">' +
-        "<title>Preview</title>" +
-        "</head>" +
-        "<body>" +
-        input_html_text +
-        "</body>" +
-        "</html>"
-      );
+      const payload_object = {
+        html_text: input_html_text
+      };
+
+      return JSON.stringify(payload_object);
     }
 
-    function test_normal_builds_full_document_from_html() {
+    function save_preview_payload_text(storage_key, payload_text) {
+      if (typeof storage_key !== "string" || storage_key.length === 0) {
+        throw new Error("storage_key must be a non-empty string");
+      }
+
+      if (typeof payload_text !== "string") {
+        throw new Error("payload_text must be a string");
+      }
+
+      sessionStorage.setItem(storage_key, payload_text);
+    }
+
+    function test_normal_creates_payload_from_html_string() {
       const input_html = "<h1>Hello</h1>";
-      const output_html = build_preview_document(input_html);
+      const payload_text = create_preview_payload_text(input_html);
+      const parsed_payload = JSON.parse(payload_text);
 
       assert_true(
-        "normal_builds_full_document_from_html: has doctype",
-        output_html.includes("<!DOCTYPE html>")
-      );
-
-      assert_true(
-        "normal_builds_full_document_from_html: has input body content",
-        output_html.includes("<h1>Hello</h1>")
+        "normal_creates_payload_from_html_string: stores html",
+        parsed_payload.html_text === "<h1>Hello</h1>"
       );
     }
 
-    function test_boundary_builds_document_from_empty_html() {
+    function test_boundary_creates_payload_from_empty_html() {
       const input_html = "";
-      const output_html = build_preview_document(input_html);
+      const payload_text = create_preview_payload_text(input_html);
+      const parsed_payload = JSON.parse(payload_text);
 
       assert_true(
-        "boundary_builds_document_from_empty_html: has body tags",
-        output_html.includes("<body>") && output_html.includes("</body>")
+        "boundary_creates_payload_from_empty_html: stores empty string",
+        parsed_payload.html_text === ""
       );
     }
 
-    function test_error_rejects_non_string_html() {
+    function test_error_rejects_non_string_html_for_payload() {
       let did_throw_error = false;
 
       try {
-        build_preview_document(null);
+        create_preview_payload_text(null);
       } catch (error) {
         did_throw_error = true;
       }
 
       assert_true(
-        "error_rejects_non_string_html: throws",
+        "error_rejects_non_string_html_for_payload: throws",
         did_throw_error
       );
     }
@@ -242,19 +231,19 @@
     function run_self_tests() {
       const tests = [
         {
-          test_name: "normal_builds_full_document_from_html",
-          test_intent: "通常ケース。入力HTMLが文書に入ること。",
-          test_function: test_normal_builds_full_document_from_html
+          test_name: "normal_creates_payload_from_html_string",
+          test_intent: "通常ケース。HTML文字列から保存用文字列を作れること。",
+          test_function: test_normal_creates_payload_from_html_string
         },
         {
-          test_name: "boundary_builds_document_from_empty_html",
-          test_intent: "境界ケース。空文字でも文書が作れること。",
-          test_function: test_boundary_builds_document_from_empty_html
+          test_name: "boundary_creates_payload_from_empty_html",
+          test_intent: "境界ケース。空文字でも保存用文字列を作れること。",
+          test_function: test_boundary_creates_payload_from_empty_html
         },
         {
-          test_name: "error_rejects_non_string_html",
+          test_name: "error_rejects_non_string_html_for_payload",
           test_intent: "エラーケース。非文字列入力を拒否すること。",
-          test_function: test_error_rejects_non_string_html
+          test_function: test_error_rejects_non_string_html_for_payload
         }
       ];
 
@@ -263,6 +252,7 @@
 
       for (let index = 0; index < tests.length; index += 1) {
         const test_item = tests[index];
+
         try {
           test_item.test_function();
           pass_list.push("PASS: " + test_item.test_name);
@@ -287,12 +277,11 @@
     function get_elements() {
       return {
         html_input: document.getElementById("html_input"),
-        run_button: document.getElementById("run_button"),
+        open_preview_button: document.getElementById("open_preview_button"),
         test_button: document.getElementById("test_button"),
         reset_button: document.getElementById("reset_button"),
         status_box: document.getElementById("status_box"),
-        report_box: document.getElementById("report_box"),
-        preview_iframe: document.getElementById("preview_iframe")
+        report_box: document.getElementById("report_box")
       };
     }
 
@@ -301,10 +290,6 @@
       elements.status_box.className = is_error
         ? "status_box status_error"
         : "status_box status_success";
-    }
-
-    function clear_preview(elements) {
-      elements.preview_iframe.srcdoc = build_preview_document("");
     }
 
     function render_test_report(elements, test_report) {
@@ -339,21 +324,8 @@
       elements.report_box.textContent = lines.join("\n");
     }
 
-    function run_preview(elements) {
-      try {
-        const input_html_text = elements.html_input.value;
-        const preview_document = build_preview_document(input_html_text);
-        elements.preview_iframe.srcdoc = preview_document;
-        set_status(elements, "プレビューを更新しました。", false);
-      } catch (error) {
-        clear_preview(elements);
-        set_status(elements, "実行停止: " + (error.message || String(error)), true);
-      }
-    }
-
     function stop_safely(elements, test_report) {
       app_state.tests_passed = false;
-      clear_preview(elements);
       render_test_report(elements, test_report);
       set_status(elements, "セルフテスト失敗。安全停止中です。", true);
     }
@@ -368,8 +340,19 @@
         return false;
       }
 
-      set_status(elements, "セルフテスト成功。実行可能です。", false);
+      set_status(elements, "セルフテスト成功。別ページ実行が可能です。", false);
       return true;
+    }
+
+    function open_preview_page(elements) {
+      try {
+        const input_html_text = elements.html_input.value;
+        const payload_text = create_preview_payload_text(input_html_text);
+        save_preview_payload_text(PREVIEW_STORAGE_KEY, payload_text);
+        location.href = "preview.html";
+      } catch (error) {
+        set_status(elements, "実行停止: " + (error.message || String(error)), true);
+      }
     }
 
     function unbind_events() {
@@ -377,7 +360,7 @@
         return;
       }
 
-      app_state.bound_elements.run_button.onclick = null;
+      app_state.bound_elements.open_preview_button.onclick = null;
       app_state.bound_elements.test_button.onclick = null;
       app_state.bound_elements.reset_button.onclick = null;
       app_state.bound_elements = null;
@@ -386,19 +369,20 @@
     function bind_events(elements) {
       unbind_events();
 
-      elements.run_button.onclick = function () {
+      elements.open_preview_button.onclick = function handle_open_preview() {
         if (!app_state.tests_passed) {
           set_status(elements, "セルフテストが通るまで実行できません。", true);
           return;
         }
-        run_preview(elements);
+
+        open_preview_page(elements);
       };
 
-      elements.test_button.onclick = function () {
+      elements.test_button.onclick = function handle_test() {
         run_tests_and_update_ui(elements);
       };
 
-      elements.reset_button.onclick = function () {
+      elements.reset_button.onclick = function handle_reset() {
         elements.html_input.value = DEFAULT_HTML_TEXT;
         set_status(elements, "初期HTMLに戻しました。", false);
       };
@@ -419,8 +403,6 @@
         app_state.tests_passed = true;
         set_status(elements, "DEV_MODE OFF。実行可能です。", false);
       }
-
-      run_preview(elements);
     }
 
     start_app();

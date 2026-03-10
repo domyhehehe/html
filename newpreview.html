@@ -47,17 +47,6 @@
       padding: 12px 16px;
       width: fit-content;
     }
-
-    #console_box {
-      background: #020617;
-      color: #dbeafe;
-      padding: 12px;
-      border-radius: 10px;
-      white-space: pre-wrap;
-      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-      font-size: 13px;
-      line-height: 1.5;
-    }
   </style>
 </head>
 <body>
@@ -192,12 +181,36 @@
     };
 
     window.addEventListener("error", function (event) {
-      append_console_line("[error] Uncaught Error: " + (event.message || "unknown error"));
+      const message = event.message || "";
+      const filename = event.filename || "";
+      const lineno = Number(event.lineno || 0);
+      const colno = Number(event.colno || 0);
+
+      if (message === "Script error." && filename === "" && lineno === 0 && colno === 0) {
+        return;
+      }
+
+      append_console_line(
+        "[error] Uncaught Error: " +
+        message +
+        (filename ? " @ " + filename : "") +
+        (lineno ? ":" + lineno : "") +
+        (colno ? ":" + colno : "")
+      );
     });
 
     window.addEventListener("unhandledrejection", function (event) {
-      const reason = event.reason && event.reason.message ? event.reason.message : String(event.reason);
-      append_console_line("[error] Unhandled Promise Rejection: " + reason);
+      let reason_text = "";
+
+      if (event.reason && event.reason.stack) {
+        reason_text = event.reason.stack;
+      } else if (event.reason && event.reason.message) {
+        reason_text = event.reason.message;
+      } else {
+        reason_text = String(event.reason);
+      }
+
+      append_console_line("[error] Unhandled Promise Rejection: " + reason_text);
     });
 
     append_console_line("[status] JavaScript preview started");

@@ -1,3 +1,5 @@
+
+
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -53,7 +55,7 @@
 </head>
 <body>
   <script>
-    const DEV_MODE = true;
+    const Deb_MODE = true;
     const PREVIEW_STORAGE_KEY = "html_runner_preview_payload_v1";
 
     function assert_true(test_name, condition_value) {
@@ -183,7 +185,7 @@
 
     function start_preview() {
       try {
-        if (DEV_MODE) {
+        if (Deb_MODE) {
           const test_report = run_self_tests();
           if (!test_report.tests_passed) {
             const first_fail_item = test_report.fail_list[0];

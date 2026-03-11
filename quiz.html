@@ -1,0 +1,1167 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"
+  />
+  <title>AI連携クイズ試作 完成版</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --panel: #111827;
+      --panel-2: #1f2937;
+      --text: #e5e7eb;
+      --muted: #94a3b8;
+      --accent: #38bdf8;
+      --danger: #fb7185;
+      --ok: #22c55e;
+      --warn: #f59e0b;
+      --border: #334155;
+    }
+
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    html,
+    body {
+      margin: 0;
+      padding: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      -webkit-text-size-adjust: 100%;
+    }
+
+    body {
+      min-height: 100vh;
+      padding: 16px;
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: manipulation;
+    }
+
+    input,
+    textarea,
+    pre,
+    code {
+      user-select: text;
+      -webkit-user-select: text;
+    }
+
+    .app {
+      max-width: 860px;
+      margin: 0 auto;
+    }
+
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+
+    h1, h2, h3, p {
+      margin-top: 0;
+    }
+
+    .row {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .button {
+      appearance: none;
+      -webkit-appearance: none;
+      border: 0;
+      border-radius: 12px;
+      padding: 12px 16px;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      background: var(--accent);
+      color: #001018;
+      touch-action: manipulation;
+    }
+
+    .button.secondary {
+      background: var(--panel-2);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+
+    .button.danger {
+      background: var(--danger);
+      color: white;
+    }
+
+    .button.ok {
+      background: var(--ok);
+      color: white;
+    }
+
+    .button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .field {
+      margin-bottom: 16px;
+    }
+
+    .label {
+      display: block;
+      margin-bottom: 8px;
+      font-size: 14px;
+      color: var(--muted);
+      font-weight: 700;
+    }
+
+    input[type="text"],
+    textarea {
+      width: 100%;
+      padding: 12px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: #020617;
+      color: var(--text);
+      font-size: 16px;
+    }
+
+    textarea {
+      min-height: 360px;
+      resize: vertical;
+      line-height: 1.5;
+    }
+
+    .note {
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    .status {
+      padding: 12px;
+      border-radius: 12px;
+      line-height: 1.6;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .status.ok {
+      background: rgba(34, 197, 94, 0.12);
+      border: 1px solid rgba(34, 197, 94, 0.4);
+    }
+
+    .status.fail {
+      background: rgba(251, 113, 133, 0.12);
+      border: 1px solid rgba(251, 113, 133, 0.4);
+    }
+
+    .status.warn {
+      background: rgba(245, 158, 11, 0.12);
+      border: 1px solid rgba(245, 158, 11, 0.4);
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    .choice-list {
+      display: grid;
+      gap: 12px;
+      margin-top: 16px;
+    }
+
+    .choice-button {
+      width: 100%;
+      text-align: left;
+      padding: 14px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: var(--panel-2);
+      color: var(--text);
+      font-size: 16px;
+      cursor: pointer;
+      touch-action: manipulation;
+    }
+
+    .choice-button.selected {
+      border-color: var(--accent);
+      outline: 2px solid rgba(56, 189, 248, 0.35);
+    }
+
+    .quiz-topbar {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 4px;
+    }
+
+    .quiz-topbar-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--panel-2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 6px 10px;
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.2;
+    }
+
+    .quiz-topbar-item strong {
+      color: var(--text);
+      font-size: 12px;
+    }
+
+    .quiz-topbar-item span {
+      color: var(--text);
+      font-weight: 700;
+      font-size: 14px;
+    }
+
+    .answer-feedback {
+      margin-top: 12px;
+      margin-bottom: 12px;
+    }
+
+    code.inline {
+      padding: 2px 6px;
+      border-radius: 8px;
+      background: #020617;
+      border: 1px solid var(--border);
+    }
+
+    pre {
+      margin: 0;
+      overflow-x: auto;
+      white-space: pre-wrap;
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <h1>AI連携クイズ試作 完成版</h1>
+
+    <div id="selfTestPanel" class="card">
+      <h2>起動前セルフテスト</h2>
+      <div id="selfTestStatus" class="status warn">セルフテスト待機中...</div>
+      <div class="row" style="margin-top: 12px;">
+        <button id="rerunTestsButton" class="button secondary" type="button">セルフテスト再実行</button>
+      </div>
+    </div>
+
+    <div id="setupPanel" class="card hidden">
+      <h2>セットアップ</h2>
+
+      <div class="field">
+        <label class="label" for="quizJsonInput">AIが作ったJSON</label>
+        <textarea id="quizJsonInput" spellcheck="false" placeholder='{
+  "questions": [
+    {
+      "question": "1問目の問題文",
+      "options": {
+        "a": "選択肢A",
+        "b": "選択肢B",
+        "c": "選択肢C"
+      },
+      "answer": "b",
+      "feedback_correct": "正解です。",
+      "feedback_incorrect": "不正解です。",
+      "explanation": "短い解説文"
+    }
+  ]
+}'></textarea>
+        <p class="note">
+          必須形式: <code class="inline">questions</code> 配列1件以上。各問題は
+          <code class="inline">question</code>、
+          <code class="inline">options.a / options.b / options.c</code>、
+          <code class="inline">answer</code>、
+          <code class="inline">feedback_correct</code>、
+          <code class="inline">feedback_incorrect</code>、
+          <code class="inline">explanation</code> を持つこと。
+        </p>
+      </div>
+
+      <div class="field">
+        <label class="label" for="derivedAnswerKeyInput">JSONから自動生成された答え列</label>
+        <input id="derivedAnswerKeyInput" type="text" readonly placeholder="例: bccacacaba" />
+        <p class="note">
+          これは <code class="inline">questions[].answer</code> から自動生成されます。表示用です。正解本体は各問題の <code class="inline">answer</code> です。
+        </p>
+      </div>
+
+      <div class="row">
+        <button id="copyPromptButton" class="button secondary" type="button">AI用プロンプトをコピー</button>
+        <button id="pasteJsonButton" class="button secondary" type="button">全削除してクリップボード貼り付け</button>
+        <button id="startQuizButton" class="button ok" type="button">実行してクイズ開始</button>
+      </div>
+
+      <div id="setupStatus" class="status warn" style="margin-top: 16px;">まだ開始していません。</div>
+    </div>
+
+    <div id="quizPanel" class="card hidden">
+      <h2>クイズ</h2>
+
+      <div class="quiz-topbar">
+        <div class="quiz-topbar-item"><strong>進行</strong><span id="progressText">1 / 1</span></div>
+        <div class="quiz-topbar-item"><strong>点</strong><span id="scoreText">0</span></div>
+        <div class="quiz-topbar-item"><strong>合格</strong><span id="passConditionText">-</span></div>
+      </div>
+
+      <div id="questionText" style="font-size: 18px; font-weight: 700; margin-top: 12px;"></div>
+
+      <div id="answerFeedbackPanel" class="status ok answer-feedback hidden"></div>
+
+      <div id="choiceList" class="choice-list"></div>
+
+      <div class="row" style="margin-top: 16px;">
+        <button id="confirmAnswerButton" class="button" type="button">OK</button>
+        <button id="nextQuestionButton" class="button secondary" type="button" disabled>次の問題へ</button>
+        <button id="abortQuizButton" class="button danger" type="button">中断してセットアップへ戻る</button>
+      </div>
+
+      <div id="quizStatus" class="status warn" style="margin-top: 16px;">選択肢を選んでOKを押してください。</div>
+    </div>
+
+    <div id="resultPanel" class="card hidden">
+      <h2>結果</h2>
+      <div id="resultStatus" class="status ok"></div>
+      <div class="row" style="margin-top: 16px;">
+        <button id="backToSetupButton" class="button secondary" type="button">セットアップへ戻る</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const DEV_MODE = true;
+    const DEFAULT_PASS_SCORE = 8;
+    const PASS_RATIO = 0.8;
+    const ALLOWED_ANSWER_CHARS = ["a", "b", "c"];
+
+    const state = {
+      questions: [],
+      currentQuestionIndex: 0,
+      score: 0,
+      selectedAnswerChar: "",
+      bootPassed: false,
+      hasAnsweredCurrentQuestion: false
+    };
+
+    const dom = {};
+
+    function cacheDomReferences() {
+      dom.selfTestStatus = document.getElementById("selfTestStatus");
+      dom.rerunTestsButton = document.getElementById("rerunTestsButton");
+
+      dom.setupPanel = document.getElementById("setupPanel");
+      dom.quizJsonInput = document.getElementById("quizJsonInput");
+      dom.derivedAnswerKeyInput = document.getElementById("derivedAnswerKeyInput");
+      dom.copyPromptButton = document.getElementById("copyPromptButton");
+      dom.pasteJsonButton = document.getElementById("pasteJsonButton");
+      dom.startQuizButton = document.getElementById("startQuizButton");
+      dom.setupStatus = document.getElementById("setupStatus");
+
+      dom.quizPanel = document.getElementById("quizPanel");
+      dom.progressText = document.getElementById("progressText");
+      dom.scoreText = document.getElementById("scoreText");
+      dom.passConditionText = document.getElementById("passConditionText");
+      dom.questionText = document.getElementById("questionText");
+      dom.choiceList = document.getElementById("choiceList");
+      dom.confirmAnswerButton = document.getElementById("confirmAnswerButton");
+      dom.nextQuestionButton = document.getElementById("nextQuestionButton");
+      dom.abortQuizButton = document.getElementById("abortQuizButton");
+      dom.quizStatus = document.getElementById("quizStatus");
+      dom.answerFeedbackPanel = document.getElementById("answerFeedbackPanel");
+
+      dom.resultPanel = document.getElementById("resultPanel");
+      dom.resultStatus = document.getElementById("resultStatus");
+      dom.backToSetupButton = document.getElementById("backToSetupButton");
+    }
+
+    function getQuizLength() {
+      return state.questions.length;
+    }
+
+    function getPassScore(questionCount) {
+      if (questionCount <= 0) {
+        return 0;
+      }
+      if (questionCount >= DEFAULT_PASS_SCORE) {
+        return Math.ceil(questionCount * PASS_RATIO);
+      }
+      return questionCount;
+    }
+
+    function buildPromptForAi() {
+      return [
+        "以下の条件を厳守して、3択クイズJSONを1つだけ作成してください。",
+        "",
+        "【重要】",
+        "- 出力は必ずコードブロック1つのみ",
+        "- コードブロックの中身は純粋なJSONのみ",
+        "- JSON以外の説明文、前置き、補足、注釈は一切書かない",
+        "- キー名や構造は完全一致させること",
+        "- questions は1件以上",
+        "- 各問題は question と options を持つこと",
+        "- options には a / b / c を必ず持たせること",
+        '- 各問題は answer を持ち、値は "a" / "b" / "c" のいずれかであること',
+        "- 各問題は feedback_correct / feedback_incorrect / explanation を必ず持たせること",
+        "- 問題文と選択肢は自然な日本語にすること",
+        "",
+        "【出力形式】",
+        "```json",
+        "{",
+        '  "questions": [',
+        "    {",
+        '      "question": "1問目の問題文",',
+        '      "options": {',
+        '        "a": "選択肢A",',
+        '        "b": "選択肢B",',
+        '        "c": "選択肢C"',
+        "      },",
+        '      "answer": "b",',
+        '      "feedback_correct": "正解時メッセージ",',
+        '      "feedback_incorrect": "不正解時メッセージ",',
+        '      "explanation": "短い解説文"',
+        "    }",
+        "  ]",
+        "}",
+        "```"
+      ].join("\n");
+    }
+
+    async function copyTextToClipboard(text) {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(text);
+        return;
+      }
+
+      const tempTextArea = document.createElement("textarea");
+      tempTextArea.value = text;
+      tempTextArea.style.position = "fixed";
+      tempTextArea.style.left = "-9999px";
+      document.body.appendChild(tempTextArea);
+      tempTextArea.focus();
+      tempTextArea.select();
+
+      const successful = document.execCommand("copy");
+      document.body.removeChild(tempTextArea);
+
+      if (!successful) {
+        throw new Error("クリップボードへのコピーに失敗しました。");
+      }
+    }
+
+    async function readTextFromClipboard() {
+      if (navigator.clipboard && window.isSecureContext) {
+        return await navigator.clipboard.readText();
+      }
+      throw new Error("この環境ではクリップボード読み取りに対応していません。");
+    }
+
+    function buildDerivedAnswerKey(questions) {
+      return questions.map(function (questionItem) {
+        return questionItem.answer;
+      }).join("");
+    }
+
+    function buildValidQuizData(questionCount = 5) {
+      const questions = [];
+      const answers = ["b", "c", "c", "a", "c", "a", "c", "a", "b", "a"];
+
+      for (let index = 0; index < questionCount; index += 1) {
+        questions.push({
+          question: `Question ${index + 1}`,
+          options: {
+            a: `Option A ${index + 1}`,
+            b: `Option B ${index + 1}`,
+            c: `Option C ${index + 1}`
+          },
+          answer: answers[index % answers.length],
+          feedback_correct: `Correct feedback ${index + 1}`,
+          feedback_incorrect: `Incorrect feedback ${index + 1}`,
+          explanation: `Explanation ${index + 1}`
+        });
+      }
+
+      return { questions };
+    }
+
+    function parseQuizJsonText(jsonText) {
+      try {
+        const parsed = JSON.parse(jsonText);
+        return {
+          isValid: true,
+          data: parsed,
+          errors: []
+        };
+      } catch (error) {
+        return {
+          isValid: false,
+          data: null,
+          errors: [
+            error instanceof Error ? error.message : "Unknown JSON parse error"
+          ]
+        };
+      }
+    }
+
+    function validateQuizData(quizData) {
+      const errors = [];
+
+      if (typeof quizData !== "object" || quizData === null || Array.isArray(quizData)) {
+        errors.push("JSON全体はオブジェクトである必要があります。");
+        return {
+          isValid: false,
+          errors: errors
+        };
+      }
+
+      if (!Array.isArray(quizData.questions)) {
+        errors.push("questions は配列である必要があります。");
+        return {
+          isValid: false,
+          errors: errors
+        };
+      }
+
+      if (quizData.questions.length < 1) {
+        errors.push("questions は1件以上必要です。");
+      }
+
+      for (let index = 0; index < quizData.questions.length; index += 1) {
+        const questionItem = quizData.questions[index];
+        const questionLabel = `questions[${index}]`;
+
+        if (typeof questionItem !== "object" || questionItem === null || Array.isArray(questionItem)) {
+          errors.push(`${questionLabel} はオブジェクトである必要があります。`);
+          continue;
+        }
+
+        if (typeof questionItem.question !== "string" || questionItem.question.trim() === "") {
+          errors.push(`${questionLabel}.question は空でない文字列である必要があります。`);
+        }
+
+        if (typeof questionItem.options !== "object" || questionItem.options === null || Array.isArray(questionItem.options)) {
+          errors.push(`${questionLabel}.options はオブジェクトである必要があります。`);
+          continue;
+        }
+
+        for (const answerChar of ALLOWED_ANSWER_CHARS) {
+          if (typeof questionItem.options[answerChar] !== "string" || questionItem.options[answerChar].trim() === "") {
+            errors.push(`${questionLabel}.options.${answerChar} は空でない文字列である必要があります。`);
+          }
+        }
+
+        if (!ALLOWED_ANSWER_CHARS.includes(questionItem.answer)) {
+          errors.push(`${questionLabel}.answer は "a" / "b" / "c" のいずれかである必要があります。`);
+        }
+
+        if (typeof questionItem.feedback_correct !== "string" || questionItem.feedback_correct.trim() === "") {
+          errors.push(`${questionLabel}.feedback_correct は空でない文字列である必要があります。`);
+        }
+
+        if (typeof questionItem.feedback_incorrect !== "string" || questionItem.feedback_incorrect.trim() === "") {
+          errors.push(`${questionLabel}.feedback_incorrect は空でない文字列である必要があります。`);
+        }
+
+        if (typeof questionItem.explanation !== "string" || questionItem.explanation.trim() === "") {
+          errors.push(`${questionLabel}.explanation は空でない文字列である必要があります。`);
+        }
+      }
+
+      return {
+        isValid: errors.length === 0,
+        errors: errors
+      };
+    }
+
+    function buildAnswerResultMessage(questionItem, selectedAnswerChar, correctAnswerChar, isCorrect) {
+      const feedbackText = isCorrect
+        ? questionItem.feedback_correct
+        : questionItem.feedback_incorrect;
+
+      const selectedOptionText = questionItem.options[selectedAnswerChar];
+      const correctOptionText = questionItem.options[correctAnswerChar];
+
+      return [
+        isCorrect ? "判定: 正解" : "判定: 不正解",
+        `あなたの回答: ${selectedAnswerChar.toUpperCase()} - ${selectedOptionText}`,
+        `正解: ${correctAnswerChar.toUpperCase()} - ${correctOptionText}`,
+        `メッセージ: ${feedbackText}`,
+        `解説: ${questionItem.explanation}`
+      ].join("\n");
+    }
+
+    function runSelfTests() {
+      const testCases = [
+        {
+          name: "validateQuizData_accepts_question_with_answer_feedback_and_explanation",
+          intention: "answer を含む可変件数JSONを受け入れることを確認する",
+          run: function () {
+            const quizData = buildValidQuizData(3);
+            const validation = validateQuizData(quizData);
+            if (!validation.isValid) {
+              throw new Error(`Expected valid quiz data, but got errors: ${validation.errors.join(" | ")}`);
+            }
+          }
+        },
+        {
+          name: "validateQuizData_rejects_empty_questions",
+          intention: "0件の questions を拒否することを確認する",
+          run: function () {
+            const quizData = { questions: [] };
+            const validation = validateQuizData(quizData);
+            if (validation.isValid) {
+              throw new Error("Expected invalid quiz data for empty questions, but it was accepted.");
+            }
+          }
+        },
+        {
+          name: "validateQuizData_rejects_missing_answer",
+          intention: "answer が欠けた問題を拒否することを確認する",
+          run: function () {
+            const quizData = buildValidQuizData(2);
+            delete quizData.questions[0].answer;
+            const validation = validateQuizData(quizData);
+            if (validation.isValid) {
+              throw new Error("Expected invalid quiz data for missing answer, but it was accepted.");
+            }
+          }
+        },
+        {
+          name: "buildDerivedAnswerKey_returns_joined_answers",
+          intention: "questions[].answer から答え列を組み立てられることを確認する",
+          run: function () {
+            const quizData = buildValidQuizData(3);
+            const answerKey = buildDerivedAnswerKey(quizData.questions);
+            if (answerKey !== "bcc") {
+              throw new Error(`Expected derived answer key to be bcc, but got: ${answerKey}`);
+            }
+          }
+        },
+        {
+          name: "getPassScore_changes_with_question_count",
+          intention: "問題数に応じて合格ラインが変わることを確認する",
+          run: function () {
+            const a = getPassScore(3);
+            const b = getPassScore(10);
+            if (a !== 3 || b !== 8) {
+              throw new Error(`Unexpected pass scores: for 3=${a}, for 10=${b}`);
+            }
+          }
+        },
+        {
+          name: "parseQuizJsonText_rejects_malformed_json",
+          intention: "壊れたJSON文字列を安全に拒否することを確認する",
+          run: function () {
+            const parseResult = parseQuizJsonText('{"questions": [}');
+            if (parseResult.isValid) {
+              throw new Error("Expected malformed JSON to be rejected, but it was accepted.");
+            }
+          }
+        }
+      ];
+
+      const results = [];
+      let firstFailure = null;
+
+      for (const testCase of testCases) {
+        try {
+          testCase.run();
+          results.push({
+            name: testCase.name,
+            intention: testCase.intention,
+            passed: true,
+            errorMessage: ""
+          });
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.stack || error.message : String(error);
+          const failureRecord = {
+            name: testCase.name,
+            intention: testCase.intention,
+            passed: false,
+            errorMessage: errorMessage
+          };
+          results.push(failureRecord);
+          if (firstFailure === null) {
+            firstFailure = failureRecord;
+          }
+        }
+      }
+
+      return {
+        passed: firstFailure === null,
+        results: results,
+        firstFailure: firstFailure
+      };
+    }
+
+    function formatSelfTestReport(testReport) {
+      const lines = [];
+      for (const result of testReport.results) {
+        const icon = result.passed ? "PASS" : "FAIL";
+        lines.push(`${icon} - ${result.name}`);
+        lines.push(`  意図: ${result.intention}`);
+        if (!result.passed) {
+          lines.push(`  詳細: ${result.errorMessage}`);
+        }
+      }
+
+      if (testReport.firstFailure !== null) {
+        lines.push("");
+        lines.push(`最初に落ちたテスト: ${testReport.firstFailure.name}`);
+        lines.push(`失敗内容: ${testReport.firstFailure.errorMessage}`);
+      }
+
+      return lines.join("\n");
+    }
+
+    function setSetupControlsEnabled(isEnabled) {
+      dom.copyPromptButton.disabled = !isEnabled;
+      dom.pasteJsonButton.disabled = !isEnabled;
+      dom.startQuizButton.disabled = !isEnabled;
+      dom.quizJsonInput.disabled = !isEnabled;
+    }
+
+    function safeStopWithFailure(messageText) {
+      state.bootPassed = false;
+      setSetupControlsEnabled(false);
+      dom.setupPanel.classList.add("hidden");
+      dom.quizPanel.classList.add("hidden");
+      dom.resultPanel.classList.add("hidden");
+      dom.selfTestStatus.className = "status fail";
+      dom.selfTestStatus.textContent = messageText;
+    }
+
+    function showSetupPanel() {
+      dom.setupPanel.classList.remove("hidden");
+      dom.quizPanel.classList.add("hidden");
+      dom.resultPanel.classList.add("hidden");
+    }
+
+    function showQuizPanel() {
+      dom.setupPanel.classList.add("hidden");
+      dom.quizPanel.classList.remove("hidden");
+      dom.resultPanel.classList.add("hidden");
+    }
+
+    function showResultPanel() {
+      dom.setupPanel.classList.add("hidden");
+      dom.quizPanel.classList.add("hidden");
+      dom.resultPanel.classList.remove("hidden");
+    }
+
+    function resetFeedbackPanel() {
+      dom.answerFeedbackPanel.className = "status ok answer-feedback hidden";
+      dom.answerFeedbackPanel.textContent = "";
+    }
+
+    function resetQuizState() {
+      state.questions = [];
+      state.currentQuestionIndex = 0;
+      state.score = 0;
+      state.selectedAnswerChar = "";
+      state.hasAnsweredCurrentQuestion = false;
+      dom.choiceList.innerHTML = "";
+      resetFeedbackPanel();
+    }
+
+    function initializeQuizState(questions) {
+      resetQuizState();
+      state.questions = questions;
+    }
+
+    function setQuestionActionStateBeforeAnswer() {
+      dom.confirmAnswerButton.disabled = false;
+      dom.nextQuestionButton.disabled = true;
+    }
+
+    function setQuestionActionStateAfterAnswer() {
+      dom.confirmAnswerButton.disabled = true;
+      dom.nextQuestionButton.disabled = false;
+    }
+
+    function renderCurrentQuestion() {
+      const currentQuestion = state.questions[state.currentQuestionIndex];
+      const questionCount = getQuizLength();
+
+      state.selectedAnswerChar = "";
+      state.hasAnsweredCurrentQuestion = false;
+      dom.progressText.textContent = `${state.currentQuestionIndex + 1} / ${questionCount}`;
+      dom.scoreText.textContent = String(state.score);
+      dom.passConditionText.textContent = `${getPassScore(questionCount)}+ / ${questionCount}`;
+      dom.questionText.textContent = currentQuestion.question;
+      dom.choiceList.innerHTML = "";
+      resetFeedbackPanel();
+      setQuestionActionStateBeforeAnswer();
+
+      for (const answerChar of ALLOWED_ANSWER_CHARS) {
+        const choiceButton = document.createElement("button");
+        choiceButton.type = "button";
+        choiceButton.className = "choice-button";
+        choiceButton.dataset.answerChar = answerChar;
+        choiceButton.textContent = `${answerChar.toUpperCase()}: ${currentQuestion.options[answerChar]}`;
+        choiceButton.addEventListener("click", function () {
+          if (state.hasAnsweredCurrentQuestion) {
+            return;
+          }
+          state.selectedAnswerChar = answerChar;
+          updateChoiceSelectionUI();
+          dom.quizStatus.className = "status warn";
+          dom.quizStatus.textContent = `選択中: ${answerChar.toUpperCase()} / OKで確定します。`;
+        });
+        dom.choiceList.appendChild(choiceButton);
+      }
+
+      dom.quizStatus.className = "status warn";
+      dom.quizStatus.textContent = "選択肢を選んでOKを押してください。";
+      updateChoiceSelectionUI();
+    }
+
+    function updateChoiceSelectionUI() {
+      const buttons = dom.choiceList.querySelectorAll(".choice-button");
+      for (const button of buttons) {
+        const isSelected = button.dataset.answerChar === state.selectedAnswerChar;
+        button.classList.toggle("selected", isSelected);
+      }
+    }
+
+    function showAnswerFeedback(messageText, isCorrect) {
+      dom.answerFeedbackPanel.className = isCorrect
+        ? "status ok answer-feedback"
+        : "status fail answer-feedback";
+      dom.answerFeedbackPanel.textContent = messageText;
+    }
+
+    function confirmCurrentAnswer() {
+      if (state.hasAnsweredCurrentQuestion) {
+        dom.quizStatus.className = "status warn";
+        dom.quizStatus.textContent = "この問題はすでに回答済みです。次の問題へ進んでください。";
+        return;
+      }
+
+      if (state.selectedAnswerChar === "") {
+        dom.quizStatus.className = "status warn";
+        dom.quizStatus.textContent = "まだ選択されていません。A / B / C のどれかを選んでください。";
+        return;
+      }
+
+      const currentQuestion = state.questions[state.currentQuestionIndex];
+      const correctAnswerChar = currentQuestion.answer;
+      const isCorrect = state.selectedAnswerChar === correctAnswerChar;
+
+      if (isCorrect) {
+        state.score += 1;
+      }
+
+      state.hasAnsweredCurrentQuestion = true;
+      dom.scoreText.textContent = String(state.score);
+
+      const resultMessage = buildAnswerResultMessage(
+        currentQuestion,
+        state.selectedAnswerChar,
+        correctAnswerChar,
+        isCorrect
+      );
+
+      showAnswerFeedback(resultMessage, isCorrect);
+      setQuestionActionStateAfterAnswer();
+
+      if (state.currentQuestionIndex === getQuizLength() - 1) {
+        dom.quizStatus.className = "status ok";
+        dom.quizStatus.textContent = "最終問題の回答が完了しました。結果を見るを押してください。";
+        dom.nextQuestionButton.textContent = "結果を見る";
+        return;
+      }
+
+      dom.quizStatus.className = isCorrect ? "status ok" : "status fail";
+      dom.quizStatus.textContent = "解説を確認してから、次の問題へ進んでください。";
+    }
+
+    function moveToNextStep() {
+      if (!state.hasAnsweredCurrentQuestion) {
+        dom.quizStatus.className = "status warn";
+        dom.quizStatus.textContent = "先にこの問題へ回答してください。";
+        return;
+      }
+
+      if (state.currentQuestionIndex === getQuizLength() - 1) {
+        finishQuiz();
+        return;
+      }
+
+      state.currentQuestionIndex += 1;
+      renderCurrentQuestion();
+      dom.nextQuestionButton.textContent = "次の問題へ";
+    }
+
+    function finishQuiz() {
+      const questionCount = getQuizLength();
+      const passScore = getPassScore(questionCount);
+      const hasPassed = state.score >= passScore;
+
+      const resultLines = [
+        `最終ポイント: ${state.score} / ${questionCount}`,
+        `合否: ${hasPassed ? "合格" : "不合格"}`,
+        `合格条件: ${passScore}ポイント以上`,
+        `答え列: ${buildDerivedAnswerKey(state.questions)}`
+      ];
+
+      dom.resultStatus.className = hasPassed ? "status ok" : "status fail";
+      dom.resultStatus.textContent = resultLines.join("\n");
+      showResultPanel();
+    }
+
+    function updateDerivedAnswerKeyPreviewFromTextarea() {
+      const rawText = dom.quizJsonInput.value.trim();
+      if (rawText === "") {
+        dom.derivedAnswerKeyInput.value = "";
+        return;
+      }
+
+      const parseResult = parseQuizJsonText(rawText);
+      if (!parseResult.isValid) {
+        dom.derivedAnswerKeyInput.value = "";
+        return;
+      }
+
+      const quizData = parseResult.data;
+      if (!quizData || !Array.isArray(quizData.questions)) {
+        dom.derivedAnswerKeyInput.value = "";
+        return;
+      }
+
+      const hasAllAnswers = quizData.questions.every(function (questionItem) {
+        return questionItem && ALLOWED_ANSWER_CHARS.includes(questionItem.answer);
+      });
+
+      if (!hasAllAnswers) {
+        dom.derivedAnswerKeyInput.value = "";
+        return;
+      }
+
+      dom.derivedAnswerKeyInput.value = buildDerivedAnswerKey(quizData.questions);
+    }
+
+    function startQuizFromSetup() {
+      if (!state.bootPassed) {
+        dom.setupStatus.className = "status fail";
+        dom.setupStatus.textContent = "セルフテスト未通過のため開始できません。";
+        return;
+      }
+
+      const parseResult = parseQuizJsonText(dom.quizJsonInput.value);
+      if (!parseResult.isValid) {
+        dom.setupStatus.className = "status fail";
+        dom.setupStatus.textContent = `JSON解析に失敗しました。\n${parseResult.errors.join("\n")}`;
+        return;
+      }
+
+      const validation = validateQuizData(parseResult.data);
+      if (!validation.isValid) {
+        dom.setupStatus.className = "status fail";
+        dom.setupStatus.textContent = `JSON形式エラー:\n${validation.errors.join("\n")}`;
+        return;
+      }
+
+      const derivedAnswerKey = buildDerivedAnswerKey(parseResult.data.questions);
+      dom.derivedAnswerKeyInput.value = derivedAnswerKey;
+
+      initializeQuizState(parseResult.data.questions);
+      dom.nextQuestionButton.textContent = "次の問題へ";
+      renderCurrentQuestion();
+      showQuizPanel();
+    }
+
+    function populateExampleJson() {
+      const exampleData = {
+        questions: [
+          {
+            question: "日本の通貨単位は次のうちどれ？",
+            options: {
+              a: "ウォン",
+              b: "円",
+              c: "ドル"
+            },
+            answer: "b",
+            feedback_correct: "正解！その通りです。",
+            feedback_incorrect: "残念！円が正解です。",
+            explanation: "日本の通貨単位は「円」です。"
+          },
+          {
+            question: "次のうち、哺乳類はどれ？",
+            options: {
+              a: "ペンギン",
+              b: "ダチョウ",
+              c: "カモノハシ"
+            },
+            answer: "c",
+            feedback_correct: "よくできました！",
+            feedback_incorrect: "残念。カモノハシは哺乳類です。",
+            explanation: "カモノハシは卵を産みますが、哺乳類に分類されます。"
+          },
+          {
+            question: "次のうち、漢数字で「百」が表す数はどれ？",
+            options: {
+              a: "10",
+              b: "1000",
+              c: "100"
+            },
+            answer: "c",
+            feedback_correct: "その通り、100です。",
+            feedback_incorrect: "違います。「百」は100のことです。",
+            explanation: "「百」は100を意味します。"
+          },
+          {
+            question: "日本の建国記念の日は、次のうちどれに定められている？",
+            options: {
+              a: "2月11日",
+              b: "5月3日",
+              c: "4月29日"
+            },
+            answer: "a",
+            feedback_correct: "正解です。",
+            feedback_incorrect: "違います。2月11日です。",
+            explanation: "建国記念の日は2月11日です。"
+          },
+          {
+            question: "世界で一番面積が大きい海は？",
+            options: {
+              a: "大西洋",
+              b: "インド洋",
+              c: "太平洋"
+            },
+            answer: "c",
+            feedback_correct: "よく覚えていますね！",
+            feedback_incorrect: "残念。一番広いのは太平洋です。",
+            explanation: "太平洋は最も広い海です。"
+          }
+        ]
+      };
+
+      dom.quizJsonInput.value = JSON.stringify(exampleData, null, 2);
+      dom.derivedAnswerKeyInput.value = buildDerivedAnswerKey(exampleData.questions);
+    }
+
+    function bindUiEventsOnce() {
+      if (bindUiEventsOnce.hasBound === true) {
+        return;
+      }
+      bindUiEventsOnce.hasBound = true;
+
+      dom.rerunTestsButton.addEventListener("click", function () {
+        bootApplication();
+      });
+
+      dom.copyPromptButton.addEventListener("click", async function () {
+        try {
+          const promptText = buildPromptForAi();
+          await copyTextToClipboard(promptText);
+
+          dom.setupStatus.className = "status ok";
+          dom.setupStatus.textContent = "AI用プロンプトをクリップボードへコピーしました。";
+        } catch (error) {
+          dom.setupStatus.className = "status fail";
+          dom.setupStatus.textContent = `コピー失敗: ${error instanceof Error ? error.message : String(error)}`;
+        }
+      });
+
+      dom.pasteJsonButton.addEventListener("click", async function () {
+        try {
+          dom.quizJsonInput.value = "";
+          const clipboardText = await readTextFromClipboard();
+          dom.quizJsonInput.value = clipboardText;
+          updateDerivedAnswerKeyPreviewFromTextarea();
+
+          dom.setupStatus.className = "status ok";
+          dom.setupStatus.textContent = "JSON入力欄を全削除し、クリップボードの内容を貼り付けました。";
+        } catch (error) {
+          dom.setupStatus.className = "status fail";
+          dom.setupStatus.textContent = `貼り付け失敗: ${error instanceof Error ? error.message : String(error)}`;
+        }
+      });
+
+      dom.quizJsonInput.addEventListener("input", function () {
+        updateDerivedAnswerKeyPreviewFromTextarea();
+      });
+
+      dom.startQuizButton.addEventListener("click", function () {
+        startQuizFromSetup();
+      });
+
+      dom.confirmAnswerButton.addEventListener("click", function () {
+        confirmCurrentAnswer();
+      });
+
+      dom.nextQuestionButton.addEventListener("click", function () {
+        moveToNextStep();
+      });
+
+      dom.abortQuizButton.addEventListener("click", function () {
+        resetQuizState();
+        showSetupPanel();
+        dom.setupStatus.className = "status warn";
+        dom.setupStatus.textContent = "クイズを中断しました。";
+      });
+
+      dom.backToSetupButton.addEventListener("click", function () {
+        resetQuizState();
+        showSetupPanel();
+        dom.setupStatus.className = "status warn";
+        dom.setupStatus.textContent = "結果表示を終了しました。新しいクイズを開始できます。";
+      });
+    }
+
+    function bootApplication() {
+      resetQuizState();
+      showSetupPanel();
+      dom.resultPanel.classList.add("hidden");
+
+      if (!DEV_MODE) {
+        state.bootPassed = true;
+        dom.selfTestStatus.className = "status ok";
+        dom.selfTestStatus.textContent = "DEV_MODEがOFFのためセルフテストを省略しました。";
+        setSetupControlsEnabled(true);
+        return;
+      }
+
+      const testReport = runSelfTests();
+      const reportText = formatSelfTestReport(testReport);
+
+      if (!testReport.passed) {
+        safeStopWithFailure(`セルフテスト失敗のため安全停止しました。\n\n${reportText}`);
+        return;
+      }
+
+      state.bootPassed = true;
+      dom.selfTestStatus.className = "status ok";
+      dom.selfTestStatus.textContent = `セルフテスト通過。\n\n${reportText}`;
+      setSetupControlsEnabled(true);
+
+      if (dom.quizJsonInput.value.trim() === "") {
+        populateExampleJson();
+      } else {
+        updateDerivedAnswerKeyPreviewFromTextarea();
+      }
+
+      dom.setupStatus.className = "status ok";
+      dom.setupStatus.textContent = "準備完了です。AI用プロンプトをコピーするか、完成済みJSONを貼って開始してください。";
+    }
+
+    window.addEventListener("DOMContentLoaded", function () {
+      cacheDomReferences();
+      bindUiEventsOnce();
+      bootApplication();
+    });
+  </script>
+</body>
+</html>

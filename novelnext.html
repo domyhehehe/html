@@ -1,0 +1,1805 @@
+<!DOCTYPE html>
+<!-- rebuilt-clean-single-version -->
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"
+  />
+  <title>汎用サウンドノベルJSONランナー 完全版</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --panel: #111827;
+      --panel2: #1f2937;
+      --panel3: #0b1220;
+      --text: #e5e7eb;
+      --muted: #94a3b8;
+      --accent: #38bdf8;
+      --ok: #22c55e;
+      --warn: #f59e0b;
+      --danger: #fb7185;
+      --border: #334155;
+    }
+
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      -webkit-text-size-adjust: 100%;
+    }
+
+    body {
+      min-height: 100vh;
+      padding: 12px;
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: manipulation;
+      overscroll-behavior: none;
+    }
+
+    input, textarea, select, pre, code {
+      user-select: text;
+      -webkit-user-select: text;
+    }
+
+    .app {
+      max-width: 960px;
+      margin: 0 auto;
+    }
+
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 14px;
+      margin-bottom: 12px;
+    }
+
+    h1, h2, h3, p {
+      margin: 0 0 10px;
+    }
+
+    .row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .button {
+      appearance: none;
+      -webkit-appearance: none;
+      border: 0;
+      border-radius: 12px;
+      padding: 12px 16px;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      background: var(--accent);
+      color: #001018;
+      touch-action: manipulation;
+    }
+
+    .button.secondary {
+      background: var(--panel2);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+
+    .button.ok {
+      background: var(--ok);
+      color: white;
+    }
+
+    .button.danger {
+      background: var(--danger);
+      color: white;
+    }
+
+    .button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .status {
+      white-space: pre-wrap;
+      word-break: break-word;
+      line-height: 1.5;
+      padding: 12px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: var(--panel2);
+    }
+
+    .status.ok {
+      background: rgba(34, 197, 94, 0.12);
+      border-color: rgba(34, 197, 94, 0.4);
+    }
+
+    .status.warn {
+      background: rgba(245, 158, 11, 0.12);
+      border-color: rgba(245, 158, 11, 0.4);
+    }
+
+    .status.fail {
+      background: rgba(251, 113, 133, 0.12);
+      border-color: rgba(251, 113, 133, 0.4);
+    }
+
+    .label {
+      display: block;
+      margin-bottom: 8px;
+      font-size: 14px;
+      color: var(--muted);
+      font-weight: 700;
+    }
+
+    textarea, select {
+      width: 100%;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: #020617;
+      color: var(--text);
+      padding: 12px;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    textarea {
+      min-height: 280px;
+      resize: vertical;
+    }
+
+    .topbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    .pill {
+      background: var(--panel2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 6px 10px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .pill strong {
+      color: var(--text);
+    }
+
+    .scene-title {
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: 10px;
+    }
+
+    .speaker-line {
+      margin-bottom: 10px;
+      font-size: 15px;
+      color: var(--accent);
+      font-weight: 700;
+    }
+
+    .message-window {
+      background: var(--panel3);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 10px 12px;
+      line-height: 1.5;
+      white-space: pre-wrap;
+      font-size: 16px;
+      height: 130px;
+      overflow-y: auto;
+    }
+
+    .choice-list {
+      display: grid;
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .choice-button {
+      width: 100%;
+      text-align: left;
+      padding: 14px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: var(--panel2);
+      color: var(--text);
+      font-size: 15px;
+      cursor: pointer;
+      touch-action: manipulation;
+      line-height: 1.5;
+    }
+
+    .choice-button:hover {
+      border-color: var(--accent);
+    }
+
+    .log-list {
+      display: grid;
+      gap: 8px;
+      max-height: 260px;
+      overflow-y: auto;
+    }
+
+    .log-item {
+      background: var(--panel3);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px;
+      font-size: 14px;
+      line-height: 1.5;
+      white-space: pre-wrap;
+    }
+
+    .note {
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    code.inline {
+      background: #020617;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 2px 6px;
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <h1>汎用サウンドノベルJSONランナー 完全版</h1>
+
+    <div class="card">
+      <h2>通知</h2>
+      <div id="globalStatus" class="status warn">サンプルを読むか、AI用プロンプトをコピーしてJSONを作ってください。</div>
+      <div class="row" style="margin-top: 10px;">
+        <button id="copyStatusButton" class="button secondary" type="button">通知をコピー</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>セットアップ</h2>
+
+      <label class="label" for="promptModeSelect">コピーするAI用プロンプト</label>
+      <select id="promptModeSelect">
+        <option value="generic">汎用JSON台本ランナー用</option>
+        <option value="shindo">新堂誠・学校であった怖い話 用</option>
+      </select>
+
+      <label class="label" for="scriptInput" style="margin-top: 12px;">台本JSON</label>
+      <textarea id="scriptInput" spellcheck="false"></textarea>
+
+      <p class="note">
+        最小構造は <code class="inline">title</code>、<code class="inline">initial_state</code>、
+        <code class="inline">start_scene_id</code>、<code class="inline">scenes</code> です。
+        各 scene は <code class="inline">id</code>、<code class="inline">title</code>、
+        <code class="inline">text</code>、<code class="inline">choices</code> を持ちます。
+        必要に応じて <code class="inline">actions</code>、<code class="inline">conditional_texts</code>、
+        <code class="inline">area_id</code>、<code class="inline">scene_type</code> も使えます。
+        サンプルでは木箱のみ「残して失敗メッセージを出す」例を示していますが、基本的には
+        <code class="inline">hidden_when_disabled: true</code> で使用後に消す運用を推奨します。
+      </p>
+
+      <div class="row">
+        <button id="loadExampleButton" class="button secondary" type="button">サンプル読込</button>
+        <button id="copyPromptButton" class="button secondary" type="button">AI用プロンプトをコピー</button>
+        <button id="pasteScriptButton" class="button secondary" type="button">全削除してクリップボード貼り付け</button>
+        <button id="loadScriptButton" class="button ok" type="button">このJSONで開始</button>
+        <button id="restartButton" class="button secondary" type="button">最初からやり直す</button>
+        <button id="copyStateButton" class="button secondary" type="button">現在状態をコピー</button>
+        <button id="copyContinuationButton" class="button secondary" type="button">続篇用プロンプトをコピー</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>進行</h2>
+      <div class="topbar">
+        <div class="pill"><strong>タイトル:</strong> <span id="gameTitle">-</span></div>
+        <div class="pill"><strong>現在シーン:</strong> <span id="currentSceneIdText">-</span></div>
+        <div class="pill"><strong>既読数:</strong> <span id="stepText">0</span></div>
+        <div class="pill"><strong>体力:</strong> <span id="healthText">-</span></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>状態</h2>
+      <div class="topbar">
+        <div class="pill"><strong>キーアイテム:</strong> <span id="keyItemsText">-</span></div>
+      </div>
+      <div id="statePreview" class="status"></div>
+    </div>
+
+    <div class="card">
+      <h2>本文</h2>
+      <div id="sceneTitle" class="scene-title">-</div>
+      <div id="speakerLine" class="speaker-line"></div>
+      <div id="textArea"></div>
+      <div id="choiceList" class="choice-list"></div>
+    </div>
+
+    <div class="card">
+      <h2>ログ</h2>
+      <div id="logList" class="log-list"></div>
+    </div>
+  </div>
+
+  <script>
+    (() => {
+      "use strict";
+
+      function isObject(value) {
+        return value !== null && typeof value === "object" && !Array.isArray(value);
+      }
+
+      function deepClone(value) {
+        return JSON.parse(JSON.stringify(value));
+      }
+
+      function isMeaningfulSceneId(id) {
+        return /^[a-z][a-z0-9_-]*$/.test(id);
+      }
+
+      function safeParseJson(text) {
+        try {
+          return { ok: true, data: JSON.parse(text) };
+        } catch (error) {
+          return {
+            ok: false,
+            error: error instanceof Error ? error.message : String(error)
+          };
+        }
+      }
+
+      function setStatus(type, message) {
+        const statusEl = document.getElementById("globalStatus");
+        statusEl.className = `status ${type}`;
+        statusEl.textContent = message;
+      }
+
+      async function copyTextToClipboard(text) {
+        if (navigator.clipboard && window.isSecureContext) {
+          await navigator.clipboard.writeText(text);
+          return;
+        }
+
+        const textarea = document.createElement("textarea");
+        textarea.value = text;
+        textarea.setAttribute("readonly", "");
+        textarea.style.position = "fixed";
+        textarea.style.left = "-9999px";
+        document.body.appendChild(textarea);
+        textarea.focus();
+        textarea.select();
+
+        const succeeded = document.execCommand("copy");
+        document.body.removeChild(textarea);
+
+        if (!succeeded) {
+          throw new Error("この環境ではクリップボードへのコピーが許可されていません。");
+        }
+      }
+
+      async function readTextFromClipboard() {
+        if (navigator.clipboard && window.isSecureContext) {
+          return await navigator.clipboard.readText();
+        }
+        throw new Error("この環境ではクリップボードの読み取りが許可されていません。");
+      }
+
+      const el = {
+        promptModeSelect: document.getElementById("promptModeSelect"),
+        scriptInput: document.getElementById("scriptInput"),
+        loadExampleButton: document.getElementById("loadExampleButton"),
+        copyPromptButton: document.getElementById("copyPromptButton"),
+        pasteScriptButton: document.getElementById("pasteScriptButton"),
+        loadScriptButton: document.getElementById("loadScriptButton"),
+        restartButton: document.getElementById("restartButton"),
+        copyStateButton: document.getElementById("copyStateButton"),
+        copyContinuationButton: document.getElementById("copyContinuationButton"),
+        copyStatusButton: document.getElementById("copyStatusButton"),
+        globalStatus: document.getElementById("globalStatus"),
+        gameTitle: document.getElementById("gameTitle"),
+        currentSceneIdText: document.getElementById("currentSceneIdText"),
+        stepText: document.getElementById("stepText"),
+        healthText: document.getElementById("healthText"),
+        keyItemsText: document.getElementById("keyItemsText"),
+        statePreview: document.getElementById("statePreview"),
+        sceneTitle: document.getElementById("sceneTitle"),
+        speakerLine: document.getElementById("speakerLine"),
+        textArea: document.getElementById("textArea"),
+        choiceList: document.getElementById("choiceList"),
+        logList: document.getElementById("logList")
+      };
+
+      const app = {
+        rawScript: null,
+        script: null,
+        state: null,
+        currentSceneId: "",
+        step: 0,
+        log: [],
+        messageHistory: [],
+        hpZeroEventStreak: 0,
+        hpZeroEventLimit: 3
+      };
+
+      const MESSAGE_WINDOW_LIMIT = 3;
+
+      const SHINDO_BASE_PROMPT = [
+        "あなたはゲームマスターではなく、JSON台本の設計者です。",
+        "これから作るJSONは『学校であった怖い話』風のサウンドノベルとして使用されます。",
+        "語り手は固定で新堂誠です。",
+        "新堂誠の性格は、強面な兄貴肌の青年で、どことなく不良っぽい風貌と物腰を持つ人物です。",
+        "口調はやや乱暴だが聞きやすく、怖い話を半ば気だるそうに、しかし核心では急に真顔になるような語り口にしてください。",
+        "舞台は必ず学校に関する怖い話であること。",
+        "語り手の新堂誠本人は、話の中の登場人物としては出さないこと。",
+        "話の中に登場する人物は新規キャラクターをフルネームで登場させること。",
+        "サウンドノベルとして、本文を厚くし、分岐は少なめにすること。",
+        "各分岐は2〜3択を基本にし、見せかけ分岐は禁止です。",
+        "分岐した場合、選択肢ごとに別々の next_scene_id を必ず持たせてください。",
+        "IDは意味ベースで管理してください。例: temple_entrance / guardian_hall / ending_bad",
+        "基本は一本道寄りで、節目だけ2〜3択の分岐にしてください。",
+        "最後は『これが、俺が知ってる学校であった怖い話だ』のように新堂誠らしい締めにしてください。"
+      ].join("\n");
+      const SAMPLE_SCENARIO = {
+  "title": "呪われた山岳神殿からの脱出",
+  "initial_state": {
+    "player_name": "冒険者",
+    "体力": 70,
+    "location": "封印された神殿の入口",
+    "flags": [],
+    "key_items": [],
+    "unique": {
+      "筋力": 5
+    }
+  },
+  "start_scene_id": "temple_entrance",
+  "game_over_scene_id": "game_over_collapse",
+  "scenes": [
+    {
+      "id": "temple_entrance",
+      "title": "神殿入口",
+      "scene_type": "area",
+      "area_id": "outer_gate",
+      "text": [
+        "山岳神殿の封印門が、雷鳴に合わせて鈍く震えている。",
+        "このままでは崩落に巻き込まれる。脱出路を見つけなければならない。"
+      ],
+      "conditional_texts": [
+        {
+          "conditions": {
+            "required_flags": [
+              "inscription_read"
+            ]
+          },
+          "text": [
+            "碑文の内容を思い出す。罠を避けるには『静かに、重心を低く』だ。"
+          ]
+        },
+        {
+          "conditions": {
+            "required_flags": [
+              "gate_unlocked"
+            ]
+          },
+          "text": [
+            "封印門はすでに解かれている。今なら奥へ進める。"
+          ]
+        },
+        {
+          "conditions": {
+            "required_flags": [
+              "crate_opened"
+            ]
+          },
+          "text": [
+            "入口脇の木箱は開いたままで、中は空になっている。"
+          ]
+        },
+        {
+          "conditions": {
+            "required_flags": [
+              "strength_training_done"
+            ]
+          },
+          "text": [
+            "崩れた石柱はすでに持ち上げた。腕には鈍い疲労が残っている。"
+          ]
+        },
+        {
+          "conditions": {
+            "min_unique": {
+              "筋力": 6
+            },
+            "forbidden_flags": [
+              "force_gate_used"
+            ]
+          },
+          "text": [
+            "脇の石扉は重いが、今の筋力ならこじ開けられそうだ。"
+          ]
+        }
+      ],
+      "actions": [
+        {
+          "text": "壁面の碑文を読む",
+          "conditions": {
+            "forbidden_flags": [
+              "inscription_read"
+            ]
+          },
+          "effects": {
+            "set_flags": [
+              "inscription_read"
+            ]
+          },
+          "success_message": "罠回避の手順を理解した。",
+          "failure_message": "碑文はもう読み終えている。",
+          "hidden_when_disabled": true
+        },
+        {
+          "text": "入口脇の木箱を開ける",
+          "conditions": {
+            "forbidden_flags": [
+              "crate_opened"
+            ]
+          },
+          "effects": {
+            "add_key_items": [
+              "古い鍵"
+            ],
+            "set_flags": [
+              "crate_opened"
+            ]
+          },
+          "success_message": "木箱の中から古い鍵を見つけた。",
+          "failure_message": "もう鍵は入っていない。木箱の中は空だ。",
+          "disabled_text": "入口脇の木箱を確認する"
+        },
+        {
+          "text": "崩れた石柱を持ち上げて身体を慣らす",
+          "conditions": {
+            "forbidden_flags": [
+              "strength_training_done"
+            ]
+          },
+          "effects": {
+            "add_unique": {
+              "筋力": 1
+            },
+            "add": {
+              "体力": -5
+            },
+            "set_flags": [
+              "strength_training_done"
+            ]
+          },
+          "success_message": "重い石柱を持ち上げ、筋力が1上がった。代わりに体力を5消耗した。",
+          "failure_message": "これ以上ここで鍛える余裕はない。",
+          "hidden_when_disabled": true
+        },
+        {
+          "text": "古い鍵で封印門を解錠する",
+          "conditions": {
+            "required_key_items": [
+              "古い鍵"
+            ],
+            "forbidden_flags": [
+              "gate_unlocked"
+            ]
+          },
+          "effects": {
+            "set_flags": [
+              "gate_unlocked"
+            ]
+          },
+          "success_message": "鈍い音を立てて封印門が開いた。",
+          "failure_message": "対応する鍵が必要だ。",
+          "hidden_when_disabled": true
+        }
+      ],
+      "choices": [
+        {
+          "text": "封印門の奥へ進む",
+          "conditions": {
+            "required_flags": [
+              "gate_unlocked"
+            ]
+          },
+          "disabled_text": "封印門は閉ざされている",
+          "failure_message": "古い鍵で封印を解かなければ進めない。",
+          "next_scene_id": "ritual_hall"
+        },
+        {
+          "text": "崩れた回廊を進む",
+          "next_scene_id": "collapsed_corridor"
+        },
+        {
+          "text": "石扉を力づくでこじ開ける",
+          "conditions": {
+            "min_unique": {
+              "筋力": 6
+            },
+            "forbidden_flags": [
+              "force_gate_used"
+            ]
+          },
+          "effects": {
+            "set_flags": [
+              "force_gate_used"
+            ]
+          },
+          "failure_message": "石扉はびくともしない。筋力が足りない。",
+          "hidden_when_disabled": true,
+          "next_scene_id": "hidden_chamber"
+        }
+      ]
+    },
+    {
+      "id": "collapsed_corridor",
+      "title": "崩れた回廊",
+      "text": [
+        "足場は崩れかけ、天井から砂塵が降り続けている。"
+      ],
+      "conditional_texts": [
+        {
+          "conditions": {
+            "required_flags": [
+              "inscription_read"
+            ]
+          },
+          "text": [
+            "碑文の助言が頭に残っている。ここは静かに進めば突破できそうだ。"
+          ]
+        }
+      ],
+      "choices": [
+        {
+          "text": "慎重に進む",
+          "conditions": {
+            "required_flags": [
+              "inscription_read"
+            ]
+          },
+          "disabled_text": "慎重に進む（碑文の知識がないと危険）",
+          "failure_message": "足場の読み方がわからない。このままでは慎重に進めない。",
+          "next_scene_id": "ritual_hall"
+        },
+        {
+          "text": "急いで駆け抜ける",
+          "effects": {
+            "add": {
+              "体力": -80
+            }
+          },
+          "failure_message": "落石が直撃した。",
+          "next_scene_id": "collapsed_corridor"
+        },
+        {
+          "text": "入口へ戻る",
+          "next_scene_id": "temple_entrance"
+        }
+      ]
+    },
+    {
+      "id": "ritual_hall",
+      "title": "祭祀の間",
+      "scene_type": "area",
+      "area_id": "inner_hall",
+      "text": [
+        "中央に古い祭壇、奥に重い脱出扉が見える。",
+        "扉にはまだ封印の力が残っているようだ。"
+      ],
+      "conditional_texts": [
+        {
+          "conditions": {
+            "required_flags": [
+              "lever_used"
+            ]
+          },
+          "text": [
+            "祭壇横の機構はすでに作動済みだ。脱出扉の封印は緩んでいる。"
+          ]
+        }
+      ],
+      "actions": [
+        {
+          "text": "祭壇横のレバーを引く",
+          "conditions": {
+            "forbidden_flags": [
+              "lever_used"
+            ]
+          },
+          "effects": {
+            "set_flags": [
+              "lever_used"
+            ],
+            "add": {
+              "体力": -10
+            }
+          },
+          "success_message": "歯車音と共に脱出扉の封印が緩んだ。",
+          "failure_message": "レバーはすでに固定されている。",
+          "hidden_when_disabled": true
+        }
+      ],
+      "choices": [
+        {
+          "text": "脱出扉を開ける",
+          "conditions": {
+            "required_flags": [
+              "lever_used"
+            ]
+          },
+          "disabled_text": "封印が強すぎて開かない",
+          "failure_message": "祭壇の機構を動かさなければ、この扉は開かない。",
+          "next_scene_id": "escape_normal_end"
+        },
+        {
+          "text": "入口方面へ戻る",
+          "next_scene_id": "temple_entrance"
+        }
+      ]
+    },
+    {
+      "id": "hidden_chamber",
+      "title": "隠し部屋",
+      "scene_type": "area",
+      "area_id": "secret_route",
+      "text": [
+        "石扉の先には、神殿外壁へ繋がる細い風穴があった。",
+        "冷たい風が吹き込み、外の気配がかすかに感じられる。"
+      ],
+      "conditional_texts": [
+        {
+          "conditions": {
+            "required_flags": [
+              "vent_climbed"
+            ]
+          },
+          "text": [
+            "風穴の縁には、爪で削ったような痕が残っている。"
+          ]
+        }
+      ],
+      "choices": [
+        {
+          "text": "風穴をよじ登る",
+          "conditions": {
+            "min_unique": {
+              "筋力": 6
+            },
+            "forbidden_flags": [
+              "vent_climbed"
+            ]
+          },
+          "effects": {
+            "set_flags": [
+              "vent_climbed"
+            ]
+          },
+          "failure_message": "腕力が足りず、風穴の途中で身体を支えきれない。",
+          "next_scene_id": "escape_power_end"
+        },
+        {
+          "text": "入口へ戻る",
+          "next_scene_id": "temple_entrance"
+        }
+      ]
+    },
+    {
+      "id": "escape_normal_end",
+      "title": "通常脱出",
+      "text": [
+        "重い扉が開き、夜明けの稜線へ飛び出した。",
+        "傷だらけだが、あなたは確かに生還した。"
+      ],
+      "choices": [
+        {
+          "text": "完",
+          "next_scene_id": null
+        }
+      ]
+    },
+    {
+      "id": "escape_power_end",
+      "title": "風穴脱出",
+      "text": [
+        "筋力で身体を引き上げ、狭い風穴をよじ登って外壁の裂け目から脱出した。",
+        "封印門も祭壇も使わない、異例の生還だ。"
+      ],
+      "choices": [
+        {
+          "text": "ユニークエンド",
+          "next_scene_id": null
+        }
+      ]
+    },
+    {
+      "id": "game_over_collapse",
+      "title": "神殿に飲み込まれて",
+      "text": [
+        "体の限界を超え、足が動かなくなった。",
+        "崩落音の中、あなたの意識は闇へ沈んでいく。"
+      ],
+      "choices": [
+        {
+          "text": "最初からやり直す",
+          "next_scene_id": null
+        }
+      ]
+    }
+  ]
+};
+
+      const PROMPT_SAMPLE_JSON = JSON.stringify(SAMPLE_SCENARIO, null, 2);
+
+      const GENERIC_PROMPT = [
+        "以下を厳守して、汎用JSON台本ランナー用の台本JSONを1つだけ作成してください。",
+        "",
+        "【最重要】",
+        "- 出力はコードブロック1つのみ、内容は純粋なJSONのみ",
+        "- JSON以外の説明文・注釈・前置きは禁止",
+        "- 機能の全部盛りは禁止。物語に必要な機能だけ使うこと",
+        "- 未使用の flags / key_items / unique は作らないこと",
+        "",
+        "【構造ルール】",
+        "- scene.id は意味ベース英小文字ID（snake_case / kebab-case）",
+        "- 木構造ID（a/aa/aab）は使わない",
+        "- custom数値は initial_state.unique 配下にのみ定義",
+        "- key item は initial_state.key_items 配下で管理",
+        "- choices は遷移、actions はその場処理として分離",
+        "- conditional_texts で再訪時や状態差分本文を表現",
+        "",
+        "【conditions】",
+        "- required_flags / forbidden_flags",
+        "- required_key_items / forbidden_key_items",
+        "- min / max / min_unique / max_unique",
+        "",
+        "【条件未達時の表現】",
+        "- hidden_when_disabled / disabled_text / failure_message を必要に応じて使用（基本は hidden_when_disabled: true 推奨。残す運用は木箱など例外のみ）",
+        "",
+        "【一度きりaction（必須）】",
+        "- 報酬付きaction（アイテム取得、数値増減、鍵使用、装置起動など）は原則1回限り",
+        "- 再実行防止として forbidden_flags と set_flags を必ず組み合わせる",
+        "- 同じaction連打で key_items / unique / flags / 体力 を無限に増減できる構造は禁止",
+        "- 使用後は conditional_texts 等で本文へ反映する",
+        "",
+        "【出力形式（理想サンプル）】",
+        "```json",
+        PROMPT_SAMPLE_JSON,
+        "```"
+      ].join("\n");
+
+      const SHINDO_PROMPT = [
+        "以下を厳守して、学校ホラー向けJSON台本を1つだけ作成してください。",
+        "",
+        SHINDO_BASE_PROMPT,
+        "",
+        "【追加ルール】",
+        "- 舞台は学校関連ホラーに限定",
+        "- 同じ場所でも状態差分（conditional_texts）で不穏さをじわじわ見せる",
+        "- 露骨な見せかけ分岐は禁止",
+        "- choices（遷移）と actions（その場処理）を混同しない",
+        "",
+        "【必須制約】",
+        "- scene.id は意味ベース英小文字ID（snake_case / kebab-case）",
+        "- 木構造ID（a/aa/aab）禁止",
+        "- custom数値は initial_state.unique のみ",
+        "- 未使用の flags / key_items / unique を作らない",
+        "- 報酬付きactionは forbidden_flags + set_flags で1回限りにする",
+        "- action連打で無限成長できる構造は禁止",
+        "",
+        "【条件と表現】",
+        "- required_key_items / forbidden_key_items / min / max / min_unique / max_unique を必要な分だけ使用",
+        "- 条件未達表現として disabled_text / hidden_when_disabled / failure_message を使える",
+        "",
+        "【出力形式】",
+        "```json",
+        PROMPT_SAMPLE_JSON,
+        "```"
+      ].join("\n");
+
+      function getPromptByMode(mode) {
+        return mode === "shindo" ? SHINDO_PROMPT : GENERIC_PROMPT;
+      }
+
+      function getSceneById(sceneId) {
+        return app.script.scenes.find((scene) => scene.id === sceneId) || null;
+      }
+
+      function getHealthValue() {
+        if (!app.state || !isObject(app.state)) return null;
+        const keys = ["health", "hp", "体力"];
+        for (const key of keys) {
+          if (typeof app.state[key] === "number") {
+            return app.state[key];
+          }
+        }
+        return null;
+      }
+
+      function renderHeader() {
+        el.gameTitle.textContent = app.script ? app.script.title : "-";
+        el.currentSceneIdText.textContent = app.currentSceneId || "-";
+        el.stepText.textContent = String(app.step);
+        const hp = getHealthValue();
+        el.healthText.textContent = hp === null ? "-" : String(hp);
+        renderStatePanel();
+      }
+
+      function renderStatePanel() {
+        if (!app.state || !isObject(app.state)) {
+          el.keyItemsText.textContent = "-";
+          el.statePreview.textContent = "状態データなし";
+          return;
+        }
+
+        const keyItems = Array.isArray(app.state.key_items) ? app.state.key_items : [];
+        el.keyItemsText.textContent = keyItems.length > 0 ? keyItems.join(" / ") : "なし";
+        el.statePreview.textContent = JSON.stringify(app.state, null, 2);
+      }
+
+      function renderLog() {
+        el.logList.innerHTML = "";
+        app.log.slice().reverse().forEach((line) => {
+          const div = document.createElement("div");
+          div.className = "log-item";
+          div.textContent = line;
+          el.logList.appendChild(div);
+        });
+      }
+
+      function addLog(line) {
+        app.log.push(line);
+        renderLog();
+      }
+
+      function appendMessage(message) {
+        if (typeof message !== "string") return;
+        const trimmed = message.trim();
+        if (trimmed === "") return;
+        app.messageHistory.push(trimmed);
+      }
+
+      function renderMessageWindow() {
+        el.textArea.innerHTML = "";
+        const messages = app.messageHistory.slice(-MESSAGE_WINDOW_LIMIT);
+        const windowEl = document.createElement("div");
+        windowEl.className = "message-window";
+        const paddedMessages = Array(Math.max(0, MESSAGE_WINDOW_LIMIT - messages.length)).fill("").concat(messages);
+        windowEl.textContent = paddedMessages.join("\n");
+        el.textArea.appendChild(windowEl);
+      }
+
+      function getSceneMessageLines(scene) {
+        const lines = [];
+        const baseLines = Array.isArray(scene.text) ? scene.text : [];
+        baseLines.forEach((line) => {
+          if (typeof line === "string") lines.push(line);
+        });
+
+        if (Array.isArray(scene.conditional_texts)) {
+          scene.conditional_texts.forEach((entry) => {
+            if (!isObject(entry)) return;
+            if (!checkConditions(entry.conditions)) return;
+            if (Array.isArray(entry.text)) {
+              entry.text.forEach((line) => {
+                if (typeof line === "string") lines.push(line);
+              });
+            } else if (typeof entry.text === "string") {
+              lines.push(entry.text);
+            }
+          });
+        }
+
+        return lines;
+      }
+
+      function appendSceneMessages(scene) {
+        getSceneMessageLines(scene).forEach((line) => appendMessage(line));
+      }
+
+      function getValueByPath(target, path) {
+        const parts = path.split(".");
+        let current = target;
+        for (const part of parts) {
+          if (!isObject(current) || !(part in current)) {
+            return undefined;
+          }
+          current = current[part];
+        }
+        return current;
+      }
+
+      function ensurePath(target, path) {
+        const parts = path.split(".");
+        let current = target;
+        for (let i = 0; i < parts.length - 1; i += 1) {
+          const part = parts[i];
+          if (!isObject(current[part])) {
+            current[part] = {};
+          }
+          current = current[part];
+        }
+        return { parent: current, key: parts[parts.length - 1] };
+      }
+
+      function setValueByPath(target, path, value) {
+        const ref = ensurePath(target, path);
+        ref.parent[ref.key] = value;
+      }
+
+      function addValueByPath(target, path, delta) {
+        const current = getValueByPath(target, path);
+        const base = typeof current === "number" ? current : 0;
+        setValueByPath(target, path, base + delta);
+      }
+
+      function ensureUniqueState() {
+        if (!isObject(app.state.unique)) {
+          app.state.unique = {};
+        }
+      }
+
+      function getUniqueValue(key) {
+        ensureUniqueState();
+        return app.state.unique[key];
+      }
+
+      function setUniqueValue(key, value) {
+        ensureUniqueState();
+        app.state.unique[key] = value;
+      }
+
+      function applyEffects(effects) {
+        if (!effects || !app.state) return;
+
+        if (isObject(effects.add)) {
+          for (const [path, delta] of Object.entries(effects.add)) {
+            if (typeof delta === "number") {
+              addValueByPath(app.state, path, delta);
+            }
+          }
+        }
+
+        if (isObject(effects.set)) {
+          for (const [path, value] of Object.entries(effects.set)) {
+            setValueByPath(app.state, path, value);
+          }
+        }
+
+        if (Array.isArray(effects.set_flags)) {
+          if (!Array.isArray(app.state.flags)) app.state.flags = [];
+          effects.set_flags.forEach((flag) => {
+            if (!app.state.flags.includes(flag)) {
+              app.state.flags.push(flag);
+            }
+          });
+        }
+
+        if (Array.isArray(effects.remove_flags)) {
+          if (!Array.isArray(app.state.flags)) app.state.flags = [];
+          app.state.flags = app.state.flags.filter((flag) => !effects.remove_flags.includes(flag));
+        }
+
+        if (Array.isArray(effects.add_key_items)) {
+          if (!Array.isArray(app.state.key_items)) app.state.key_items = [];
+          effects.add_key_items.forEach((item) => {
+            if (typeof item === "string" && !app.state.key_items.includes(item)) {
+              app.state.key_items.push(item);
+            }
+          });
+        }
+
+        if (Array.isArray(effects.remove_key_items)) {
+          if (!Array.isArray(app.state.key_items)) app.state.key_items = [];
+          app.state.key_items = app.state.key_items.filter((item) => !effects.remove_key_items.includes(item));
+        }
+
+        if (isObject(effects.add_unique)) {
+          for (const [key, delta] of Object.entries(effects.add_unique)) {
+            if (typeof key !== "string" || key.trim() === "" || key.includes(".")) continue;
+            if (typeof delta !== "number") continue;
+            const current = getUniqueValue(key);
+            const base = typeof current === "number" ? current : 0;
+            setUniqueValue(key, base + delta);
+          }
+        }
+
+        if (isObject(effects.set_unique)) {
+          for (const [key, value] of Object.entries(effects.set_unique)) {
+            if (typeof key !== "string" || key.trim() === "" || key.includes(".")) continue;
+            setUniqueValue(key, value);
+          }
+        }
+      }
+
+      function checkConditions(conditions) {
+        if (!conditions || !app.state) return true;
+
+        if (Array.isArray(conditions.required_flags)) {
+          const flags = Array.isArray(app.state.flags) ? app.state.flags : [];
+          for (const flag of conditions.required_flags) {
+            if (!flags.includes(flag)) return false;
+          }
+        }
+
+        if (Array.isArray(conditions.forbidden_flags)) {
+          const flags = Array.isArray(app.state.flags) ? app.state.flags : [];
+          for (const flag of conditions.forbidden_flags) {
+            if (flags.includes(flag)) return false;
+          }
+        }
+
+        const keyItems = Array.isArray(app.state.key_items) ? app.state.key_items : [];
+        if (Array.isArray(conditions.required_key_items)) {
+          for (const item of conditions.required_key_items) {
+            if (!keyItems.includes(item)) return false;
+          }
+        }
+
+        if (Array.isArray(conditions.forbidden_key_items)) {
+          for (const item of conditions.forbidden_key_items) {
+            if (keyItems.includes(item)) return false;
+          }
+        }
+
+        if (isObject(conditions.min)) {
+          for (const [path, minValue] of Object.entries(conditions.min)) {
+            const current = getValueByPath(app.state, path);
+            if (typeof current !== "number" || current < minValue) return false;
+          }
+        }
+
+        if (isObject(conditions.max)) {
+          for (const [path, maxValue] of Object.entries(conditions.max)) {
+            const current = getValueByPath(app.state, path);
+            if (typeof current !== "number" || current > maxValue) return false;
+          }
+        }
+
+        if (isObject(conditions.min_unique)) {
+          for (const [key, minValue] of Object.entries(conditions.min_unique)) {
+            const current = getUniqueValue(key);
+            if (typeof current !== "number" || current < minValue) return false;
+          }
+        }
+
+        if (isObject(conditions.max_unique)) {
+          for (const [key, maxValue] of Object.entries(conditions.max_unique)) {
+            const current = getUniqueValue(key);
+            if (typeof current !== "number" || current > maxValue) return false;
+          }
+        }
+
+        return true;
+      }
+
+      function tryGameOverTransition() {
+        const hp = getHealthValue();
+        if (hp === null || hp > 0 || !app.script) {
+          app.hpZeroEventStreak = 0;
+          return false;
+        }
+
+        app.hpZeroEventStreak += 1;
+        if (app.hpZeroEventStreak >= app.hpZeroEventLimit) {
+          addLog(`GameOver: 体力0イベントが連続${app.hpZeroEventStreak}回のためタイトルへ戻します`);
+          if (app.rawScript) {
+            startScript(app.rawScript);
+            setStatus("warn", "体力0イベントの連続発生を検知したため、タイトルへ戻しました。");
+            return true;
+          }
+        }
+
+        const gameOverSceneId = typeof app.script.game_over_scene_id === "string" ? app.script.game_over_scene_id.trim() : "";
+        if (gameOverSceneId !== "") {
+          const gameOverScene = getSceneById(gameOverSceneId);
+          if (gameOverScene) {
+            addLog(`GameOver: HP<=0 により ${gameOverSceneId} へ遷移`);
+            enterScene(gameOverSceneId);
+            setStatus("fail", "体力が0以下になったため、ゲームオーバーへ遷移しました。");
+            return true;
+          }
+        }
+
+        renderHeader();
+        el.currentSceneIdText.textContent = "GAME OVER";
+        el.sceneTitle.textContent = "ゲームオーバー";
+        el.speakerLine.textContent = "";
+        appendMessage("体力が尽きました。");
+        renderMessageWindow();
+        el.choiceList.innerHTML = "";
+        addLog("GameOver: HP<=0（専用シーン未設定）");
+        setStatus("fail", "体力が0以下です。game_over_scene_id が未設定のため、標準ゲームオーバー表示です。");
+        return true;
+      }
+
+      function renderScene() {
+        if (!app.script || !app.currentSceneId) {
+          el.sceneTitle.textContent = "-";
+          el.speakerLine.textContent = "";
+          el.textArea.innerHTML = "";
+          el.choiceList.innerHTML = "";
+          renderHeader();
+          return;
+        }
+
+        const scene = getSceneById(app.currentSceneId);
+        if (!scene) {
+          setStatus("fail", `scene が見つかりません: ${app.currentSceneId}`);
+          return;
+        }
+
+        renderHeader();
+        el.sceneTitle.textContent = scene.title || scene.id;
+        el.speakerLine.textContent = scene.speaker ? scene.speaker : "";
+        renderMessageWindow();
+        refreshOptions(scene);
+      }
+
+      function refreshOptions(scene) {
+        el.choiceList.innerHTML = "";
+
+        function renderSelectable(option, kind, index) {
+          const conditionOk = checkConditions(option.conditions);
+          const hiddenWhenDisabled = option.hidden_when_disabled === true;
+          const disabledText = typeof option.disabled_text === "string" && option.disabled_text.trim() !== ""
+            ? option.disabled_text
+            : option.text;
+          const label = conditionOk ? option.text : disabledText;
+
+          if (!conditionOk && hiddenWhenDisabled) return;
+
+          const button = document.createElement("button");
+          button.type = "button";
+          button.className = "choice-button";
+          button.textContent = `${index}. ${label}`;
+
+          if (conditionOk) {
+            if (kind === "choice") {
+              button.addEventListener("click", () => choose(option));
+            } else {
+              button.addEventListener("click", () => runAction(option));
+            }
+          } else {
+            if (typeof option.failure_message === "string" && option.failure_message.trim() !== "") {
+              button.addEventListener("click", () => {
+                const msg = option.failure_message;
+                appendMessage(`▶ ${option.text}`);
+                appendMessage(msg);
+                renderScene();
+                setStatus("warn", msg);
+                addLog(`Blocked ${kind}: ${option.text} -> ${msg}`);
+              });
+            } else {
+              button.disabled = true;
+            }
+          }
+
+          el.choiceList.appendChild(button);
+        }
+
+        const options = [];
+        const actions = Array.isArray(scene.actions) ? scene.actions : [];
+        const choices = Array.isArray(scene.choices) ? scene.choices : [];
+
+        actions.forEach((a) => { if (isObject(a) && typeof a.text === "string") options.push({ kind: "action", option: a }); });
+        choices.forEach((c) => { if (isObject(c) && typeof c.text === "string") options.push({ kind: "choice", option: c }); });
+
+        let displayIndex = 1;
+        options.forEach(({ kind, option }) => {
+          renderSelectable(option, kind, displayIndex);
+          displayIndex += 1;
+        });
+
+        if (el.choiceList.children.length === 0) {
+          setStatus("fail", "利用可能な選択肢/操作がありません。台本条件を確認してください。");
+          return;
+        }
+
+        setStatus("ok", "選択肢または操作を選んで進めてください。");
+      }
+
+      function enterScene(sceneId) {
+        app.currentSceneId = sceneId;
+        const scene = getSceneById(sceneId);
+        if (!scene) {
+          renderScene();
+          return;
+        }
+        appendSceneMessages(scene);
+        renderScene();
+      }
+
+      function renderEnd() {
+        renderHeader();
+        el.currentSceneIdText.textContent = "END";
+        el.sceneTitle.textContent = "終了";
+        el.speakerLine.textContent = "";
+        appendMessage("この話はこれで終わりです。");
+        renderMessageWindow();
+        el.choiceList.innerHTML = "";
+
+        const restartLikeButton = document.createElement("button");
+        restartLikeButton.type = "button";
+        restartLikeButton.className = "choice-button";
+        restartLikeButton.textContent = "最初からやり直す";
+        restartLikeButton.addEventListener("click", () => {
+          if (!app.rawScript) {
+            setStatus("warn", "まだ読み込まれた台本がありません。");
+            return;
+          }
+          startScript(app.rawScript);
+          setStatus("ok", "最初からやり直しました。");
+        });
+        el.choiceList.appendChild(restartLikeButton);
+
+        const continuationButton = document.createElement("button");
+        continuationButton.type = "button";
+        continuationButton.className = "choice-button";
+        continuationButton.textContent = "続篇用プロンプトをコピー";
+        continuationButton.addEventListener("click", copyContinuationPrompt);
+        el.choiceList.appendChild(continuationButton);
+
+        setStatus("ok", "エンディングに到達しました。続篇用プロンプトのコピーか、最初からやり直しを選べます。");
+      }
+
+
+      function runAction(action) {
+        const scene = getSceneById(app.currentSceneId);
+        app.step += 1;
+        addLog([`Step ${app.step}`, `Scene: ${scene ? scene.id : "-"}`, `Action: ${action.text}`].join("\n"));
+        appendMessage(`▶ ${action.text}`);
+
+        if (!checkConditions(action.conditions)) {
+          const message = typeof action.failure_message === "string" ? action.failure_message : "条件を満たしていません。";
+          appendMessage(message);
+          renderScene();
+          setStatus("warn", message);
+          return;
+        }
+
+        applyEffects(action.effects);
+
+        if (typeof action.success_message === "string" && action.success_message.trim() !== "") {
+          appendMessage(action.success_message);
+        }
+
+        if (tryGameOverTransition()) return;
+
+        if (action.next_scene_id === null) {
+          renderEnd();
+          return;
+        }
+
+        if (typeof action.next_scene_id === "string" && action.next_scene_id.trim() !== "") {
+          enterScene(action.next_scene_id);
+          return;
+        }
+
+        renderScene();
+      }
+
+      function choose(choice) {
+        const scene = getSceneById(app.currentSceneId);
+        app.step += 1;
+
+        addLog(
+          [
+            `Step ${app.step}`,
+            `Scene: ${scene ? scene.id : "-"}`,
+            `Choice: ${choice.text}`
+          ].join("\n")
+        );
+
+        appendMessage(`▶ ${choice.text}`);
+
+        applyEffects(choice.effects);
+
+        if (choice.next_scene_id === null) {
+          renderEnd();
+          return;
+        }
+
+        const gameOverSceneId = typeof app.script?.game_over_scene_id === "string"
+          ? app.script.game_over_scene_id.trim()
+          : "";
+        const isInsideGameOverScene = gameOverSceneId !== "" && app.currentSceneId === gameOverSceneId;
+
+        if (!isInsideGameOverScene && tryGameOverTransition()) {
+          return;
+        }
+
+        enterScene(choice.next_scene_id);
+      }
+
+      function startScript(data) {
+        app.rawScript = deepClone(data);
+        app.script = deepClone(data);
+        app.state = deepClone(data.initial_state || {});
+        if (!Array.isArray(app.state.flags)) {
+          app.state.flags = [];
+        }
+        if (!Array.isArray(app.state.key_items)) {
+          app.state.key_items = [];
+        }
+        if (!isObject(app.state.unique)) {
+          app.state.unique = {};
+        }
+        app.currentSceneId = data.start_scene_id;
+        app.step = 0;
+        app.log = [];
+        app.messageHistory = [];
+        app.hpZeroEventStreak = 0;
+        addLog(`開始: ${data.title}`);
+
+        if (tryGameOverTransition()) {
+          return;
+        }
+        enterScene(data.start_scene_id);
+      }
+
+      async function copyCurrentState() {
+        const payload = {
+          title: app.script ? app.script.title : null,
+          current_scene_id: app.currentSceneId,
+          step: app.step,
+          state: app.state,
+          log: app.log
+        };
+        await copyTextToClipboard(JSON.stringify(payload, null, 2));
+      }
+
+      function buildContinuationPrompt() {
+        const payload = {
+          title: app.script ? app.script.title : null,
+          current_scene_id: app.currentSceneId || null,
+          step: app.step,
+          game_over_scene_id: app.script?.game_over_scene_id ?? null,
+          health: getHealthValue(),
+          flags: Array.isArray(app.state?.flags) ? app.state.flags : [],
+          key_items: Array.isArray(app.state?.key_items) ? app.state.key_items : [],
+          unique: isObject(app.state?.unique) ? app.state.unique : {},
+          state: app.state,
+          log: Array.isArray(app.log) ? app.log : []
+        };
+
+        return [
+          "以下の引き継ぎ情報を使って、続篇となる新しいJSON台本を1つ作成してください。",
+          "既存JSONへの追記ではなく、新しい別JSONとして作成してください。",
+          "前回の state を initial_state に引き継ぎ、flags / key_items / unique を保持してください。",
+          "scene.id は意味ベースID（snake_case または kebab-case）を使い、choices と actions を分けてください。",
+          "未使用のパラメータを作らず、一度きり action には再実行防止（forbidden_flags + set_flags 等）を入れてください。",
+          "",
+          "【引き継ぎ情報(JSON)】",
+          JSON.stringify(payload, null, 2),
+          "",
+          "【出力形式】",
+          "- コードブロックは1つのみ",
+          "- コードブロックの中身は純粋なJSONのみ",
+          "- JSON以外の説明文・前置き・注釈は禁止"
+        ].join("\n");
+      }
+
+      async function copyContinuationPrompt() {
+        try {
+          const prompt = buildContinuationPrompt();
+          await copyTextToClipboard(prompt);
+          setStatus("ok", "続篇作成用プロンプトをクリップボードへコピーしました。");
+        } catch (error) {
+          setStatus("fail", `続篇プロンプトコピー失敗: ${error instanceof Error ? error.message : String(error)}`);
+        }
+      }
+
+      function validateScript(data) {
+        const errors = [];
+
+        if (!isObject(data)) {
+          errors.push("JSON全体はオブジェクトである必要があります。");
+          return errors;
+        }
+
+        if (typeof data.title !== "string" || data.title.trim() === "") {
+          errors.push("title は空でない文字列である必要があります。");
+        }
+
+        if (!isObject(data.initial_state)) {
+          errors.push("initial_state はオブジェクトである必要があります。");
+        }
+
+        if (isObject(data.initial_state) && data.initial_state.unique !== undefined && !isObject(data.initial_state.unique)) {
+          errors.push("initial_state.unique はオブジェクトである必要があります。");
+        }
+
+        if (typeof data.start_scene_id !== "string" || data.start_scene_id.trim() === "") {
+          errors.push("start_scene_id は空でない文字列である必要があります。");
+        }
+
+        if (data.game_over_scene_id !== undefined) {
+          if (typeof data.game_over_scene_id !== "string" || data.game_over_scene_id.trim() === "") {
+            errors.push("game_over_scene_id は空でない文字列である必要があります（未使用なら省略してください）。");
+          }
+        }
+
+        if (!Array.isArray(data.scenes) || data.scenes.length === 0) {
+          errors.push("scenes は1件以上の配列である必要があります。");
+          return errors;
+        }
+
+        const sceneIds = new Set();
+
+        data.scenes.forEach((scene, index) => {
+          const label = `scenes[${index}]`;
+
+          if (!isObject(scene)) {
+            errors.push(`${label} はオブジェクトである必要があります。`);
+            return;
+          }
+
+          if (typeof scene.id !== "string" || scene.id.trim() === "") {
+            errors.push(`${label}.id は空でない文字列である必要があります。`);
+          } else {
+            if (!isMeaningfulSceneId(scene.id)) {
+              errors.push(`${label}.id は意味ベース英小文字ID（snake_case / kebab-case）にしてください: ${scene.id}`);
+            }
+            if (sceneIds.has(scene.id)) {
+              errors.push(`${label}.id が重複しています: ${scene.id}`);
+            }
+            sceneIds.add(scene.id);
+          }
+
+          if (scene.speaker !== undefined && typeof scene.speaker !== "string") {
+            errors.push(`${label}.speaker は文字列である必要があります。`);
+          }
+
+          if (typeof scene.title !== "string") {
+            errors.push(`${label}.title は文字列である必要があります。`);
+          }
+
+          if (!Array.isArray(scene.text) || scene.text.length === 0) {
+            errors.push(`${label}.text は1件以上の文字列配列である必要があります。`);
+          } else {
+            scene.text.forEach((line, textIndex) => {
+              if (typeof line !== "string") {
+                errors.push(`${label}.text[${textIndex}] は文字列である必要があります。`);
+              }
+            });
+          }
+
+          if (scene.area_id !== undefined && typeof scene.area_id !== "string") {
+            errors.push(`${label}.area_id は文字列である必要があります。`);
+          }
+
+          if (scene.scene_type !== undefined && typeof scene.scene_type !== "string") {
+            errors.push(`${label}.scene_type は文字列である必要があります。`);
+          }
+
+          if (scene.on_enter !== undefined && !Array.isArray(scene.on_enter)) {
+            errors.push(`${label}.on_enter は配列である必要があります。`);
+          }
+
+          if (scene.on_enter_once !== undefined && !Array.isArray(scene.on_enter_once)) {
+            errors.push(`${label}.on_enter_once は配列である必要があります。`);
+          }
+
+          if (scene.conditional_texts !== undefined) {
+            if (!Array.isArray(scene.conditional_texts)) {
+              errors.push(`${label}.conditional_texts は配列である必要があります。`);
+            } else {
+              scene.conditional_texts.forEach((entry, entryIndex) => {
+                const tLabel = `${label}.conditional_texts[${entryIndex}]`;
+                if (!isObject(entry)) {
+                  errors.push(`${tLabel} はオブジェクトである必要があります。`);
+                  return;
+                }
+                if (entry.conditions !== undefined && !isObject(entry.conditions)) {
+                  errors.push(`${tLabel}.conditions はオブジェクトである必要があります。`);
+                }
+                const isValidText = typeof entry.text === "string" || (Array.isArray(entry.text) && entry.text.every((t) => typeof t === "string"));
+                if (!isValidText) {
+                  errors.push(`${tLabel}.text は文字列または文字列配列である必要があります。`);
+                }
+              });
+            }
+          }
+
+          const choiceList = Array.isArray(scene.choices) ? scene.choices : [];
+          const actionList = Array.isArray(scene.actions) ? scene.actions : [];
+          if (choiceList.length === 0 && actionList.length === 0) {
+            errors.push(`${label}.choices または ${label}.actions のいずれか1件以上が必要です。`);
+          }
+
+          const validateOption = (option, oLabel) => {
+            if (!isObject(option)) {
+              errors.push(`${oLabel} はオブジェクトである必要があります。`);
+              return;
+            }
+            if (typeof option.text !== "string" || option.text.trim() === "") {
+              errors.push(`${oLabel}.text は空でない文字列である必要があります。`);
+            }
+            if (option.next_scene_id !== undefined && option.next_scene_id !== null && typeof option.next_scene_id !== "string") {
+              errors.push(`${oLabel}.next_scene_id は文字列または null である必要があります。`);
+            }
+            if (option.effects !== undefined && !isObject(option.effects)) {
+              errors.push(`${oLabel}.effects はオブジェクトである必要があります。`);
+            }
+            if (option.conditions !== undefined && !isObject(option.conditions)) {
+              errors.push(`${oLabel}.conditions はオブジェクトである必要があります。`);
+            }
+            if (option.disabled_text !== undefined && typeof option.disabled_text !== "string") {
+              errors.push(`${oLabel}.disabled_text は文字列である必要があります。`);
+            }
+            if (option.hidden_when_disabled !== undefined && typeof option.hidden_when_disabled !== "boolean") {
+              errors.push(`${oLabel}.hidden_when_disabled は boolean である必要があります。`);
+            }
+            if (option.failure_message !== undefined && typeof option.failure_message !== "string") {
+              errors.push(`${oLabel}.failure_message は文字列である必要があります。`);
+            }
+            if (option.conditions && option.conditions.required_key_items !== undefined && !Array.isArray(option.conditions.required_key_items)) {
+              errors.push(`${oLabel}.conditions.required_key_items は配列である必要があります。`);
+            }
+            if (option.conditions && option.conditions.forbidden_key_items !== undefined && !Array.isArray(option.conditions.forbidden_key_items)) {
+              errors.push(`${oLabel}.conditions.forbidden_key_items は配列である必要があります。`);
+            }
+          };
+
+          choiceList.forEach((choice, choiceIndex) => {
+            const cLabel = `${label}.choices[${choiceIndex}]`;
+            validateOption(choice, cLabel);
+          });
+
+          actionList.forEach((action, actionIndex) => {
+            const aLabel = `${label}.actions[${actionIndex}]`;
+            validateOption(action, aLabel);
+          });
+
+          const nonNullNextIds = choiceList
+            .map((choice) => choice.next_scene_id)
+            .filter((id) => typeof id === "string" && id.trim() !== "");
+
+          if (choiceList.length >= 2 && nonNullNextIds.length >= 2) {
+            const uniqueIds = new Set(nonNullNextIds);
+            if (uniqueIds.size === 1) {
+              errors.push(`${label}.choices が見せかけ分岐になっています。2択以上ある場合は別々の next_scene_id を指定してください。`);
+            }
+          }
+        });
+
+        if (typeof data.start_scene_id === "string" && data.start_scene_id.trim() !== "") {
+          const exists = data.scenes.some((scene) => scene.id === data.start_scene_id);
+          if (!exists) {
+            errors.push("start_scene_id に対応する scene が存在しません。");
+          }
+        }
+
+        if (typeof data.game_over_scene_id === "string" && data.game_over_scene_id.trim() !== "") {
+          const exists = data.scenes.some((scene) => scene.id === data.game_over_scene_id);
+          if (!exists) {
+            errors.push("game_over_scene_id に対応する scene が存在しません。");
+          }
+        }
+
+        data.scenes.forEach((scene, index) => {
+          const buckets = [
+            { key: "choices", list: Array.isArray(scene.choices) ? scene.choices : [] },
+            { key: "actions", list: Array.isArray(scene.actions) ? scene.actions : [] }
+          ];
+          buckets.forEach(({ key, list }) => {
+            list.forEach((item, itemIndex) => {
+              if (typeof item.next_scene_id === "string" && item.next_scene_id.trim() !== "") {
+                const exists = data.scenes.some((s) => s.id === item.next_scene_id);
+                if (!exists) {
+                  errors.push(`scenes[${index}].${key}[${itemIndex}].next_scene_id が存在しません: ${item.next_scene_id}`);
+                }
+              }
+            });
+          });
+        });
+
+        return errors;
+      }
+      const exampleScript = deepClone(SAMPLE_SCENARIO);
+
+      function loadExample() {
+        el.scriptInput.value = JSON.stringify(exampleScript, null, 2);
+        setStatus("ok", "サンプルJSONを読み込みました。");
+      }
+
+      async function handleCopyPrompt() {
+        try {
+          const mode = el.promptModeSelect.value;
+          await copyTextToClipboard(getPromptByMode(mode));
+          setStatus(
+            "ok",
+            mode === "shindo"
+              ? "新堂誠用プロンプトをクリップボードへコピーしました。"
+              : "汎用プロンプトをクリップボードへコピーしました。"
+          );
+        } catch (error) {
+          setStatus("fail", `コピー失敗: ${error instanceof Error ? error.message : String(error)}`);
+        }
+      }
+
+      async function handlePasteScript() {
+        try {
+          el.scriptInput.value = "";
+          el.scriptInput.value = await readTextFromClipboard();
+          setStatus("ok", "JSON入力欄を全削除し、クリップボードの内容を貼り付けました。");
+        } catch (error) {
+          setStatus("fail", `貼り付け失敗: ${error instanceof Error ? error.message : String(error)}`);
+        }
+      }
+
+      function loadScriptFromTextarea() {
+        const parse = safeParseJson(el.scriptInput.value.trim());
+        if (!parse.ok) {
+          setStatus("fail", `JSON解析失敗:\n${parse.error}`);
+          return;
+        }
+
+        const errors = validateScript(parse.data);
+        if (errors.length > 0) {
+          setStatus("fail", `台本エラー:\n${errors.join("\n")}`);
+          return;
+        }
+
+        startScript(parse.data);
+        setStatus("ok", "台本を読み込みました。");
+      }
+
+      function restartScript() {
+        if (!app.rawScript) {
+          setStatus("warn", "まだ読み込まれた台本がありません。");
+          return;
+        }
+        startScript(app.rawScript);
+        setStatus("ok", "最初からやり直しました。");
+      }
+
+      el.loadExampleButton.addEventListener("click", loadExample);
+      el.copyPromptButton.addEventListener("click", handleCopyPrompt);
+      el.pasteScriptButton.addEventListener("click", handlePasteScript);
+      el.loadScriptButton.addEventListener("click", loadScriptFromTextarea);
+      el.restartButton.addEventListener("click", restartScript);
+      el.copyStatusButton.addEventListener("click", async () => {
+        try {
+          await copyTextToClipboard(el.globalStatus.textContent || "");
+          setStatus("ok", "通知欄の内容をコピーしました。AIへそのまま貼り付けできます。");
+        } catch (error) {
+          setStatus("fail", `通知コピー失敗: ${error instanceof Error ? error.message : String(error)}`);
+        }
+      });
+
+      el.copyStateButton.addEventListener("click", async () => {
+        try {
+          await copyCurrentState();
+          setStatus("ok", "現在状態をクリップボードへコピーしました。");
+        } catch (error) {
+          setStatus("fail", `コピー失敗: ${error instanceof Error ? error.message : String(error)}`);
+        }
+      });
+
+      el.copyContinuationButton.addEventListener("click", copyContinuationPrompt);
+
+      renderHeader();
+      renderLog();
+      loadExample();
+    })();
+  </script>
+</body>
+</html>

@@ -306,6 +306,14 @@
     </div>
 
     <div class="card">
+      <h2>状態</h2>
+      <div class="topbar">
+        <div class="pill"><strong>キーアイテム:</strong> <span id="keyItemsText">-</span></div>
+      </div>
+      <div id="statePreview" class="status"></div>
+    </div>
+
+    <div class="card">
       <h2>本文</h2>
       <div id="sceneTitle" class="scene-title">-</div>
       <div id="speakerLine" class="speaker-line"></div>
@@ -392,6 +400,8 @@
         currentSceneIdText: document.getElementById("currentSceneIdText"),
         stepText: document.getElementById("stepText"),
         healthText: document.getElementById("healthText"),
+        keyItemsText: document.getElementById("keyItemsText"),
+        statePreview: document.getElementById("statePreview"),
         sceneTitle: document.getElementById("sceneTitle"),
         speakerLine: document.getElementById("speakerLine"),
         textArea: document.getElementById("textArea"),
@@ -406,7 +416,9 @@
         currentSceneId: "",
         step: 0,
         log: [],
-        currentTextIndex: 0
+        currentTextIndex: 0,
+        hpZeroEventStreak: 0,
+        hpZeroEventLimit: 3
       };
 
       const SHINDO_BASE_PROMPT = [
@@ -444,7 +456,7 @@
         "- choices は1件以上の配列にすること",
         "- 各 choice は text を必ず持つこと",
         "- 各 choice は next_scene_id を持ち、次の scene id または null を入れること",
-        "- choice に effects を付ける場合は add / set / set_flags / remove_flags を使ってよい",
+        "- choice に effects を付ける場合は add / set / set_flags / remove_flags / add_key_items / remove_key_items を使ってよい",
         "- choice に conditions を付ける場合は required_flags / forbidden_flags / min / max を使ってよい",
         "- 体力管理を入れる場合は initial_state に health / hp / 体力 のいずれかを数値で入れること",
         "- 体力が0以下でゲームオーバーにしたい場合は game_over_scene_id を指定し、対応する scene を必ず作ること",
@@ -683,7 +695,7 @@
         "- choices は1件以上の配列にすること",
         "- 各 choice は text を必ず持つこと",
         "- 各 choice は next_scene_id を持ち、次の scene id または null を入れること",
-        "- choice に effects を付ける場合は add / set / set_flags / remove_flags を使ってよい",
+        "- choice に effects を付ける場合は add / set / set_flags / remove_flags / add_key_items / remove_key_items を使ってよい",
         "- choice に conditions を付ける場合は required_flags / forbidden_flags / min / max を使ってよい",
         "- 体力管理を入れる場合は initial_state に health / hp / 体力 のいずれかを数値で入れること",
         "- 体力が0以下でゲームオーバーにしたい場合は game_over_scene_id を指定し、対応する scene を必ず作ること",
@@ -925,6 +937,19 @@
         el.stepText.textContent = String(app.step);
         const hp = getHealthValue();
         el.healthText.textContent = hp === null ? "-" : String(hp);
+        renderStatePanel();
+      }
+
+      function renderStatePanel() {
+        if (!app.state || !isObject(app.state)) {
+          el.keyItemsText.textContent = "-";
+          el.statePreview.textContent = "状態データなし";
+          return;
+        }
+
+        const keyItems = Array.isArray(app.state.key_items) ? app.state.key_items : [];
+        el.keyItemsText.textContent = keyItems.length > 0 ? keyItems.join(" / ") : "なし";
+        el.statePreview.textContent = JSON.stringify(app.state, null, 2);
       }
 
       function renderLog() {
@@ -1008,6 +1033,20 @@
           if (!Array.isArray(app.state.flags)) app.state.flags = [];
           app.state.flags = app.state.flags.filter((flag) => !effects.remove_flags.includes(flag));
         }
+
+        if (Array.isArray(effects.add_key_items)) {
+          if (!Array.isArray(app.state.key_items)) app.state.key_items = [];
+          effects.add_key_items.forEach((item) => {
+            if (typeof item === "string" && !app.state.key_items.includes(item)) {
+              app.state.key_items.push(item);
+            }
+          });
+        }
+
+        if (Array.isArray(effects.remove_key_items)) {
+          if (!Array.isArray(app.state.key_items)) app.state.key_items = [];
+          app.state.key_items = app.state.key_items.filter((item) => !effects.remove_key_items.includes(item));
+        }
       }
 
       function checkConditions(conditions) {
@@ -1047,7 +1086,18 @@
       function tryGameOverTransition() {
         const hp = getHealthValue();
         if (hp === null || hp > 0 || !app.script) {
+          app.hpZeroEventStreak = 0;
           return false;
+        }
+
+        app.hpZeroEventStreak += 1;
+        if (app.hpZeroEventStreak >= app.hpZeroEventLimit) {
+          addLog(`GameOver: 体力0イベントが連続${app.hpZeroEventStreak}回のためタイトルへ戻します`);
+          if (app.rawScript) {
+            startScript(app.rawScript);
+            setStatus("warn", "体力0イベントの連続発生を検知したため、タイトルへ戻しました。");
+            return true;
+          }
         }
 
         const gameOverSceneId = typeof app.script.game_over_scene_id === "string" ? app.script.game_over_scene_id.trim() : "";
@@ -1211,10 +1261,14 @@
         if (!Array.isArray(app.state.flags)) {
           app.state.flags = [];
         }
+        if (!Array.isArray(app.state.key_items)) {
+          app.state.key_items = [];
+        }
         app.currentSceneId = data.start_scene_id;
         app.step = 0;
         app.log = [];
         app.currentTextIndex = 0;
+        app.hpZeroEventStreak = 0;
         addLog(`開始: ${data.title}`);
 
         if (tryGameOverTransition()) {
@@ -1378,7 +1432,8 @@
           "player_name": "探索者",
           "体力": 100,
           "location": "浸水した実験室",
-          "flags": []
+          "flags": [],
+          "key_items": []
         },
         "start_scene_id": "a",
         "game_over_scene_id": "game_over",

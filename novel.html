@@ -264,6 +264,9 @@
     <div class="card">
       <h2>通知</h2>
       <div id="globalStatus" class="status warn">サンプルを読むか、AI用プロンプトをコピーしてJSONを作ってください。</div>
+      <div class="row" style="margin-top: 10px;">
+        <button id="copyStatusButton" class="button secondary" type="button">通知をコピー</button>
+      </div>
     </div>
 
     <div class="card">
@@ -395,6 +398,7 @@
         loadScriptButton: document.getElementById("loadScriptButton"),
         restartButton: document.getElementById("restartButton"),
         copyStateButton: document.getElementById("copyStateButton"),
+        copyStatusButton: document.getElementById("copyStatusButton"),
         globalStatus: document.getElementById("globalStatus"),
         gameTitle: document.getElementById("gameTitle"),
         currentSceneIdText: document.getElementById("currentSceneIdText"),
@@ -456,10 +460,13 @@
         "- choices は1件以上の配列にすること",
         "- 各 choice は text を必ず持つこと",
         "- 各 choice は next_scene_id を持ち、次の scene id または null を入れること",
-        "- choice に effects を付ける場合は add / set / set_flags / remove_flags / add_key_items / remove_key_items を使ってよい",
-        "- choice に conditions を付ける場合は required_flags / forbidden_flags / min / max を使ってよい",
+        "- choice に effects を付ける場合は add / set / set_flags / remove_flags / add_key_items / remove_key_items / add_unique / set_unique を使ってよい",
+        "- choice に conditions を付ける場合は required_flags / forbidden_flags / min / max / min_unique / max_unique を使ってよい",
         "- 体力管理を入れる場合は initial_state に health / hp / 体力 のいずれかを数値で入れること",
         "- 体力が0以下でゲームオーバーにしたい場合は game_over_scene_id を指定し、対応する scene を必ず作ること",
+        "- customなパラメータは必ず initial_state.unique 配下で管理すること（例: unique.戦闘力 / unique.露出度 / unique.好感度）",
+        "- unique配下の更新は effects.add_unique / effects.set_unique を使うこと",
+        "- unique配下の条件分岐は conditions.min_unique / conditions.max_unique を使うこと",
         "- 登場人物名、本文、選択肢は自然な日本語にすること",
         "- 2択以上の分岐では、各 choice は必ず別々の next_scene_id を持つこと",
         "- 同じ scene から複数の choice が完全に同じ next_scene_id を指す見せかけ分岐は禁止",
@@ -695,10 +702,13 @@
         "- choices は1件以上の配列にすること",
         "- 各 choice は text を必ず持つこと",
         "- 各 choice は next_scene_id を持ち、次の scene id または null を入れること",
-        "- choice に effects を付ける場合は add / set / set_flags / remove_flags / add_key_items / remove_key_items を使ってよい",
-        "- choice に conditions を付ける場合は required_flags / forbidden_flags / min / max を使ってよい",
+        "- choice に effects を付ける場合は add / set / set_flags / remove_flags / add_key_items / remove_key_items / add_unique / set_unique を使ってよい",
+        "- choice に conditions を付ける場合は required_flags / forbidden_flags / min / max / min_unique / max_unique を使ってよい",
         "- 体力管理を入れる場合は initial_state に health / hp / 体力 のいずれかを数値で入れること",
         "- 体力が0以下でゲームオーバーにしたい場合は game_over_scene_id を指定し、対応する scene を必ず作ること",
+        "- customなパラメータは必ず initial_state.unique 配下で管理すること（例: unique.戦闘力 / unique.露出度 / unique.好感度）",
+        "- unique配下の更新は effects.add_unique / effects.set_unique を使うこと",
+        "- unique配下の条件分岐は conditions.min_unique / conditions.max_unique を使うこと",
         "- 新堂誠の話として自然な日本語にすること",
         "",
         "【出力形式】",
@@ -1003,6 +1013,22 @@
         setValueByPath(target, path, base + delta);
       }
 
+      function ensureUniqueState() {
+        if (!isObject(app.state.unique)) {
+          app.state.unique = {};
+        }
+      }
+
+      function getUniqueValue(key) {
+        ensureUniqueState();
+        return app.state.unique[key];
+      }
+
+      function setUniqueValue(key, value) {
+        ensureUniqueState();
+        app.state.unique[key] = value;
+      }
+
       function applyEffects(effects) {
         if (!effects || !app.state) return;
 
@@ -1047,6 +1073,23 @@
           if (!Array.isArray(app.state.key_items)) app.state.key_items = [];
           app.state.key_items = app.state.key_items.filter((item) => !effects.remove_key_items.includes(item));
         }
+
+        if (isObject(effects.add_unique)) {
+          for (const [key, delta] of Object.entries(effects.add_unique)) {
+            if (typeof key !== "string" || key.trim() === "" || key.includes(".")) continue;
+            if (typeof delta !== "number") continue;
+            const current = getUniqueValue(key);
+            const base = typeof current === "number" ? current : 0;
+            setUniqueValue(key, base + delta);
+          }
+        }
+
+        if (isObject(effects.set_unique)) {
+          for (const [key, value] of Object.entries(effects.set_unique)) {
+            if (typeof key !== "string" || key.trim() === "" || key.includes(".")) continue;
+            setUniqueValue(key, value);
+          }
+        }
       }
 
       function checkConditions(conditions) {
@@ -1076,6 +1119,20 @@
         if (isObject(conditions.max)) {
           for (const [path, maxValue] of Object.entries(conditions.max)) {
             const current = getValueByPath(app.state, path);
+            if (typeof current !== "number" || current > maxValue) return false;
+          }
+        }
+
+        if (isObject(conditions.min_unique)) {
+          for (const [key, minValue] of Object.entries(conditions.min_unique)) {
+            const current = getUniqueValue(key);
+            if (typeof current !== "number" || current < minValue) return false;
+          }
+        }
+
+        if (isObject(conditions.max_unique)) {
+          for (const [key, maxValue] of Object.entries(conditions.max_unique)) {
+            const current = getUniqueValue(key);
             if (typeof current !== "number" || current > maxValue) return false;
           }
         }
@@ -1264,6 +1321,9 @@
         if (!Array.isArray(app.state.key_items)) {
           app.state.key_items = [];
         }
+        if (!isObject(app.state.unique)) {
+          app.state.unique = {};
+        }
         app.currentSceneId = data.start_scene_id;
         app.step = 0;
         app.log = [];
@@ -1302,6 +1362,10 @@
 
         if (!isObject(data.initial_state)) {
           errors.push("initial_state はオブジェクトである必要があります。");
+        }
+
+        if (isObject(data.initial_state) && data.initial_state.unique !== undefined && !isObject(data.initial_state.unique)) {
+          errors.push("initial_state.unique はオブジェクトである必要があります。");
         }
 
         if (typeof data.start_scene_id !== "string" || data.start_scene_id.trim() === "") {
@@ -1382,6 +1446,47 @@
               if (choice.conditions !== undefined && !isObject(choice.conditions)) {
                 errors.push(`${cLabel}.conditions はオブジェクトである必要があります。`);
               }
+
+              if (isObject(choice.effects?.add_unique)) {
+                for (const [key, value] of Object.entries(choice.effects.add_unique)) {
+                  if (key.trim() === "" || key.includes(".")) {
+                    errors.push(`${cLabel}.effects.add_unique のキーは空不可・ドット不可です: ${key}`);
+                  }
+                  if (typeof value !== "number") {
+                    errors.push(`${cLabel}.effects.add_unique.${key} は数値である必要があります。`);
+                  }
+                }
+              }
+
+              if (isObject(choice.effects?.set_unique)) {
+                for (const key of Object.keys(choice.effects.set_unique)) {
+                  if (key.trim() === "" || key.includes(".")) {
+                    errors.push(`${cLabel}.effects.set_unique のキーは空不可・ドット不可です: ${key}`);
+                  }
+                }
+              }
+
+              if (isObject(choice.conditions?.min_unique)) {
+                for (const [key, value] of Object.entries(choice.conditions.min_unique)) {
+                  if (key.trim() === "" || key.includes(".")) {
+                    errors.push(`${cLabel}.conditions.min_unique のキーは空不可・ドット不可です: ${key}`);
+                  }
+                  if (typeof value !== "number") {
+                    errors.push(`${cLabel}.conditions.min_unique.${key} は数値である必要があります。`);
+                  }
+                }
+              }
+
+              if (isObject(choice.conditions?.max_unique)) {
+                for (const [key, value] of Object.entries(choice.conditions.max_unique)) {
+                  if (key.trim() === "" || key.includes(".")) {
+                    errors.push(`${cLabel}.conditions.max_unique のキーは空不可・ドット不可です: ${key}`);
+                  }
+                  if (typeof value !== "number") {
+                    errors.push(`${cLabel}.conditions.max_unique.${key} は数値である必要があります。`);
+                  }
+                }
+              }
             });
 
             const nonNullNextIds = scene.choices
@@ -1433,7 +1538,12 @@
           "体力": 100,
           "location": "浸水した実験室",
           "flags": [],
-          "key_items": []
+          "key_items": [],
+          "unique": {
+            "戦闘力": 10,
+            "露出度": 0,
+            "好感度": 0
+          }
         },
         "start_scene_id": "a",
         "game_over_scene_id": "game_over",
@@ -1452,6 +1562,9 @@
                 "effects": {
                   "add": {
                     "体力": -40
+                  },
+                  "add_unique": {
+                    "戦闘力": 1
                   }
                 },
                 "next_scene_id": "aa"
@@ -1695,6 +1808,15 @@
       el.pasteScriptButton.addEventListener("click", handlePasteScript);
       el.loadScriptButton.addEventListener("click", loadScriptFromTextarea);
       el.restartButton.addEventListener("click", restartScript);
+      el.copyStatusButton.addEventListener("click", async () => {
+        try {
+          await copyTextToClipboard(el.globalStatus.textContent || "");
+          setStatus("ok", "通知欄の内容をコピーしました。AIへそのまま貼り付けできます。");
+        } catch (error) {
+          setStatus("fail", `通知コピー失敗: ${error instanceof Error ? error.message : String(error)}`);
+        }
+      });
+
       el.copyStateButton.addEventListener("click", async () => {
         try {
           await copyCurrentState();

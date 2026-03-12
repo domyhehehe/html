@@ -42,6 +42,7 @@
       user-select: none;
       -webkit-user-select: none;
       touch-action: manipulation;
+      overscroll-behavior: none;
     }
 
     input, textarea, select, pre, code {
@@ -319,7 +320,6 @@
   <script>
     (() => {
       "use strict";
-
 
       function isObject(value) {
         return value !== null && typeof value === "object" && !Array.isArray(value);
@@ -768,12 +768,13 @@
           el.speakerLine.textContent = "";
           el.textArea.innerHTML = "";
           el.choiceList.innerHTML = "";
+          renderHeader();
           return;
         }
 
         const scene = getSceneById(app.currentSceneId);
         if (!scene) {
-          setStatus("fail", `scene が見つかりません: `);
+          setStatus("fail", `scene が見つかりません: ${app.currentSceneId}`);
           return;
         }
 
@@ -796,7 +797,7 @@
           const button = document.createElement("button");
           button.type = "button";
           button.className = "choice-button";
-          button.textContent = `. `;
+          button.textContent = `${index + 1}. ${choice.text}`;
           button.addEventListener("click", () => choose(choice));
           el.choiceList.appendChild(button);
         });
@@ -825,9 +826,9 @@
 
         addLog(
           [
-            `Step `,
-            `Scene:  "-"`,
-            `Choice: `
+            `Step ${app.step}`,
+            `Scene: ${scene ? scene.id : "-"}`,
+            `Choice: ${choice.text}`
           ].join("\n")
         );
 
@@ -852,7 +853,7 @@
         app.currentSceneId = data.start_scene_id;
         app.step = 0;
         app.log = [];
-        addLog(`開始: `);
+        addLog(`開始: ${data.title}`);
         renderScene();
       }
 
@@ -895,65 +896,65 @@
         const sceneIds = new Set();
 
         data.scenes.forEach((scene, index) => {
-          const label = `scenes[]`;
+          const label = `scenes[${index}]`;
 
           if (!isObject(scene)) {
-            errors.push(` はオブジェクトである必要があります。`);
+            errors.push(`${label} はオブジェクトである必要があります。`);
             return;
           }
 
           if (typeof scene.id !== "string" || scene.id.trim() === "") {
-            errors.push(`.id は空でない文字列である必要があります。`);
+            errors.push(`${label}.id は空でない文字列である必要があります。`);
           } else {
             if (sceneIds.has(scene.id)) {
-              errors.push(`.id が重複しています: `);
+              errors.push(`${label}.id が重複しています: ${scene.id}`);
             }
             sceneIds.add(scene.id);
           }
 
           if (scene.speaker !== undefined && typeof scene.speaker !== "string") {
-            errors.push(`.speaker は文字列である必要があります。`);
+            errors.push(`${label}.speaker は文字列である必要があります。`);
           }
 
           if (typeof scene.title !== "string") {
-            errors.push(`.title は文字列である必要があります。`);
+            errors.push(`${label}.title は文字列である必要があります。`);
           }
 
           if (!Array.isArray(scene.text) || scene.text.length === 0) {
-            errors.push(`.text は1件以上の文字列配列である必要があります。`);
+            errors.push(`${label}.text は1件以上の文字列配列である必要があります。`);
           } else {
             scene.text.forEach((line, textIndex) => {
               if (typeof line !== "string") {
-                errors.push(`.text[] は文字列である必要があります。`);
+                errors.push(`${label}.text[${textIndex}] は文字列である必要があります。`);
               }
             });
           }
 
           if (!Array.isArray(scene.choices) || scene.choices.length === 0) {
-            errors.push(`.choices は1件以上の配列である必要があります。`);
+            errors.push(`${label}.choices は1件以上の配列である必要があります。`);
           } else {
             scene.choices.forEach((choice, choiceIndex) => {
-              const cLabel = `.choices[]`;
+              const cLabel = `${label}.choices[${choiceIndex}]`;
 
               if (!isObject(choice)) {
-                errors.push(` はオブジェクトである必要があります。`);
+                errors.push(`${cLabel} はオブジェクトである必要があります。`);
                 return;
               }
 
               if (typeof choice.text !== "string" || choice.text.trim() === "") {
-                errors.push(`.text は空でない文字列である必要があります。`);
+                errors.push(`${cLabel}.text は空でない文字列である必要があります。`);
               }
 
               if (choice.next_scene_id !== null && typeof choice.next_scene_id !== "string") {
-                errors.push(`.next_scene_id は文字列または null である必要があります。`);
+                errors.push(`${cLabel}.next_scene_id は文字列または null である必要があります。`);
               }
 
               if (choice.effects !== undefined && !isObject(choice.effects)) {
-                errors.push(`.effects はオブジェクトである必要があります。`);
+                errors.push(`${cLabel}.effects はオブジェクトである必要があります。`);
               }
 
               if (choice.conditions !== undefined && !isObject(choice.conditions)) {
-                errors.push(`.conditions はオブジェクトである必要があります。`);
+                errors.push(`${cLabel}.conditions はオブジェクトである必要があります。`);
               }
             });
 
@@ -964,7 +965,7 @@
             if (scene.choices.length >= 2 && nonNullNextIds.length >= 2) {
               const uniqueIds = new Set(nonNullNextIds);
               if (uniqueIds.size === 1) {
-                errors.push(`.choices が見せかけ分岐になっています。2択以上ある場合は別々の next_scene_id を指定してください。`);
+                errors.push(`${label}.choices が見せかけ分岐になっています。2択以上ある場合は別々の next_scene_id を指定してください。`);
               }
             }
           }
@@ -983,7 +984,7 @@
             if (typeof choice.next_scene_id === "string" && choice.next_scene_id.trim() !== "") {
               const exists = data.scenes.some((s) => s.id === choice.next_scene_id);
               if (!exists) {
-                errors.push(`scenes[].choices[].next_scene_id が存在しません: `);
+                errors.push(`scenes[${index}].choices[${choiceIndex}].next_scene_id が存在しません: ${choice.next_scene_id}`);
               }
             }
           });
@@ -1470,9 +1471,12 @@
         try {
           const mode = el.promptModeSelect.value;
           await copyTextToClipboard(getPromptByMode(mode));
-          setStatus("ok", mode === "shindo"
-            ? "新堂誠用プロンプトをクリップボードへコピーしました。"
-            : "汎用プロンプトをクリップボードへコピーしました。");
+          setStatus(
+            "ok",
+            mode === "shindo"
+              ? "新堂誠用プロンプトをクリップボードへコピーしました。"
+              : "汎用プロンプトをクリップボードへコピーしました。"
+          );
         } catch (error) {
           setStatus("fail", `コピー失敗: ${error instanceof Error ? error.message : String(error)}`);
         }

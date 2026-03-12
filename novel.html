@@ -1,0 +1,1537 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"
+  />
+  <title>汎用サウンドノベルJSONランナー 完全版</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --panel: #111827;
+      --panel2: #1f2937;
+      --panel3: #0b1220;
+      --text: #e5e7eb;
+      --muted: #94a3b8;
+      --accent: #38bdf8;
+      --ok: #22c55e;
+      --warn: #f59e0b;
+      --danger: #fb7185;
+      --border: #334155;
+    }
+
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      -webkit-text-size-adjust: 100%;
+    }
+
+    body {
+      min-height: 100vh;
+      padding: 12px;
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: manipulation;
+    }
+
+    input, textarea, select, pre, code {
+      user-select: text;
+      -webkit-user-select: text;
+    }
+
+    .app {
+      max-width: 960px;
+      margin: 0 auto;
+    }
+
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 14px;
+      margin-bottom: 12px;
+    }
+
+    h1, h2, h3, p {
+      margin: 0 0 10px;
+    }
+
+    .row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .button {
+      appearance: none;
+      -webkit-appearance: none;
+      border: 0;
+      border-radius: 12px;
+      padding: 12px 16px;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      background: var(--accent);
+      color: #001018;
+      touch-action: manipulation;
+    }
+
+    .button.secondary {
+      background: var(--panel2);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+
+    .button.ok {
+      background: var(--ok);
+      color: white;
+    }
+
+    .button.danger {
+      background: var(--danger);
+      color: white;
+    }
+
+    .button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .status {
+      white-space: pre-wrap;
+      word-break: break-word;
+      line-height: 1.5;
+      padding: 12px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: var(--panel2);
+    }
+
+    .status.ok {
+      background: rgba(34, 197, 94, 0.12);
+      border-color: rgba(34, 197, 94, 0.4);
+    }
+
+    .status.warn {
+      background: rgba(245, 158, 11, 0.12);
+      border-color: rgba(245, 158, 11, 0.4);
+    }
+
+    .status.fail {
+      background: rgba(251, 113, 133, 0.12);
+      border-color: rgba(251, 113, 133, 0.4);
+    }
+
+    .label {
+      display: block;
+      margin-bottom: 8px;
+      font-size: 14px;
+      color: var(--muted);
+      font-weight: 700;
+    }
+
+    textarea, select {
+      width: 100%;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: #020617;
+      color: var(--text);
+      padding: 12px;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    textarea {
+      min-height: 280px;
+      resize: vertical;
+    }
+
+    .topbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    .pill {
+      background: var(--panel2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 6px 10px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .pill strong {
+      color: var(--text);
+    }
+
+    .scene-title {
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: 10px;
+    }
+
+    .speaker-line {
+      margin-bottom: 10px;
+      font-size: 15px;
+      color: var(--accent);
+      font-weight: 700;
+    }
+
+    .text-block {
+      background: var(--panel3);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px;
+      line-height: 1.8;
+      margin-bottom: 10px;
+      white-space: pre-wrap;
+      font-size: 16px;
+    }
+
+    .choice-list {
+      display: grid;
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .choice-button {
+      width: 100%;
+      text-align: left;
+      padding: 14px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: var(--panel2);
+      color: var(--text);
+      font-size: 15px;
+      cursor: pointer;
+      touch-action: manipulation;
+      line-height: 1.5;
+    }
+
+    .choice-button:hover {
+      border-color: var(--accent);
+    }
+
+    .log-list {
+      display: grid;
+      gap: 8px;
+      max-height: 260px;
+      overflow-y: auto;
+    }
+
+    .log-item {
+      background: var(--panel3);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px;
+      font-size: 14px;
+      line-height: 1.5;
+      white-space: pre-wrap;
+    }
+
+    .note {
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    code.inline {
+      background: #020617;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 2px 6px;
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <h1>汎用サウンドノベルJSONランナー 完全版</h1>
+
+    <div class="card">
+      <h2>通知</h2>
+      <div id="globalStatus" class="status warn">サンプルを読むか、AI用プロンプトをコピーしてJSONを作ってください。</div>
+    </div>
+
+    <div class="card">
+      <h2>セットアップ</h2>
+
+      <label class="label" for="promptModeSelect">コピーするAI用プロンプト</label>
+      <select id="promptModeSelect">
+        <option value="generic">汎用JSON台本ランナー用</option>
+        <option value="shindo">新堂誠・学校であった怖い話 用</option>
+      </select>
+
+      <label class="label" for="scriptInput" style="margin-top: 12px;">台本JSON</label>
+      <textarea id="scriptInput" spellcheck="false"></textarea>
+
+      <p class="note">
+        最小構造は <code class="inline">title</code>、<code class="inline">initial_state</code>、
+        <code class="inline">start_scene_id</code>、<code class="inline">scenes</code> です。
+        各 scene は <code class="inline">id</code>、<code class="inline">title</code>、
+        <code class="inline">text</code>、<code class="inline">choices</code> を持ちます。
+      </p>
+
+      <div class="row">
+        <button id="loadExampleButton" class="button secondary" type="button">サンプル読込</button>
+        <button id="copyPromptButton" class="button secondary" type="button">AI用プロンプトをコピー</button>
+        <button id="pasteScriptButton" class="button secondary" type="button">全削除してクリップボード貼り付け</button>
+        <button id="loadScriptButton" class="button ok" type="button">このJSONで開始</button>
+        <button id="restartButton" class="button secondary" type="button">最初からやり直す</button>
+        <button id="copyStateButton" class="button secondary" type="button">現在状態をコピー</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>進行</h2>
+      <div class="topbar">
+        <div class="pill"><strong>タイトル:</strong> <span id="gameTitle">-</span></div>
+        <div class="pill"><strong>現在シーン:</strong> <span id="currentSceneIdText">-</span></div>
+        <div class="pill"><strong>既読数:</strong> <span id="stepText">0</span></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>本文</h2>
+      <div id="sceneTitle" class="scene-title">-</div>
+      <div id="speakerLine" class="speaker-line"></div>
+      <div id="textArea"></div>
+      <div id="choiceList" class="choice-list"></div>
+    </div>
+
+    <div class="card">
+      <h2>ログ</h2>
+      <div id="logList" class="log-list"></div>
+    </div>
+  </div>
+
+  <script>
+    (() => {
+      "use strict";
+
+
+      function isObject(value) {
+        return value !== null && typeof value === "object" && !Array.isArray(value);
+      }
+
+      function deepClone(value) {
+        return JSON.parse(JSON.stringify(value));
+      }
+
+      function safeParseJson(text) {
+        try {
+          return { ok: true, data: JSON.parse(text) };
+        } catch (error) {
+          return {
+            ok: false,
+            error: error instanceof Error ? error.message : String(error)
+          };
+        }
+      }
+
+      function setStatus(type, message) {
+        const statusEl = document.getElementById("globalStatus");
+        statusEl.className = `status ${type}`;
+        statusEl.textContent = message;
+      }
+
+      async function copyTextToClipboard(text) {
+        if (navigator.clipboard && window.isSecureContext) {
+          await navigator.clipboard.writeText(text);
+          return;
+        }
+
+        const textarea = document.createElement("textarea");
+        textarea.value = text;
+        textarea.setAttribute("readonly", "");
+        textarea.style.position = "fixed";
+        textarea.style.left = "-9999px";
+        document.body.appendChild(textarea);
+        textarea.focus();
+        textarea.select();
+
+        const succeeded = document.execCommand("copy");
+        document.body.removeChild(textarea);
+
+        if (!succeeded) {
+          throw new Error("この環境ではクリップボードへのコピーが許可されていません。");
+        }
+      }
+
+      async function readTextFromClipboard() {
+        if (navigator.clipboard && window.isSecureContext) {
+          return await navigator.clipboard.readText();
+        }
+        throw new Error("この環境ではクリップボードの読み取りが許可されていません。");
+      }
+
+      const el = {
+        promptModeSelect: document.getElementById("promptModeSelect"),
+        scriptInput: document.getElementById("scriptInput"),
+        loadExampleButton: document.getElementById("loadExampleButton"),
+        copyPromptButton: document.getElementById("copyPromptButton"),
+        pasteScriptButton: document.getElementById("pasteScriptButton"),
+        loadScriptButton: document.getElementById("loadScriptButton"),
+        restartButton: document.getElementById("restartButton"),
+        copyStateButton: document.getElementById("copyStateButton"),
+        globalStatus: document.getElementById("globalStatus"),
+        gameTitle: document.getElementById("gameTitle"),
+        currentSceneIdText: document.getElementById("currentSceneIdText"),
+        stepText: document.getElementById("stepText"),
+        sceneTitle: document.getElementById("sceneTitle"),
+        speakerLine: document.getElementById("speakerLine"),
+        textArea: document.getElementById("textArea"),
+        choiceList: document.getElementById("choiceList"),
+        logList: document.getElementById("logList")
+      };
+
+      const app = {
+        rawScript: null,
+        script: null,
+        state: null,
+        currentSceneId: "",
+        step: 0,
+        log: []
+      };
+
+      const SHINDO_BASE_PROMPT = [
+        "あなたはゲームマスターではなく、JSON台本の設計者です。",
+        "これから作るJSONは『学校であった怖い話』風のサウンドノベルとして使用されます。",
+        "語り手は固定で新堂誠です。",
+        "新堂誠の性格は、強面な兄貴肌の青年で、どことなく不良っぽい風貌と物腰を持つ人物です。",
+        "口調はやや乱暴だが聞きやすく、怖い話を半ば気だるそうに、しかし核心では急に真顔になるような語り口にしてください。",
+        "舞台は必ず学校に関する怖い話であること。",
+        "語り手の新堂誠本人は、話の中の登場人物としては出さないこと。",
+        "話の中に登場する人物は新規キャラクターをフルネームで登場させること。",
+        "サウンドノベルとして、本文を厚くし、分岐は少なめにすること。",
+        "各分岐は2〜3択を基本にし、見せかけ分岐は禁止です。",
+        "分岐した場合、選択肢ごとに別々の next_scene_id を必ず持たせてください。",
+        "IDは木構造で管理してください。例: a / aa / aaa / aab / aaaa / aaab / aaba / aabb",
+        "基本は一本道寄りで、節目だけ2〜3択の分岐にしてください。",
+        "最後は『これが、俺が知ってる学校であった怖い話だ』のように新堂誠らしい締めにしてください。"
+      ].join("\n");
+
+      const GENERIC_PROMPT = [
+        "以下の条件を厳守して、汎用JSON台本ランナー用の台本JSONを1つだけ作成してください。",
+        "",
+        "【重要】",
+        "- 出力は必ずコードブロック1つのみ",
+        "- コードブロックの中身は純粋なJSONのみ",
+        "- JSON以外の説明文、前置き、補足、注釈は一切書かない",
+        "- キー名や構造は完全一致させること",
+        "- title は文字列",
+        "- initial_state はオブジェクト",
+        "- start_scene_id は scenes 内に存在する id と一致すること",
+        "- scenes は1件以上の配列",
+        "- 各 scene は id / title / text / choices を必ず持つこと",
+        "- text は1件以上の文字列配列にすること",
+        "- choices は1件以上の配列にすること",
+        "- 各 choice は text を必ず持つこと",
+        "- 各 choice は next_scene_id を持ち、次の scene id または null を入れること",
+        "- choice に effects を付ける場合は add / set / set_flags / remove_flags を使ってよい",
+        "- choice に conditions を付ける場合は required_flags / forbidden_flags / min / max を使ってよい",
+        "- 登場人物名、本文、選択肢は自然な日本語にすること",
+        "- 2択以上の分岐では、各 choice は必ず別々の next_scene_id を持つこと",
+        "- 同じ scene から複数の choice が完全に同じ next_scene_id を指す見せかけ分岐は禁止",
+        "- IDは木構造で管理すること。例: a / aa / aaa / aab / aaaa / aaab / aaba / aabb",
+        "",
+        "【effects の例】",
+        "- add: { \"energy\": -2, \"affection.ayaka\": 1 }",
+        "- set: { \"time\": \"07:30\", \"location\": \"学校\" }",
+        "- set_flags: [\"checked_phone\"]",
+        "- remove_flags: [\"overslept\"]",
+        "",
+        "【conditions の例】",
+        "- required_flags: [\"checked_phone\"]",
+        "- forbidden_flags: [\"overslept\"]",
+        "- min: { \"energy\": 10, \"affection.ayaka\": 5 }",
+        "- max: { \"stress\": 50 }",
+        "",
+        "【出力形式】",
+        "```json",
+        "{",
+        "  \"title\": \"サンプル台本\",",
+        "  \"initial_state\": {",
+        "    \"player_name\": \"主人公\",",
+        "    \"time\": \"07:00\",",
+        "    \"location\": \"自室\",",
+        "    \"energy\": 70,",
+        "    \"stress\": 20,",
+        "    \"flags\": []",
+        "  },",
+        "  \"start_scene_id\": \"a\",",
+        "  \"scenes\": [",
+        "    {",
+        "      \"id\": \"a\",",
+        "      \"title\": \"起床\",",
+        "      \"speaker\": \"SYSTEM\",",
+        "      \"text\": [",
+        "        \"朝、目が覚めた。\",",
+        "        \"今日はどんな一日になるだろう。\"",
+        "      ],",
+        "      \"choices\": [",
+        "        {",
+        "          \"text\": \"すぐ支度をする\",",
+        "          \"effects\": {",
+        "            \"add\": { \"energy\": -1 },",
+        "            \"set\": { \"time\": \"07:30\" }",
+        "          },",
+        "          \"next_scene_id\": \"aa\"",
+        "        },",
+        "        {",
+        "          \"text\": \"もう少し寝る\",",
+        "          \"effects\": {",
+        "            \"add\": { \"energy\": 3 },",
+        "            \"set\": { \"time\": \"08:00\" },",
+        "            \"set_flags\": [\"overslept\"]",
+        "          },",
+        "          \"next_scene_id\": \"ab\"",
+        "        }",
+        "      ]",
+        "    },",
+        "    {",
+        "      \"id\": \"aa\",",
+        "      \"title\": \"登校\",",
+        "      \"text\": [",
+        "        \"家を出た。朝の空気が少し冷たい。\"",
+        "      ],",
+        "      \"choices\": [",
+        "        {",
+        "          \"text\": \"学校へ向かう\",",
+        "          \"next_scene_id\": null",
+        "        }",
+        "      ]",
+        "    },",
+        "    {",
+        "      \"id\": \"ab\",",
+        "      \"title\": \"寝坊\",",
+        "      \"text\": [",
+        "        \"時計を見て、嫌な汗がにじんだ。\"",
+        "      ],",
+        "      \"choices\": [",
+        "        {",
+        "          \"text\": \"急いで支度する\",",
+        "          \"next_scene_id\": null",
+        "        }",
+        "      ]",
+        "    }",
+        "  ]",
+        "}",
+        "```"
+      ].join("\n");
+
+      const SHINDO_PROMPT = [
+        "以下の条件を厳守して、汎用JSON台本ランナー用の台本JSONを1つだけ作成してください。",
+        "",
+        SHINDO_BASE_PROMPT,
+        "",
+        "【重要】",
+        "- 出力は必ずコードブロック1つのみ",
+        "- コードブロックの中身は純粋なJSONのみ",
+        "- JSON以外の説明文、前置き、補足、注釈は一切書かない",
+        "- キー名や構造は完全一致させること",
+        "- title は文字列",
+        "- initial_state はオブジェクト",
+        "- start_scene_id は scenes 内に存在する id と一致すること",
+        "- scenes は1件以上の配列",
+        "- 各 scene は id / title / text / choices を必ず持つこと",
+        "- text は1件以上の文字列配列にすること",
+        "- choices は1件以上の配列にすること",
+        "- 各 choice は text を必ず持つこと",
+        "- 各 choice は next_scene_id を持ち、次の scene id または null を入れること",
+        "- choice に effects を付ける場合は add / set / set_flags / remove_flags を使ってよい",
+        "- choice に conditions を付ける場合は required_flags / forbidden_flags / min / max を使ってよい",
+        "- 新堂誠の話として自然な日本語にすること",
+        "- シーン数は最低10件以上にすること",
+        "- 本文はサンプルより十分長く、サウンドノベルとして読める厚みを持たせること",
+        "- 一本道寄りで、節目だけ2〜3択の分岐にすること",
+        "- 2択以上の分岐では、各 choice は必ず別々の next_scene_id を持つこと",
+        "- 同じ scene から複数の choice が完全に同じ next_scene_id を指す見せかけ分岐は禁止",
+        "- IDは木構造で管理すること。例: a / aa / aaa / aab / aaaa / aaab / aaba / aabb",
+        "",
+        "【effects の例】",
+        "- add: { \"fear\": 1, \"trust.shuichi\": 1 }",
+        "- set: { \"mood\": \"tense\" }",
+        "- set_flags: [\"heard_about_old_building\"]",
+        "- remove_flags: [\"calm\"]",
+        "",
+        "【conditions の例】",
+        "- required_flags: [\"heard_about_old_building\"]",
+        "- forbidden_flags: [\"ignored_warning\"]",
+        "- min: { \"fear\": 1 }",
+        "- max: { \"stress\": 50 }",
+        "",
+        "【出力形式】",
+        "```json",
+        "{",
+        "  \"title\": \"学校であった怖い話 / 新堂誠\",",
+        "  \"initial_state\": {",
+        "    \"player_name\": \"坂上修一\",",
+        "    \"narrator\": \"新堂誠\",",
+        "    \"mood\": \"normal\",",
+        "    \"fear\": 0,",
+        "    \"trust\": {",
+        "      \"shuichi\": 0",
+        "    },",
+        "    \"flags\": []",
+        "  },",
+        "  \"start_scene_id\": \"a\",",
+        "  \"scenes\": [",
+        "    {",
+        "      \"id\": \"a\",",
+        "      \"title\": \"放課後\",",
+        "      \"speaker\": \"GM\",",
+        "      \"text\": [",
+        "        \"新聞部の企画で集められた六人のうち、最初に口を開いたのは新堂誠だった。\",",
+        "        \"彼は椅子に浅く座り、少しだけ面倒そうに笑った。\"",
+        "      ],",
+        "      \"choices\": [",
+        "        {",
+        "          \"text\": \"新堂誠の話を聞く\",",
+        "          \"next_scene_id\": \"aa\"",
+        "        }",
+        "      ]",
+        "    },",
+        "    {",
+        "      \"id\": \"aa\",",
+        "      \"title\": \"語りのはじまり\",",
+        "      \"speaker\": \"新堂誠\",",
+        "      \"text\": [",
+        "        \"『じゃあ俺から話すぜ。大したことないと思うなら、それでもいい』\",",
+        "        \"『けどまあ、聞いたあとで旧校舎に近づけなくなっても、俺は責任取らねえけどな』\"",
+        "      ],",
+        "      \"choices\": [",
+        "        {",
+        "          \"text\": \"続きを聞く\",",
+        "          \"next_scene_id\": \"aaa\"",
+        "        },",
+        "        {",
+        "          \"text\": \"旧校舎の話かと尋ねる\",",
+        "          \"effects\": {",
+        "            \"add\": { \"trust.shuichi\": 1 },",
+        "            \"set_flags\": [\"asked_about_old_building\"]",
+        "          },",
+        "          \"next_scene_id\": \"aab\"",
+        "        }",
+        "      ]",
+        "    }",
+        "  ]",
+        "}",
+        "```"
+      ].join("\n");
+
+      function getPromptByMode(mode) {
+        return mode === "shindo" ? SHINDO_PROMPT : GENERIC_PROMPT;
+      }
+
+      function getSceneById(sceneId) {
+        return app.script.scenes.find((scene) => scene.id === sceneId) || null;
+      }
+
+      function renderHeader() {
+        el.gameTitle.textContent = app.script ? app.script.title : "-";
+        el.currentSceneIdText.textContent = app.currentSceneId || "-";
+        el.stepText.textContent = String(app.step);
+      }
+
+      function renderLog() {
+        el.logList.innerHTML = "";
+        app.log.slice().reverse().forEach((line) => {
+          const div = document.createElement("div");
+          div.className = "log-item";
+          div.textContent = line;
+          el.logList.appendChild(div);
+        });
+      }
+
+      function addLog(line) {
+        app.log.push(line);
+        renderLog();
+      }
+
+      function getValueByPath(target, path) {
+        const parts = path.split(".");
+        let current = target;
+        for (const part of parts) {
+          if (!isObject(current) || !(part in current)) {
+            return undefined;
+          }
+          current = current[part];
+        }
+        return current;
+      }
+
+      function ensurePath(target, path) {
+        const parts = path.split(".");
+        let current = target;
+        for (let i = 0; i < parts.length - 1; i += 1) {
+          const part = parts[i];
+          if (!isObject(current[part])) {
+            current[part] = {};
+          }
+          current = current[part];
+        }
+        return { parent: current, key: parts[parts.length - 1] };
+      }
+
+      function setValueByPath(target, path, value) {
+        const ref = ensurePath(target, path);
+        ref.parent[ref.key] = value;
+      }
+
+      function addValueByPath(target, path, delta) {
+        const current = getValueByPath(target, path);
+        const base = typeof current === "number" ? current : 0;
+        setValueByPath(target, path, base + delta);
+      }
+
+      function applyEffects(effects) {
+        if (!effects || !app.state) return;
+
+        if (isObject(effects.add)) {
+          for (const [path, delta] of Object.entries(effects.add)) {
+            if (typeof delta === "number") {
+              addValueByPath(app.state, path, delta);
+            }
+          }
+        }
+
+        if (isObject(effects.set)) {
+          for (const [path, value] of Object.entries(effects.set)) {
+            setValueByPath(app.state, path, value);
+          }
+        }
+
+        if (Array.isArray(effects.set_flags)) {
+          if (!Array.isArray(app.state.flags)) app.state.flags = [];
+          effects.set_flags.forEach((flag) => {
+            if (!app.state.flags.includes(flag)) {
+              app.state.flags.push(flag);
+            }
+          });
+        }
+
+        if (Array.isArray(effects.remove_flags)) {
+          if (!Array.isArray(app.state.flags)) app.state.flags = [];
+          app.state.flags = app.state.flags.filter((flag) => !effects.remove_flags.includes(flag));
+        }
+      }
+
+      function checkConditions(conditions) {
+        if (!conditions || !app.state) return true;
+
+        if (Array.isArray(conditions.required_flags)) {
+          const flags = Array.isArray(app.state.flags) ? app.state.flags : [];
+          for (const flag of conditions.required_flags) {
+            if (!flags.includes(flag)) return false;
+          }
+        }
+
+        if (Array.isArray(conditions.forbidden_flags)) {
+          const flags = Array.isArray(app.state.flags) ? app.state.flags : [];
+          for (const flag of conditions.forbidden_flags) {
+            if (flags.includes(flag)) return false;
+          }
+        }
+
+        if (isObject(conditions.min)) {
+          for (const [path, minValue] of Object.entries(conditions.min)) {
+            const current = getValueByPath(app.state, path);
+            if (typeof current !== "number" || current < minValue) return false;
+          }
+        }
+
+        if (isObject(conditions.max)) {
+          for (const [path, maxValue] of Object.entries(conditions.max)) {
+            const current = getValueByPath(app.state, path);
+            if (typeof current !== "number" || current > maxValue) return false;
+          }
+        }
+
+        return true;
+      }
+
+      function renderScene() {
+        if (!app.script || !app.currentSceneId) {
+          el.sceneTitle.textContent = "-";
+          el.speakerLine.textContent = "";
+          el.textArea.innerHTML = "";
+          el.choiceList.innerHTML = "";
+          return;
+        }
+
+        const scene = getSceneById(app.currentSceneId);
+        if (!scene) {
+          setStatus("fail", `scene が見つかりません: `);
+          return;
+        }
+
+        renderHeader();
+        el.sceneTitle.textContent = scene.title || scene.id;
+        el.speakerLine.textContent = scene.speaker ? scene.speaker : "";
+        el.textArea.innerHTML = "";
+        el.choiceList.innerHTML = "";
+
+        scene.text.forEach((line) => {
+          const div = document.createElement("div");
+          div.className = "text-block";
+          div.textContent = line;
+          el.textArea.appendChild(div);
+        });
+
+        const availableChoices = scene.choices.filter((choice) => checkConditions(choice.conditions));
+
+        availableChoices.forEach((choice, index) => {
+          const button = document.createElement("button");
+          button.type = "button";
+          button.className = "choice-button";
+          button.textContent = `. `;
+          button.addEventListener("click", () => choose(choice));
+          el.choiceList.appendChild(button);
+        });
+
+        if (availableChoices.length === 0) {
+          setStatus("fail", "条件を満たす選択肢がありません。台本条件を確認してください。");
+          return;
+        }
+
+        setStatus("ok", "選択肢を押して進めてください。");
+      }
+
+      function renderEnd() {
+        renderHeader();
+        el.currentSceneIdText.textContent = "END";
+        el.sceneTitle.textContent = "終了";
+        el.speakerLine.textContent = "";
+        el.textArea.innerHTML = `<div class="text-block">この台本はここで終了です。</div>`;
+        el.choiceList.innerHTML = "";
+        setStatus("ok", "エンディングに到達しました。");
+      }
+
+      function choose(choice) {
+        const scene = getSceneById(app.currentSceneId);
+        app.step += 1;
+
+        addLog(
+          [
+            `Step `,
+            `Scene:  "-"`,
+            `Choice: `
+          ].join("\n")
+        );
+
+        applyEffects(choice.effects);
+
+        if (choice.next_scene_id === null) {
+          renderEnd();
+          return;
+        }
+
+        app.currentSceneId = choice.next_scene_id;
+        renderScene();
+      }
+
+      function startScript(data) {
+        app.rawScript = deepClone(data);
+        app.script = deepClone(data);
+        app.state = deepClone(data.initial_state || {});
+        if (!Array.isArray(app.state.flags)) {
+          app.state.flags = [];
+        }
+        app.currentSceneId = data.start_scene_id;
+        app.step = 0;
+        app.log = [];
+        addLog(`開始: `);
+        renderScene();
+      }
+
+      async function copyCurrentState() {
+        const payload = {
+          title: app.script ? app.script.title : null,
+          current_scene_id: app.currentSceneId,
+          step: app.step,
+          state: app.state,
+          log: app.log
+        };
+        await copyTextToClipboard(JSON.stringify(payload, null, 2));
+      }
+
+      function validateScript(data) {
+        const errors = [];
+
+        if (!isObject(data)) {
+          errors.push("JSON全体はオブジェクトである必要があります。");
+          return errors;
+        }
+
+        if (typeof data.title !== "string" || data.title.trim() === "") {
+          errors.push("title は空でない文字列である必要があります。");
+        }
+
+        if (!isObject(data.initial_state)) {
+          errors.push("initial_state はオブジェクトである必要があります。");
+        }
+
+        if (typeof data.start_scene_id !== "string" || data.start_scene_id.trim() === "") {
+          errors.push("start_scene_id は空でない文字列である必要があります。");
+        }
+
+        if (!Array.isArray(data.scenes) || data.scenes.length === 0) {
+          errors.push("scenes は1件以上の配列である必要があります。");
+          return errors;
+        }
+
+        const sceneIds = new Set();
+
+        data.scenes.forEach((scene, index) => {
+          const label = `scenes[]`;
+
+          if (!isObject(scene)) {
+            errors.push(` はオブジェクトである必要があります。`);
+            return;
+          }
+
+          if (typeof scene.id !== "string" || scene.id.trim() === "") {
+            errors.push(`.id は空でない文字列である必要があります。`);
+          } else {
+            if (sceneIds.has(scene.id)) {
+              errors.push(`.id が重複しています: `);
+            }
+            sceneIds.add(scene.id);
+          }
+
+          if (scene.speaker !== undefined && typeof scene.speaker !== "string") {
+            errors.push(`.speaker は文字列である必要があります。`);
+          }
+
+          if (typeof scene.title !== "string") {
+            errors.push(`.title は文字列である必要があります。`);
+          }
+
+          if (!Array.isArray(scene.text) || scene.text.length === 0) {
+            errors.push(`.text は1件以上の文字列配列である必要があります。`);
+          } else {
+            scene.text.forEach((line, textIndex) => {
+              if (typeof line !== "string") {
+                errors.push(`.text[] は文字列である必要があります。`);
+              }
+            });
+          }
+
+          if (!Array.isArray(scene.choices) || scene.choices.length === 0) {
+            errors.push(`.choices は1件以上の配列である必要があります。`);
+          } else {
+            scene.choices.forEach((choice, choiceIndex) => {
+              const cLabel = `.choices[]`;
+
+              if (!isObject(choice)) {
+                errors.push(` はオブジェクトである必要があります。`);
+                return;
+              }
+
+              if (typeof choice.text !== "string" || choice.text.trim() === "") {
+                errors.push(`.text は空でない文字列である必要があります。`);
+              }
+
+              if (choice.next_scene_id !== null && typeof choice.next_scene_id !== "string") {
+                errors.push(`.next_scene_id は文字列または null である必要があります。`);
+              }
+
+              if (choice.effects !== undefined && !isObject(choice.effects)) {
+                errors.push(`.effects はオブジェクトである必要があります。`);
+              }
+
+              if (choice.conditions !== undefined && !isObject(choice.conditions)) {
+                errors.push(`.conditions はオブジェクトである必要があります。`);
+              }
+            });
+
+            const nonNullNextIds = scene.choices
+              .map((choice) => choice.next_scene_id)
+              .filter((id) => typeof id === "string" && id.trim() !== "");
+
+            if (scene.choices.length >= 2 && nonNullNextIds.length >= 2) {
+              const uniqueIds = new Set(nonNullNextIds);
+              if (uniqueIds.size === 1) {
+                errors.push(`.choices が見せかけ分岐になっています。2択以上ある場合は別々の next_scene_id を指定してください。`);
+              }
+            }
+          }
+        });
+
+        if (typeof data.start_scene_id === "string" && data.start_scene_id.trim() !== "") {
+          const exists = data.scenes.some((scene) => scene.id === data.start_scene_id);
+          if (!exists) {
+            errors.push("start_scene_id に対応する scene が存在しません。");
+          }
+        }
+
+        data.scenes.forEach((scene, index) => {
+          if (!Array.isArray(scene.choices)) return;
+          scene.choices.forEach((choice, choiceIndex) => {
+            if (typeof choice.next_scene_id === "string" && choice.next_scene_id.trim() !== "") {
+              const exists = data.scenes.some((s) => s.id === choice.next_scene_id);
+              if (!exists) {
+                errors.push(`scenes[].choices[].next_scene_id が存在しません: `);
+              }
+            }
+          });
+        });
+
+        return errors;
+      }
+
+      const exampleScript = {
+        title: "学校であった怖い話 / 新堂誠 サンプル",
+        initial_state: {
+          player_name: "坂上修一",
+          narrator: "新堂誠",
+          mood: "normal",
+          fear: 0,
+          trust: {
+            shuichi: 0
+          },
+          flags: []
+        },
+        start_scene_id: "a",
+        scenes: [
+          {
+            id: "a",
+            title: "放課後",
+            speaker: "GM",
+            text: [
+              "新聞部の企画で集められた六人のうち、最初に口を開いたのは新堂誠だった。",
+              "強面の先輩は椅子に浅く腰かけ、気だるそうに窓の外を見たあと、ようやくこちらに視線を戻した。"
+            ],
+            choices: [
+              {
+                text: "新堂誠の話を聞く",
+                next_scene_id: "aa"
+              }
+            ]
+          },
+          {
+            id: "aa",
+            title: "語りのはじまり",
+            speaker: "新堂誠",
+            text: [
+              "「じゃあ俺から話すぜ。まあ、くだらねえ話だと思うならそれでもいい」",
+              "「けど、聞いたあとで夕方の旧校舎に近づけなくなっても、そりゃおまえの勝手だからな」"
+            ],
+            choices: [
+              {
+                text: "続きを聞く",
+                next_scene_id: "aaa"
+              },
+              {
+                text: "旧校舎の話かと尋ねる",
+                effects: {
+                  add: { "trust.shuichi": 1 },
+                  set_flags: ["asked_about_old_building"]
+                },
+                next_scene_id: "aab"
+              }
+            ]
+          },
+          {
+            id: "aaa",
+            title: "旧校舎の噂",
+            speaker: "新堂誠",
+            text: [
+              "「去年の秋、旧校舎の三階東端にある準備室へ行った一年が二人いた」",
+              "「最初はただの度胸試しだ。笑いながら行って、笑えない顔で戻ってきた」"
+            ],
+            choices: [
+              {
+                text: "その二人について聞く",
+                next_scene_id: "aaaa"
+              },
+              {
+                text: "準備室の噂そのものを聞く",
+                next_scene_id: "aaab"
+              }
+            ]
+          },
+          {
+            id: "aab",
+            title: "確認",
+            speaker: "新堂誠",
+            text: [
+              "「ああ、旧校舎の話だよ。やけに勘がいいな」",
+              "「だったら話が早い。あそこは昼と夕方で別の場所みてえになる」"
+            ],
+            choices: [
+              {
+                text: "その二人について聞く",
+                next_scene_id: "aaba"
+              },
+              {
+                text: "準備室の噂そのものを聞く",
+                next_scene_id: "aabb"
+              }
+            ]
+          },
+          {
+            id: "aaaa",
+            title: "二人の一年生",
+            speaker: "新堂誠",
+            text: [
+              "「一人は三浦健吾。怖いもん知らずで、なんでも笑い飛ばすタイプだ」",
+              "「もう一人は戸塚悠人。あいつは最初から嫌がってたらしい。だが、そういう奴ほど巻き込まれる」"
+            ],
+            choices: [
+              {
+                text: "続きを聞く",
+                next_scene_id: "aaaaa"
+              }
+            ]
+          },
+          {
+            id: "aaab",
+            title: "禁忌",
+            speaker: "新堂誠",
+            text: [
+              "「準備室の前には、ずっと変な紙が挟まってるって噂があった」",
+              "「見てもいい、入ってもいい。けど、声をかけるな。振り向かせるな。名前を聞くな。そう書いてあったそうだ」"
+            ],
+            choices: [
+              {
+                text: "続きを聞く",
+                next_scene_id: "aaaba"
+              }
+            ]
+          },
+          {
+            id: "aaba",
+            title: "二人の一年生",
+            speaker: "新堂誠",
+            text: [
+              "「三浦健吾と戸塚悠人。どっちも目立たねえ一年だったが、その日だけは違った」",
+              "「後から思えば、あそこで行くのをやめときゃよかったんだろうな」"
+            ],
+            choices: [
+              {
+                text: "続きを聞く",
+                next_scene_id: "aabaa"
+              }
+            ]
+          },
+          {
+            id: "aabb",
+            title: "禁忌",
+            speaker: "新堂誠",
+            text: [
+              "「馬鹿みてえな注意書きだろ。けど、怪談ってのはそういう一文がいちばん嫌なんだよ」",
+              "「声をかけるな、振り向かせるな、名前を聞くな。逆に言えば、どれかをやると何かが起きるってことだ」"
+            ],
+            choices: [
+              {
+                text: "続きを聞く",
+                next_scene_id: "aabba"
+              }
+            ]
+          },
+          {
+            id: "aaaaa",
+            title: "白いもの",
+            speaker: "新堂誠",
+            text: [
+              "「準備室の扉を開けた時、最初に見えたのは人じゃなかった。白いもの、ただそれだけだ」",
+              "「布か、カーテンか、そんなふうに見えたらしい。けどライトを向けたら、それがゆっくり揺れた」"
+            ],
+            choices: [
+              {
+                text: "部屋に入った時の話を聞く",
+                next_scene_id: "aaaaaa"
+              },
+              {
+                text: "戸塚の反応を聞く",
+                next_scene_id: "aaaaab"
+              }
+            ]
+          },
+          {
+            id: "aaaba",
+            title: "白いもの",
+            speaker: "新堂誠",
+            text: [
+              "「中に入る前から嫌な空気はあったらしい。静かすぎて、逆に何かが潜んでる感じだ」",
+              "「で、扉を開けた瞬間、奥に白いものが見えた」"
+            ],
+            choices: [
+              {
+                text: "部屋に入った時の話を聞く",
+                next_scene_id: "aaabaa"
+              },
+              {
+                text: "戸塚の反応を聞く",
+                next_scene_id: "aaabab"
+              }
+            ]
+          },
+          {
+            id: "aabaa",
+            title: "白いもの",
+            speaker: "新堂誠",
+            text: [
+              "「人の形かどうかも最初は分からなかったそうだ」",
+              "「ただ、あれを見た瞬間に帰るべきだったって、あとで三浦は何度も言ってた」"
+            ],
+            choices: [
+              {
+                text: "部屋に入った時の話を聞く",
+                next_scene_id: "aabaaa"
+              },
+              {
+                text: "戸塚の反応を聞く",
+                next_scene_id: "aabaab"
+              }
+            ]
+          },
+          {
+            id: "aabba",
+            title: "白いもの",
+            speaker: "新堂誠",
+            text: [
+              "「禁忌の意味なんて、その時は誰も本気で考えちゃいなかった」",
+              "「けど扉の向こうに白いものを見た瞬間、笑ってた三浦の顔も少しだけ固まった」"
+            ],
+            choices: [
+              {
+                text: "部屋に入った時の話を聞く",
+                next_scene_id: "aabbaa"
+              },
+              {
+                text: "戸塚の反応を聞く",
+                next_scene_id: "aabbab"
+              }
+            ]
+          },
+          {
+            id: "aaaaaa",
+            title: "不用意な一歩",
+            speaker: "新堂誠",
+            text: [
+              "「三浦はな、そういう時ほど強がる。戸塚を置いて一歩前に出た」",
+              "「その時、窓ガラスに映ったんだよ。奥にいる白いものの正体みてえな顔がな」"
+            ],
+            choices: [
+              {
+                text: "結末を聞く",
+                next_scene_id: "end_a"
+              }
+            ]
+          },
+          {
+            id: "aaaaab",
+            title: "戸塚の視線",
+            speaker: "新堂誠",
+            text: [
+              "「戸塚は部屋の奥より、三浦の後ろばかり見てたらしい」",
+              "「つまり本当に怖かったのは、前じゃなく後ろにいた何かだったのかもしれねえ」"
+            ],
+            choices: [
+              {
+                text: "結末を聞く",
+                next_scene_id: "end_b"
+              }
+            ]
+          },
+          {
+            id: "aaabaa",
+            title: "不用意な一歩",
+            speaker: "新堂誠",
+            text: [
+              "「三浦は笑いながら近づいた。怖いのをごまかすためにな」",
+              "「けど窓に映った顔を見た瞬間、さすがのあいつも黙ったそうだ」"
+            ],
+            choices: [
+              {
+                text: "結末を聞く",
+                next_scene_id: "end_c"
+              }
+            ]
+          },
+          {
+            id: "aaabab",
+            title: "戸塚の視線",
+            speaker: "新堂誠",
+            text: [
+              "「戸塚は息もできないみてえな顔で、ただ後ろを見てた」",
+              "「で、あとになって『あの時もう一人いた』って言ったらしい」"
+            ],
+            choices: [
+              {
+                text: "結末を聞く",
+                next_scene_id: "end_d"
+              }
+            ]
+          },
+          {
+            id: "aabaaa",
+            title: "不用意な一歩",
+            speaker: "新堂誠",
+            text: [
+              "「禁忌なんて笑ってた三浦が、結局いちばん深く踏み込んだ」",
+              "「そういう奴ほど、向こうから見つけられるんだろうよ」"
+            ],
+            choices: [
+              {
+                text: "結末を聞く",
+                next_scene_id: "end_e"
+              }
+            ]
+          },
+          {
+            id: "aabaab",
+            title: "戸塚の視線",
+            speaker: "新堂誠",
+            text: [
+              "「戸塚はあの日以降、学校に来なくなった」",
+              "「三浦より先に、あいつの方が何かを見ちまってたのかもしれねえ」"
+            ],
+            choices: [
+              {
+                text: "結末を聞く",
+                next_scene_id: "end_f"
+              }
+            ]
+          },
+          {
+            id: "aabbaa",
+            title: "不用意な一歩",
+            speaker: "新堂誠",
+            text: [
+              "「笑いながら言った一言がまずかったんだろうな」",
+              "「名前を聞くなって書いてあったのに、三浦はたぶんそれをやった」"
+            ],
+            choices: [
+              {
+                text: "結末を聞く",
+                next_scene_id: "end_g"
+              }
+            ]
+          },
+          {
+            id: "aabbab",
+            title: "戸塚の視線",
+            speaker: "新堂誠",
+            text: [
+              "「誰もいないはずの準備室で、戸塚だけが最初から『二人じゃない』って気づいてたのかもな」",
+              "「そう考えると、いちばん可哀想なのはあいつだ」"
+            ],
+            choices: [
+              {
+                text: "結末を聞く",
+                next_scene_id: "end_h"
+              }
+            ]
+          },
+          {
+            id: "end_a",
+            title: "終幕",
+            speaker: "新堂誠",
+            text: [
+              "「結局そいつらは逃げた。けど、旧校舎の廊下は走っても走っても終わらなかったらしい」",
+              "「そのうち一人は学校に来なくなった。もう一人は来てたけど、窓を見るたびに怯えるようになった。これが、俺が知ってる学校であった怖い話だ」"
+            ],
+            choices: [
+              {
+                text: "話を終える",
+                next_scene_id: null
+              }
+            ]
+          },
+          {
+            id: "end_b",
+            title: "終幕",
+            speaker: "新堂誠",
+            text: [
+              "「誰が最初に見つけられたのか、今でも分からねえ」",
+              "「ただ、後ろを気にし始めた奴から壊れていった。これが、俺が知ってる学校であった怖い話だ」"
+            ],
+            choices: [
+              {
+                text: "話を終える",
+                next_scene_id: null
+              }
+            ]
+          },
+          {
+            id: "end_c",
+            title: "終幕",
+            speaker: "新堂誠",
+            text: [
+              "「旧校舎ってのは場所じゃなくて、時間帯で顔が変わるんだろうな」",
+              "「夕方にだけ口を開く何かがある。これが、俺が知ってる学校であった怖い話だ」"
+            ],
+            choices: [
+              {
+                text: "話を終える",
+                next_scene_id: null
+              }
+            ]
+          },
+          {
+            id: "end_d",
+            title: "終幕",
+            speaker: "新堂誠",
+            text: [
+              "「来なくなった戸塚の方が、もしかしたら本当の意味で先に見ちまったのかもしれねえ」",
+              "「そう考えると、笑い話じゃ済まねえよな。これが、俺が知ってる学校であった怖い話だ」"
+            ],
+            choices: [
+              {
+                text: "話を終える",
+                next_scene_id: null
+              }
+            ]
+          },
+          {
+            id: "end_e",
+            title: "終幕",
+            speaker: "新堂誠",
+            text: [
+              "「禁忌ってのはな、意味があるから禁忌なんだよ」",
+              "「笑いながら踏み越えた奴ほど、後で取り返しがつかなくなる。これが、俺が知ってる学校であった怖い話だ」"
+            ],
+            choices: [
+              {
+                text: "話を終える",
+                next_scene_id: null
+              }
+            ]
+          },
+          {
+            id: "end_f",
+            title: "終幕",
+            speaker: "新堂誠",
+            text: [
+              "「学校に残る奴より、来なくなった奴の方が気味悪く感じる時がある」",
+              "「見えなくなったってだけで、終わったとは限らねえからな。これが、俺が知ってる学校であった怖い話だ」"
+            ],
+            choices: [
+              {
+                text: "話を終える",
+                next_scene_id: null
+              }
+            ]
+          },
+          {
+            id: "end_g",
+            title: "終幕",
+            speaker: "新堂誠",
+            text: [
+              "「名前を知るってのは、それだけで線をつなぐことなのかもしれねえ」",
+              "「だから俺は、夕方の旧校舎じゃ余計なことを言わないようにしてる。これが、俺が知ってる学校であった怖い話だ」"
+            ],
+            choices: [
+              {
+                text: "話を終える",
+                next_scene_id: null
+              }
+            ]
+          },
+          {
+            id: "end_h",
+            title: "終幕",
+            speaker: "新堂誠",
+            text: [
+              "「二人で行ったはずなのに、最初から二人じゃなかったのかもしれねえ」",
+              "「そう思うと、放課後の旧校舎は今でも妙に静かすぎる。これが、俺が知ってる学校であった怖い話だ」"
+            ],
+            choices: [
+              {
+                text: "話を終える",
+                next_scene_id: null
+              }
+            ]
+          }
+        ]
+      };
+
+      function loadExample() {
+        el.scriptInput.value = JSON.stringify(exampleScript, null, 2);
+        setStatus("ok", "サンプルJSONを読み込みました。");
+      }
+
+      async function handleCopyPrompt() {
+        try {
+          const mode = el.promptModeSelect.value;
+          await copyTextToClipboard(getPromptByMode(mode));
+          setStatus("ok", mode === "shindo"
+            ? "新堂誠用プロンプトをクリップボードへコピーしました。"
+            : "汎用プロンプトをクリップボードへコピーしました。");
+        } catch (error) {
+          setStatus("fail", `コピー失敗: ${error instanceof Error ? error.message : String(error)}`);
+        }
+      }
+
+      async function handlePasteScript() {
+        try {
+          el.scriptInput.value = "";
+          el.scriptInput.value = await readTextFromClipboard();
+          setStatus("ok", "JSON入力欄を全削除し、クリップボードの内容を貼り付けました。");
+        } catch (error) {
+          setStatus("fail", `貼り付け失敗: ${error instanceof Error ? error.message : String(error)}`);
+        }
+      }
+
+      function loadScriptFromTextarea() {
+        const parse = safeParseJson(el.scriptInput.value.trim());
+        if (!parse.ok) {
+          setStatus("fail", `JSON解析失敗:\n${parse.error}`);
+          return;
+        }
+
+        const errors = validateScript(parse.data);
+        if (errors.length > 0) {
+          setStatus("fail", `台本エラー:\n${errors.join("\n")}`);
+          return;
+        }
+
+        startScript(parse.data);
+        setStatus("ok", "台本を読み込みました。");
+      }
+
+      function restartScript() {
+        if (!app.rawScript) {
+          setStatus("warn", "まだ読み込まれた台本がありません。");
+          return;
+        }
+        startScript(app.rawScript);
+        setStatus("ok", "最初からやり直しました。");
+      }
+
+      el.loadExampleButton.addEventListener("click", loadExample);
+      el.copyPromptButton.addEventListener("click", handleCopyPrompt);
+      el.pasteScriptButton.addEventListener("click", handlePasteScript);
+      el.loadScriptButton.addEventListener("click", loadScriptFromTextarea);
+      el.restartButton.addEventListener("click", restartScript);
+      el.copyStateButton.addEventListener("click", async () => {
+        try {
+          await copyCurrentState();
+          setStatus("ok", "現在状態をクリップボードへコピーしました。");
+        } catch (error) {
+          setStatus("fail", `コピー失敗: ${error instanceof Error ? error.message : String(error)}`);
+        }
+      });
+
+      renderHeader();
+      renderLog();
+      loadExample();
+    })();
+  </script>
+</body>
+</html>

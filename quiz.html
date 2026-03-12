@@ -6,12 +6,13 @@
     name="viewport"
     content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"
   />
-  <title>AI連携クイズ試作 完成版</title>
+  <title>AI連携クイズ試作 四択版</title>
   <style>
     :root {
       --bg: #0f172a;
       --panel: #111827;
       --panel-2: #1f2937;
+      --panel-3: #0b1220;
       --text: #e5e7eb;
       --muted: #94a3b8;
       --accent: #38bdf8;
@@ -232,6 +233,55 @@
       margin-bottom: 12px;
     }
 
+    .sub-actions {
+      margin-top: 18px;
+      padding-top: 12px;
+      border-top: 1px solid var(--border);
+    }
+
+    .review-list {
+      display: grid;
+      gap: 12px;
+      margin-top: 16px;
+    }
+
+    .review-item {
+      background: var(--panel-3);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px;
+    }
+
+    .review-item.correct {
+      border-color: rgba(34, 197, 94, 0.55);
+    }
+
+    .review-item.incorrect {
+      border-color: rgba(251, 113, 133, 0.55);
+    }
+
+    .review-q {
+      font-weight: 700;
+      margin-bottom: 8px;
+      line-height: 1.5;
+    }
+
+    .review-meta {
+      display: grid;
+      gap: 6px;
+      font-size: 14px;
+      line-height: 1.5;
+      color: var(--text);
+    }
+
+    .review-meta .muted {
+      color: var(--muted);
+    }
+
+    .result-summary {
+      margin-bottom: 16px;
+    }
+
     code.inline {
       padding: 2px 6px;
       border-radius: 8px;
@@ -248,7 +298,7 @@
 </head>
 <body>
   <div class="app">
-    <h1>AI連携クイズ試作 完成版</h1>
+    <h1>AI連携クイズ試作 四択版</h1>
 
     <div id="selfTestPanel" class="card">
       <h2>起動前セルフテスト</h2>
@@ -270,7 +320,8 @@
       "options": {
         "a": "選択肢A",
         "b": "選択肢B",
-        "c": "選択肢C"
+        "c": "選択肢C",
+        "d": "選択肢D"
       },
       "answer": "b",
       "feedback_correct": "正解です。",
@@ -282,7 +333,7 @@
         <p class="note">
           必須形式: <code class="inline">questions</code> 配列1件以上。各問題は
           <code class="inline">question</code>、
-          <code class="inline">options.a / options.b / options.c</code>、
+          <code class="inline">options.a / options.b / options.c / options.d</code>、
           <code class="inline">answer</code>、
           <code class="inline">feedback_correct</code>、
           <code class="inline">feedback_incorrect</code>、
@@ -292,7 +343,7 @@
 
       <div class="field">
         <label class="label" for="derivedAnswerKeyInput">JSONから自動生成された答え列</label>
-        <input id="derivedAnswerKeyInput" type="text" readonly placeholder="例: bccacacaba" />
+        <input id="derivedAnswerKeyInput" type="text" readonly placeholder="例: bdacbda" />
         <p class="note">
           これは <code class="inline">questions[].answer</code> から自動生成されます。表示用です。正解本体は各問題の <code class="inline">answer</code> です。
         </p>
@@ -325,16 +376,28 @@
       <div class="row" style="margin-top: 16px;">
         <button id="confirmAnswerButton" class="button" type="button">OK</button>
         <button id="nextQuestionButton" class="button secondary" type="button" disabled>次の問題へ</button>
-        <button id="abortQuizButton" class="button danger" type="button">中断してセットアップへ戻る</button>
+        <button id="copyCurrentQuestionButton" class="button secondary" type="button">この問題を確認用にコピー</button>
+        <button id="copyCurrentQuestionTextButton" class="button secondary" type="button">問題文だけコピー</button>
       </div>
 
       <div id="quizStatus" class="status warn" style="margin-top: 16px;">選択肢を選んでOKを押してください。</div>
+
+      <div class="sub-actions">
+        <div class="row">
+          <button id="abortQuizButton" class="button danger" type="button">中断してセットアップへ戻る</button>
+        </div>
+      </div>
     </div>
 
     <div id="resultPanel" class="card hidden">
       <h2>結果</h2>
-      <div id="resultStatus" class="status ok"></div>
+      <div id="resultStatus" class="status ok result-summary"></div>
+
+      <h3>全問題の見直し</h3>
+      <div id="reviewList" class="review-list"></div>
+
       <div class="row" style="margin-top: 16px;">
+        <button id="copyAllReviewButton" class="button secondary" type="button">全問題と解答を確認用にコピー</button>
         <button id="backToSetupButton" class="button secondary" type="button">セットアップへ戻る</button>
       </div>
     </div>
@@ -344,7 +407,7 @@
     const DEV_MODE = true;
     const DEFAULT_PASS_SCORE = 8;
     const PASS_RATIO = 0.8;
-    const ALLOWED_ANSWER_CHARS = ["a", "b", "c"];
+    const ALLOWED_ANSWER_CHARS = ["a", "b", "c", "d"];
 
     const state = {
       questions: [],
@@ -352,7 +415,8 @@
       score: 0,
       selectedAnswerChar: "",
       bootPassed: false,
-      hasAnsweredCurrentQuestion: false
+      hasAnsweredCurrentQuestion: false,
+      userAnswers: []
     };
 
     const dom = {};
@@ -377,12 +441,16 @@
       dom.choiceList = document.getElementById("choiceList");
       dom.confirmAnswerButton = document.getElementById("confirmAnswerButton");
       dom.nextQuestionButton = document.getElementById("nextQuestionButton");
+      dom.copyCurrentQuestionButton = document.getElementById("copyCurrentQuestionButton");
+      dom.copyCurrentQuestionTextButton = document.getElementById("copyCurrentQuestionTextButton");
       dom.abortQuizButton = document.getElementById("abortQuizButton");
       dom.quizStatus = document.getElementById("quizStatus");
       dom.answerFeedbackPanel = document.getElementById("answerFeedbackPanel");
 
       dom.resultPanel = document.getElementById("resultPanel");
       dom.resultStatus = document.getElementById("resultStatus");
+      dom.reviewList = document.getElementById("reviewList");
+      dom.copyAllReviewButton = document.getElementById("copyAllReviewButton");
       dom.backToSetupButton = document.getElementById("backToSetupButton");
     }
 
@@ -402,7 +470,7 @@
 
     function buildPromptForAi() {
       return [
-        "以下の条件を厳守して、3択クイズJSONを1つだけ作成してください。",
+        "以下の条件を厳守して、4択クイズJSONを1つだけ作成してください。",
         "",
         "【重要】",
         "- 出力は必ずコードブロック1つのみ",
@@ -411,8 +479,8 @@
         "- キー名や構造は完全一致させること",
         "- questions は1件以上",
         "- 各問題は question と options を持つこと",
-        "- options には a / b / c を必ず持たせること",
-        '- 各問題は answer を持ち、値は "a" / "b" / "c" のいずれかであること',
+        "- options には a / b / c / d を必ず持たせること",
+        '- 各問題は answer を持ち、値は "a" / "b" / "c" / "d" のいずれかであること',
         "- 各問題は feedback_correct / feedback_incorrect / explanation を必ず持たせること",
         "- 問題文と選択肢は自然な日本語にすること",
         "",
@@ -425,7 +493,8 @@
         '      "options": {',
         '        "a": "選択肢A",',
         '        "b": "選択肢B",',
-        '        "c": "選択肢C"',
+        '        "c": "選択肢C",',
+        '        "d": "選択肢D"',
         "      },",
         '      "answer": "b",',
         '      "feedback_correct": "正解時メッセージ",',
@@ -473,9 +542,71 @@
       }).join("");
     }
 
+    function buildCurrentQuestionCheckPrompt(questionItem, questionIndex) {
+      return [
+        "以下の四択問題について、問題文・選択肢・正解設定が自然で正しいか確認してください。",
+        "事実誤認、曖昧さ、誤答設定、紛らわしい選択肢があれば指摘してください。",
+        "問題なければ「妥当です」と書いてください。",
+        "",
+        `【問題番号】${questionIndex + 1}`,
+        `【問題文】${questionItem.question}`,
+        "【選択肢】",
+        `A: ${questionItem.options.a}`,
+        `B: ${questionItem.options.b}`,
+        `C: ${questionItem.options.c}`,
+        `D: ${questionItem.options.d}`,
+        `【設定されている正解】${questionItem.answer.toUpperCase()}: ${questionItem.options[questionItem.answer]}`,
+        `【正解時メッセージ】${questionItem.feedback_correct}`,
+        `【不正解時メッセージ】${questionItem.feedback_incorrect}`,
+        `【解説】${questionItem.explanation}`
+      ].join("\n");
+    }
+
+    function buildCurrentQuestionTextOnly(questionItem) {
+      return questionItem.question;
+    }
+
+    function buildAllQuestionsReviewPrompt() {
+      const lines = [
+        "以下は四択クイズの全問題と、回答者の解答一覧です。",
+        "各問題について、問題文・選択肢・正解設定が妥当か確認してください。",
+        "事実誤認、正解設定ミス、選択肢の曖昧さ、不自然な解説があれば指摘してください。",
+        "各問題ごとに、妥当 / 要修正 を判定してください。",
+        ""
+      ];
+
+      for (let index = 0; index < state.questions.length; index += 1) {
+        const questionItem = state.questions[index];
+        const userAnswer = state.userAnswers[index] || "未回答";
+        const correctAnswer = questionItem.answer;
+
+        lines.push(`【問題${index + 1}】`);
+        lines.push(`問題文: ${questionItem.question}`);
+        lines.push("選択肢:");
+        lines.push(`A: ${questionItem.options.a}`);
+        lines.push(`B: ${questionItem.options.b}`);
+        lines.push(`C: ${questionItem.options.c}`);
+        lines.push(`D: ${questionItem.options.d}`);
+        lines.push(`設定されている正解: ${correctAnswer.toUpperCase()} - ${questionItem.options[correctAnswer]}`);
+
+        if (userAnswer === "未回答") {
+          lines.push("回答者の解答: 未回答");
+        } else {
+          lines.push(`回答者の解答: ${userAnswer.toUpperCase()} - ${questionItem.options[userAnswer]}`);
+        }
+
+        lines.push(`正解時メッセージ: ${questionItem.feedback_correct}`);
+        lines.push(`不正解時メッセージ: ${questionItem.feedback_incorrect}`);
+        lines.push(`解説: ${questionItem.explanation}`);
+        lines.push("");
+      }
+
+      return lines.join("\n");
+    }
+
     function buildValidQuizData(questionCount = 5) {
       const questions = [];
-      const answers = ["b", "c", "c", "a", "c", "a", "c", "a", "b", "a"];
+      const answers = ["b", "d", "a", "c", "b", "a", "d", "c"];
 
       for (let index = 0; index < questionCount; index += 1) {
         questions.push({
@@ -483,7 +614,8 @@
           options: {
             a: `Option A ${index + 1}`,
             b: `Option B ${index + 1}`,
-            c: `Option C ${index + 1}`
+            c: `Option C ${index + 1}`,
+            d: `Option D ${index + 1}`
           },
           answer: answers[index % answers.length],
           feedback_correct: `Correct feedback ${index + 1}`,
@@ -562,7 +694,7 @@
         }
 
         if (!ALLOWED_ANSWER_CHARS.includes(questionItem.answer)) {
-          errors.push(`${questionLabel}.answer は "a" / "b" / "c" のいずれかである必要があります。`);
+          errors.push(`${questionLabel}.answer は "a" / "b" / "c" / "d" のいずれかである必要があります。`);
         }
 
         if (typeof questionItem.feedback_correct !== "string" || questionItem.feedback_correct.trim() === "") {
@@ -604,8 +736,8 @@
     function runSelfTests() {
       const testCases = [
         {
-          name: "validateQuizData_accepts_question_with_answer_feedback_and_explanation",
-          intention: "answer を含む可変件数JSONを受け入れることを確認する",
+          name: "validateQuizData_accepts_four_choice_question_data",
+          intention: "4択かつ可変件数JSONを受け入れることを確認する",
           run: function () {
             const quizData = buildValidQuizData(3);
             const validation = validateQuizData(quizData);
@@ -626,14 +758,14 @@
           }
         },
         {
-          name: "validateQuizData_rejects_missing_answer",
-          intention: "answer が欠けた問題を拒否することを確認する",
+          name: "validateQuizData_rejects_missing_option_d",
+          intention: "d 選択肢が欠けた問題を拒否することを確認する",
           run: function () {
             const quizData = buildValidQuizData(2);
-            delete quizData.questions[0].answer;
+            delete quizData.questions[0].options.d;
             const validation = validateQuizData(quizData);
             if (validation.isValid) {
-              throw new Error("Expected invalid quiz data for missing answer, but it was accepted.");
+              throw new Error("Expected invalid quiz data for missing option d, but it was accepted.");
             }
           }
         },
@@ -643,8 +775,8 @@
           run: function () {
             const quizData = buildValidQuizData(3);
             const answerKey = buildDerivedAnswerKey(quizData.questions);
-            if (answerKey !== "bcc") {
-              throw new Error(`Expected derived answer key to be bcc, but got: ${answerKey}`);
+            if (answerKey !== "bda") {
+              throw new Error(`Expected derived answer key to be bda, but got: ${answerKey}`);
             }
           }
         },
@@ -771,13 +903,16 @@
       state.score = 0;
       state.selectedAnswerChar = "";
       state.hasAnsweredCurrentQuestion = false;
+      state.userAnswers = [];
       dom.choiceList.innerHTML = "";
+      dom.reviewList.innerHTML = "";
       resetFeedbackPanel();
     }
 
     function initializeQuizState(questions) {
       resetQuizState();
       state.questions = questions;
+      state.userAnswers = new Array(questions.length).fill("");
     }
 
     function setQuestionActionStateBeforeAnswer() {
@@ -851,7 +986,7 @@
 
       if (state.selectedAnswerChar === "") {
         dom.quizStatus.className = "status warn";
-        dom.quizStatus.textContent = "まだ選択されていません。A / B / C のどれかを選んでください。";
+        dom.quizStatus.textContent = "まだ選択されていません。A / B / C / D のどれかを選んでください。";
         return;
       }
 
@@ -863,6 +998,7 @@
         state.score += 1;
       }
 
+      state.userAnswers[state.currentQuestionIndex] = state.selectedAnswerChar;
       state.hasAnsweredCurrentQuestion = true;
       dom.scoreText.textContent = String(state.score);
 
@@ -904,6 +1040,38 @@
       dom.nextQuestionButton.textContent = "次の問題へ";
     }
 
+    function renderReviewList() {
+      dom.reviewList.innerHTML = "";
+
+      for (let index = 0; index < state.questions.length; index += 1) {
+        const questionItem = state.questions[index];
+        const userAnswer = state.userAnswers[index];
+        const correctAnswer = questionItem.answer;
+        const isCorrect = userAnswer === correctAnswer;
+
+        const item = document.createElement("div");
+        item.className = `review-item ${isCorrect ? "correct" : "incorrect"}`;
+
+        const userAnswerText = userAnswer
+          ? `${userAnswer.toUpperCase()} - ${questionItem.options[userAnswer]}`
+          : "未回答";
+
+        const correctAnswerText = `${correctAnswer.toUpperCase()} - ${questionItem.options[correctAnswer]}`;
+
+        item.innerHTML = `
+          <div class="review-q">Q${index + 1}. ${escapeHtml(questionItem.question)}</div>
+          <div class="review-meta">
+            <div><span class="muted">判定:</span> ${isCorrect ? "正解" : "不正解"}</div>
+            <div><span class="muted">あなたの回答:</span> ${escapeHtml(userAnswerText)}</div>
+            <div><span class="muted">正解:</span> ${escapeHtml(correctAnswerText)}</div>
+            <div><span class="muted">解説:</span> ${escapeHtml(questionItem.explanation)}</div>
+          </div>
+        `;
+
+        dom.reviewList.appendChild(item);
+      }
+    }
+
     function finishQuiz() {
       const questionCount = getQuizLength();
       const passScore = getPassScore(questionCount);
@@ -916,8 +1084,9 @@
         `答え列: ${buildDerivedAnswerKey(state.questions)}`
       ];
 
-      dom.resultStatus.className = hasPassed ? "status ok" : "status fail";
+      dom.resultStatus.className = hasPassed ? "status ok result-summary" : "status fail result-summary";
       dom.resultStatus.textContent = resultLines.join("\n");
+      renderReviewList();
       showResultPanel();
     }
 
@@ -986,64 +1155,56 @@
       const exampleData = {
         questions: [
           {
-            question: "日本の通貨単位は次のうちどれ？",
+            question: "スタイミーが引退した年齢は？",
             options: {
-              a: "ウォン",
-              b: "円",
-              c: "ドル"
+              a: "6歳",
+              b: "7歳",
+              c: "8歳",
+              d: "9歳"
+            },
+            answer: "c",
+            feedback_correct: "正解！8歳まで現役でした。",
+            feedback_incorrect: "惜しいです。8歳が正解です。",
+            explanation: "スタイミーは非常に長い競走生活を送り、8歳まで現役でした。"
+          },
+          {
+            question: "日本の首都はどれ？",
+            options: {
+              a: "大阪",
+              b: "東京",
+              c: "名古屋",
+              d: "札幌"
             },
             answer: "b",
-            feedback_correct: "正解！その通りです。",
-            feedback_incorrect: "残念！円が正解です。",
-            explanation: "日本の通貨単位は「円」です。"
+            feedback_correct: "正解です。",
+            feedback_incorrect: "東京が正解です。",
+            explanation: "日本の首都は東京です。"
           },
           {
-            question: "次のうち、哺乳類はどれ？",
+            question: "水素の元素記号は？",
             options: {
-              a: "ペンギン",
-              b: "ダチョウ",
-              c: "カモノハシ"
-            },
-            answer: "c",
-            feedback_correct: "よくできました！",
-            feedback_incorrect: "残念。カモノハシは哺乳類です。",
-            explanation: "カモノハシは卵を産みますが、哺乳類に分類されます。"
-          },
-          {
-            question: "次のうち、漢数字で「百」が表す数はどれ？",
-            options: {
-              a: "10",
-              b: "1000",
-              c: "100"
-            },
-            answer: "c",
-            feedback_correct: "その通り、100です。",
-            feedback_incorrect: "違います。「百」は100のことです。",
-            explanation: "「百」は100を意味します。"
-          },
-          {
-            question: "日本の建国記念の日は、次のうちどれに定められている？",
-            options: {
-              a: "2月11日",
-              b: "5月3日",
-              c: "4月29日"
+              a: "H",
+              b: "He",
+              c: "O",
+              d: "N"
             },
             answer: "a",
-            feedback_correct: "正解です。",
-            feedback_incorrect: "違います。2月11日です。",
-            explanation: "建国記念の日は2月11日です。"
+            feedback_correct: "その通りです。",
+            feedback_incorrect: "水素は H です。",
+            explanation: "水素の元素記号は H です。"
           },
           {
-            question: "世界で一番面積が大きい海は？",
+            question: "日本で最も長い川は？",
             options: {
-              a: "大西洋",
-              b: "インド洋",
-              c: "太平洋"
+              a: "利根川",
+              b: "石狩川",
+              c: "最上川",
+              d: "信濃川"
             },
-            answer: "c",
-            feedback_correct: "よく覚えていますね！",
-            feedback_incorrect: "残念。一番広いのは太平洋です。",
-            explanation: "太平洋は最も広い海です。"
+            answer: "d",
+            feedback_correct: "正解です。",
+            feedback_incorrect: "信濃川が正解です。",
+            explanation: "信濃川は日本最長の川です。"
           }
         ]
       };
@@ -1106,6 +1267,78 @@
         moveToNextStep();
       });
 
+      dom.copyCurrentQuestionButton.addEventListener("click", async function () {
+        try {
+          if (state.questions.length === 0) {
+            dom.quizStatus.className = "status fail";
+            dom.quizStatus.textContent = "問題データがありません。";
+            return;
+          }
+
+          const questionItem = state.questions[state.currentQuestionIndex];
+          const promptText = buildCurrentQuestionCheckPrompt(questionItem, state.currentQuestionIndex);
+          await copyTextToClipboard(promptText);
+
+          dom.quizStatus.className = "status ok";
+          dom.quizStatus.textContent = `問題${state.currentQuestionIndex + 1}の確認用プロンプトをクリップボードへコピーしました。`;
+        } catch (error) {
+          dom.quizStatus.className = "status fail";
+          dom.quizStatus.textContent = `コピー失敗: ${error instanceof Error ? error.message : String(error)}`;
+        }
+      });
+
+      dom.copyCurrentQuestionTextButton.addEventListener("click", async function () {
+        try {
+          if (state.questions.length === 0) {
+            dom.quizStatus.className = "status fail";
+            dom.quizStatus.textContent = "問題データがありません。";
+            return;
+          }
+
+          const questionItem = state.questions[state.currentQuestionIndex];
+          const textOnly = buildCurrentQuestionTextOnly(questionItem);
+          await copyTextToClipboard(textOnly);
+
+          dom.quizStatus.className = "status ok";
+          dom.quizStatus.textContent = `問題${state.currentQuestionIndex + 1}の問題文だけをクリップボードへコピーしました。`;
+        } catch (error) {
+          dom.quizStatus.className = "status fail";
+          dom.quizStatus.textContent = `コピー失敗: ${error instanceof Error ? error.message : String(error)}`;
+        }
+      });
+
+      dom.copyAllReviewButton.addEventListener("click", async function () {
+        try {
+          if (state.questions.length === 0) {
+            dom.resultStatus.className = "status fail result-summary";
+            dom.resultStatus.textContent = "問題データがありません。";
+            return;
+          }
+
+          const promptText = buildAllQuestionsReviewPrompt();
+          await copyTextToClipboard(promptText);
+
+          const questionCount = getQuizLength();
+          const passScore = getPassScore(questionCount);
+          const hasPassed = state.score >= passScore;
+
+          const resultLines = [
+            `最終ポイント: ${state.score} / ${questionCount}`,
+            `合否: ${hasPassed ? "合格" : "不合格"}`,
+            `合格条件: ${passScore}ポイント以上`,
+            `答え列: ${buildDerivedAnswerKey(state.questions)}`,
+            "",
+            "全問題確認用プロンプトをクリップボードへコピーしました。"
+          ];
+
+          dom.resultStatus.className = hasPassed ? "status ok result-summary" : "status fail result-summary";
+          dom.resultStatus.textContent = resultLines.join("\n");
+        } catch (error) {
+          dom.resultStatus.className = "status fail result-summary";
+          dom.resultStatus.textContent = `コピー失敗: ${error instanceof Error ? error.message : String(error)}`;
+        }
+      });
+
       dom.abortQuizButton.addEventListener("click", function () {
         resetQuizState();
         showSetupPanel();
@@ -1155,6 +1388,15 @@
 
       dom.setupStatus.className = "status ok";
       dom.setupStatus.textContent = "準備完了です。AI用プロンプトをコピーするか、完成済みJSONを貼って開始してください。";
+    }
+
+    function escapeHtml(value) {
+      return String(value)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#39;");
     }
 
     window.addEventListener("DOMContentLoaded", function () {

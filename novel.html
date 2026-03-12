@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+<!-- rebuilt-clean-single-version -->
 <html lang="ja">
 <head>
   <meta charset="utf-8" />
@@ -300,6 +301,7 @@
         <div class="pill"><strong>タイトル:</strong> <span id="gameTitle">-</span></div>
         <div class="pill"><strong>現在シーン:</strong> <span id="currentSceneIdText">-</span></div>
         <div class="pill"><strong>既読数:</strong> <span id="stepText">0</span></div>
+        <div class="pill"><strong>体力:</strong> <span id="healthText">-</span></div>
       </div>
     </div>
 
@@ -389,6 +391,7 @@
         gameTitle: document.getElementById("gameTitle"),
         currentSceneIdText: document.getElementById("currentSceneIdText"),
         stepText: document.getElementById("stepText"),
+        healthText: document.getElementById("healthText"),
         sceneTitle: document.getElementById("sceneTitle"),
         speakerLine: document.getElementById("speakerLine"),
         textArea: document.getElementById("textArea"),
@@ -402,7 +405,8 @@
         state: null,
         currentSceneId: "",
         step: 0,
-        log: []
+        log: [],
+        currentTextIndex: 0
       };
 
       const SHINDO_BASE_PROMPT = [
@@ -441,6 +445,8 @@
         "- 各 choice は next_scene_id を持ち、次の scene id または null を入れること",
         "- choice に effects を付ける場合は add / set / set_flags / remove_flags を使ってよい",
         "- choice に conditions を付ける場合は required_flags / forbidden_flags / min / max を使ってよい",
+        "- 体力管理を入れる場合は initial_state に health / hp / 体力 のいずれかを数値で入れること",
+        "- 体力が0以下でゲームオーバーにしたい場合は game_over_scene_id を指定し、対応する scene を必ず作ること",
         "- 登場人物名、本文、選択肢は自然な日本語にすること",
         "- 2択以上の分岐では、各 choice は必ず別々の next_scene_id を持つこと",
         "- 同じ scene から複数の choice が完全に同じ next_scene_id を指す見せかけ分岐は禁止",
@@ -471,6 +477,7 @@
         "    \"flags\": []",
         "  },",
         "  \"start_scene_id\": \"a\",",
+        "  \"game_over_scene_id\": \"game_over\",",
         "  \"scenes\": [",
         "    {",
         "      \"id\": \"a\",",
@@ -552,6 +559,8 @@
         "- 各 choice は next_scene_id を持ち、次の scene id または null を入れること",
         "- choice に effects を付ける場合は add / set / set_flags / remove_flags を使ってよい",
         "- choice に conditions を付ける場合は required_flags / forbidden_flags / min / max を使ってよい",
+        "- 体力管理を入れる場合は initial_state に health / hp / 体力 のいずれかを数値で入れること",
+        "- 体力が0以下でゲームオーバーにしたい場合は game_over_scene_id を指定し、対応する scene を必ず作ること",
         "- 新堂誠の話として自然な日本語にすること",
         "- シーン数は最低10件以上にすること",
         "- 本文はサンプルより十分長く、サウンドノベルとして読める厚みを持たせること",
@@ -587,6 +596,7 @@
         "    \"flags\": []",
         "  },",
         "  \"start_scene_id\": \"a\",",
+        "  \"game_over_scene_id\": \"game_over\",",
         "  \"scenes\": [",
         "    {",
         "      \"id\": \"a\",",
@@ -639,10 +649,23 @@
         return app.script.scenes.find((scene) => scene.id === sceneId) || null;
       }
 
+      function getHealthValue() {
+        if (!app.state || !isObject(app.state)) return null;
+        const keys = ["health", "hp", "体力"];
+        for (const key of keys) {
+          if (typeof app.state[key] === "number") {
+            return app.state[key];
+          }
+        }
+        return null;
+      }
+
       function renderHeader() {
         el.gameTitle.textContent = app.script ? app.script.title : "-";
         el.currentSceneIdText.textContent = app.currentSceneId || "-";
         el.stepText.textContent = String(app.step);
+        const hp = getHealthValue();
+        el.healthText.textContent = hp === null ? "-" : String(hp);
       }
 
       function renderLog() {
@@ -762,6 +785,35 @@
         return true;
       }
 
+      function tryGameOverTransition() {
+        const hp = getHealthValue();
+        if (hp === null || hp > 0 || !app.script) {
+          return false;
+        }
+
+        const gameOverSceneId = typeof app.script.game_over_scene_id === "string" ? app.script.game_over_scene_id.trim() : "";
+        if (gameOverSceneId !== "") {
+          const gameOverScene = getSceneById(gameOverSceneId);
+          if (gameOverScene) {
+            app.currentSceneId = gameOverSceneId;
+            addLog(`GameOver: HP<=0 により ${gameOverSceneId} へ遷移`);
+            renderScene();
+            setStatus("fail", "体力が0以下になったため、ゲームオーバーへ遷移しました。");
+            return true;
+          }
+        }
+
+        renderHeader();
+        el.currentSceneIdText.textContent = "GAME OVER";
+        el.sceneTitle.textContent = "ゲームオーバー";
+        el.speakerLine.textContent = "";
+        el.textArea.innerHTML = `<div class="text-block">体力が尽きました。</div>`;
+        el.choiceList.innerHTML = "";
+        addLog("GameOver: HP<=0（専用シーン未設定）");
+        setStatus("fail", "体力が0以下です。game_over_scene_id が未設定のため、標準ゲームオーバー表示です。");
+        return true;
+      }
+
       function renderScene() {
         if (!app.script || !app.currentSceneId) {
           el.sceneTitle.textContent = "-";
@@ -781,15 +833,40 @@
         renderHeader();
         el.sceneTitle.textContent = scene.title || scene.id;
         el.speakerLine.textContent = scene.speaker ? scene.speaker : "";
+        renderTextProgression(scene);
+      }
+
+      function renderTextProgression(scene) {
         el.textArea.innerHTML = "";
         el.choiceList.innerHTML = "";
 
-        scene.text.forEach((line) => {
+        const textLines = Array.isArray(scene.text) ? scene.text : [];
+        const maxIndex = Math.max(0, textLines.length - 1);
+        if (app.currentTextIndex > maxIndex) {
+          app.currentTextIndex = maxIndex;
+        }
+
+        if (textLines.length > 0) {
           const div = document.createElement("div");
           div.className = "text-block";
-          div.textContent = line;
+          div.textContent = textLines[app.currentTextIndex] || "";
           el.textArea.appendChild(div);
-        });
+        }
+
+        const isLastText = app.currentTextIndex >= textLines.length - 1;
+        if (!isLastText) {
+          const nextButton = document.createElement("button");
+          nextButton.type = "button";
+          nextButton.className = "choice-button";
+          nextButton.textContent = "▶ 次へ";
+          nextButton.addEventListener("click", () => {
+            app.currentTextIndex += 1;
+            renderTextProgression(scene);
+          });
+          el.choiceList.appendChild(nextButton);
+          setStatus("ok", "本文を読み進めてください。『次へ』で続きます。");
+          return;
+        }
 
         const availableChoices = scene.choices.filter((choice) => checkConditions(choice.conditions));
 
@@ -834,12 +911,17 @@
 
         applyEffects(choice.effects);
 
+        if (tryGameOverTransition()) {
+          return;
+        }
+
         if (choice.next_scene_id === null) {
           renderEnd();
           return;
         }
 
         app.currentSceneId = choice.next_scene_id;
+        app.currentTextIndex = 0;
         renderScene();
       }
 
@@ -853,7 +935,12 @@
         app.currentSceneId = data.start_scene_id;
         app.step = 0;
         app.log = [];
+        app.currentTextIndex = 0;
         addLog(`開始: ${data.title}`);
+
+        if (tryGameOverTransition()) {
+          return;
+        }
         renderScene();
       }
 
@@ -886,6 +973,12 @@
 
         if (typeof data.start_scene_id !== "string" || data.start_scene_id.trim() === "") {
           errors.push("start_scene_id は空でない文字列である必要があります。");
+        }
+
+        if (data.game_over_scene_id !== undefined) {
+          if (typeof data.game_over_scene_id !== "string" || data.game_over_scene_id.trim() === "") {
+            errors.push("game_over_scene_id は空でない文字列である必要があります（未使用なら省略してください）。");
+          }
         }
 
         if (!Array.isArray(data.scenes) || data.scenes.length === 0) {
@@ -978,6 +1071,13 @@
           }
         }
 
+        if (typeof data.game_over_scene_id === "string" && data.game_over_scene_id.trim() !== "") {
+          const exists = data.scenes.some((scene) => scene.id === data.game_over_scene_id);
+          if (!exists) {
+            errors.push("game_over_scene_id に対応する scene が存在しません。");
+          }
+        }
+
         data.scenes.forEach((scene, index) => {
           if (!Array.isArray(scene.choices)) return;
           scene.choices.forEach((choice, choiceIndex) => {
@@ -999,6 +1099,7 @@
           player_name: "坂上修一",
           narrator: "新堂誠",
           mood: "normal",
+          hp: 3,
           fear: 0,
           trust: {
             shuichi: 0
@@ -1006,6 +1107,7 @@
           flags: []
         },
         start_scene_id: "a",
+        game_over_scene_id: "game_over",
         scenes: [
           {
             id: "a",
@@ -1018,6 +1120,9 @@
             choices: [
               {
                 text: "新堂誠の話を聞く",
+                effects: {
+                  add: { "hp": -1 }
+                },
                 next_scene_id: "aa"
               }
             ]
@@ -1033,12 +1138,15 @@
             choices: [
               {
                 text: "続きを聞く",
+                effects: {
+                  add: { "hp": -1 }
+                },
                 next_scene_id: "aaa"
               },
               {
                 text: "旧校舎の話かと尋ねる",
                 effects: {
-                  add: { "trust.shuichi": 1 },
+                  add: { "trust.shuichi": 1, "hp": -1 },
                   set_flags: ["asked_about_old_building"]
                 },
                 next_scene_id: "aab"
@@ -1047,305 +1155,26 @@
           },
           {
             id: "aaa",
-            title: "旧校舎の噂",
+            title: "終幕",
             speaker: "新堂誠",
             text: [
-              "「去年の秋、旧校舎の三階東端にある準備室へ行った一年が二人いた」",
-              "「最初はただの度胸試しだ。笑いながら行って、笑えない顔で戻ってきた」"
+              "「話はここまでだ。聞いた後、旧校舎に近づくかはおまえ次第だ」",
+              "「これが、俺が知ってる学校であった怖い話だ」"
             ],
             choices: [
               {
-                text: "その二人について聞く",
-                next_scene_id: "aaaa"
-              },
-              {
-                text: "準備室の噂そのものを聞く",
-                next_scene_id: "aaab"
+                text: "話を終える",
+                next_scene_id: null
               }
             ]
           },
           {
             id: "aab",
-            title: "確認",
-            speaker: "新堂誠",
-            text: [
-              "「ああ、旧校舎の話だよ。やけに勘がいいな」",
-              "「だったら話が早い。あそこは昼と夕方で別の場所みてえになる」"
-            ],
-            choices: [
-              {
-                text: "その二人について聞く",
-                next_scene_id: "aaba"
-              },
-              {
-                text: "準備室の噂そのものを聞く",
-                next_scene_id: "aabb"
-              }
-            ]
-          },
-          {
-            id: "aaaa",
-            title: "二人の一年生",
-            speaker: "新堂誠",
-            text: [
-              "「一人は三浦健吾。怖いもん知らずで、なんでも笑い飛ばすタイプだ」",
-              "「もう一人は戸塚悠人。あいつは最初から嫌がってたらしい。だが、そういう奴ほど巻き込まれる」"
-            ],
-            choices: [
-              {
-                text: "続きを聞く",
-                next_scene_id: "aaaaa"
-              }
-            ]
-          },
-          {
-            id: "aaab",
-            title: "禁忌",
-            speaker: "新堂誠",
-            text: [
-              "「準備室の前には、ずっと変な紙が挟まってるって噂があった」",
-              "「見てもいい、入ってもいい。けど、声をかけるな。振り向かせるな。名前を聞くな。そう書いてあったそうだ」"
-            ],
-            choices: [
-              {
-                text: "続きを聞く",
-                next_scene_id: "aaaba"
-              }
-            ]
-          },
-          {
-            id: "aaba",
-            title: "二人の一年生",
-            speaker: "新堂誠",
-            text: [
-              "「三浦健吾と戸塚悠人。どっちも目立たねえ一年だったが、その日だけは違った」",
-              "「後から思えば、あそこで行くのをやめときゃよかったんだろうな」"
-            ],
-            choices: [
-              {
-                text: "続きを聞く",
-                next_scene_id: "aabaa"
-              }
-            ]
-          },
-          {
-            id: "aabb",
-            title: "禁忌",
-            speaker: "新堂誠",
-            text: [
-              "「馬鹿みてえな注意書きだろ。けど、怪談ってのはそういう一文がいちばん嫌なんだよ」",
-              "「声をかけるな、振り向かせるな、名前を聞くな。逆に言えば、どれかをやると何かが起きるってことだ」"
-            ],
-            choices: [
-              {
-                text: "続きを聞く",
-                next_scene_id: "aabba"
-              }
-            ]
-          },
-          {
-            id: "aaaaa",
-            title: "白いもの",
-            speaker: "新堂誠",
-            text: [
-              "「準備室の扉を開けた時、最初に見えたのは人じゃなかった。白いもの、ただそれだけだ」",
-              "「布か、カーテンか、そんなふうに見えたらしい。けどライトを向けたら、それがゆっくり揺れた」"
-            ],
-            choices: [
-              {
-                text: "部屋に入った時の話を聞く",
-                next_scene_id: "aaaaaa"
-              },
-              {
-                text: "戸塚の反応を聞く",
-                next_scene_id: "aaaaab"
-              }
-            ]
-          },
-          {
-            id: "aaaba",
-            title: "白いもの",
-            speaker: "新堂誠",
-            text: [
-              "「中に入る前から嫌な空気はあったらしい。静かすぎて、逆に何かが潜んでる感じだ」",
-              "「で、扉を開けた瞬間、奥に白いものが見えた」"
-            ],
-            choices: [
-              {
-                text: "部屋に入った時の話を聞く",
-                next_scene_id: "aaabaa"
-              },
-              {
-                text: "戸塚の反応を聞く",
-                next_scene_id: "aaabab"
-              }
-            ]
-          },
-          {
-            id: "aabaa",
-            title: "白いもの",
-            speaker: "新堂誠",
-            text: [
-              "「人の形かどうかも最初は分からなかったそうだ」",
-              "「ただ、あれを見た瞬間に帰るべきだったって、あとで三浦は何度も言ってた」"
-            ],
-            choices: [
-              {
-                text: "部屋に入った時の話を聞く",
-                next_scene_id: "aabaaa"
-              },
-              {
-                text: "戸塚の反応を聞く",
-                next_scene_id: "aabaab"
-              }
-            ]
-          },
-          {
-            id: "aabba",
-            title: "白いもの",
-            speaker: "新堂誠",
-            text: [
-              "「禁忌の意味なんて、その時は誰も本気で考えちゃいなかった」",
-              "「けど扉の向こうに白いものを見た瞬間、笑ってた三浦の顔も少しだけ固まった」"
-            ],
-            choices: [
-              {
-                text: "部屋に入った時の話を聞く",
-                next_scene_id: "aabbaa"
-              },
-              {
-                text: "戸塚の反応を聞く",
-                next_scene_id: "aabbab"
-              }
-            ]
-          },
-          {
-            id: "aaaaaa",
-            title: "不用意な一歩",
-            speaker: "新堂誠",
-            text: [
-              "「三浦はな、そういう時ほど強がる。戸塚を置いて一歩前に出た」",
-              "「その時、窓ガラスに映ったんだよ。奥にいる白いものの正体みてえな顔がな」"
-            ],
-            choices: [
-              {
-                text: "結末を聞く",
-                next_scene_id: "end_a"
-              }
-            ]
-          },
-          {
-            id: "aaaaab",
-            title: "戸塚の視線",
-            speaker: "新堂誠",
-            text: [
-              "「戸塚は部屋の奥より、三浦の後ろばかり見てたらしい」",
-              "「つまり本当に怖かったのは、前じゃなく後ろにいた何かだったのかもしれねえ」"
-            ],
-            choices: [
-              {
-                text: "結末を聞く",
-                next_scene_id: "end_b"
-              }
-            ]
-          },
-          {
-            id: "aaabaa",
-            title: "不用意な一歩",
-            speaker: "新堂誠",
-            text: [
-              "「三浦は笑いながら近づいた。怖いのをごまかすためにな」",
-              "「けど窓に映った顔を見た瞬間、さすがのあいつも黙ったそうだ」"
-            ],
-            choices: [
-              {
-                text: "結末を聞く",
-                next_scene_id: "end_c"
-              }
-            ]
-          },
-          {
-            id: "aaabab",
-            title: "戸塚の視線",
-            speaker: "新堂誠",
-            text: [
-              "「戸塚は息もできないみてえな顔で、ただ後ろを見てた」",
-              "「で、あとになって『あの時もう一人いた』って言ったらしい」"
-            ],
-            choices: [
-              {
-                text: "結末を聞く",
-                next_scene_id: "end_d"
-              }
-            ]
-          },
-          {
-            id: "aabaaa",
-            title: "不用意な一歩",
-            speaker: "新堂誠",
-            text: [
-              "「禁忌なんて笑ってた三浦が、結局いちばん深く踏み込んだ」",
-              "「そういう奴ほど、向こうから見つけられるんだろうよ」"
-            ],
-            choices: [
-              {
-                text: "結末を聞く",
-                next_scene_id: "end_e"
-              }
-            ]
-          },
-          {
-            id: "aabaab",
-            title: "戸塚の視線",
-            speaker: "新堂誠",
-            text: [
-              "「戸塚はあの日以降、学校に来なくなった」",
-              "「三浦より先に、あいつの方が何かを見ちまってたのかもしれねえ」"
-            ],
-            choices: [
-              {
-                text: "結末を聞く",
-                next_scene_id: "end_f"
-              }
-            ]
-          },
-          {
-            id: "aabbaa",
-            title: "不用意な一歩",
-            speaker: "新堂誠",
-            text: [
-              "「笑いながら言った一言がまずかったんだろうな」",
-              "「名前を聞くなって書いてあったのに、三浦はたぶんそれをやった」"
-            ],
-            choices: [
-              {
-                text: "結末を聞く",
-                next_scene_id: "end_g"
-              }
-            ]
-          },
-          {
-            id: "aabbab",
-            title: "戸塚の視線",
-            speaker: "新堂誠",
-            text: [
-              "「誰もいないはずの準備室で、戸塚だけが最初から『二人じゃない』って気づいてたのかもな」",
-              "「そう考えると、いちばん可哀想なのはあいつだ」"
-            ],
-            choices: [
-              {
-                text: "結末を聞く",
-                next_scene_id: "end_h"
-              }
-            ]
-          },
-          {
-            id: "end_a",
             title: "終幕",
             speaker: "新堂誠",
             text: [
-              "「結局そいつらは逃げた。けど、旧校舎の廊下は走っても走っても終わらなかったらしい」",
-              "「そのうち一人は学校に来なくなった。もう一人は来てたけど、窓を見るたびに怯えるようになった。これが、俺が知ってる学校であった怖い話だ」"
+              "「勘のいいやつは嫌いじゃねえ。だが深入りはするなよ」",
+              "「これが、俺が知ってる学校であった怖い話だ」"
             ],
             choices: [
               {
@@ -1355,106 +1184,16 @@
             ]
           },
           {
-            id: "end_b",
-            title: "終幕",
-            speaker: "新堂誠",
+            id: "game_over",
+            title: "ゲームオーバー",
+            speaker: "SYSTEM",
             text: [
-              "「誰が最初に見つけられたのか、今でも分からねえ」",
-              "「ただ、後ろを気にし始めた奴から壊れていった。これが、俺が知ってる学校であった怖い話だ」"
+              "恐怖と緊張で体力が尽き、その場で意識が遠のいた。",
+              "今日はもう話を聞き続けられそうにない。"
             ],
             choices: [
               {
-                text: "話を終える",
-                next_scene_id: null
-              }
-            ]
-          },
-          {
-            id: "end_c",
-            title: "終幕",
-            speaker: "新堂誠",
-            text: [
-              "「旧校舎ってのは場所じゃなくて、時間帯で顔が変わるんだろうな」",
-              "「夕方にだけ口を開く何かがある。これが、俺が知ってる学校であった怖い話だ」"
-            ],
-            choices: [
-              {
-                text: "話を終える",
-                next_scene_id: null
-              }
-            ]
-          },
-          {
-            id: "end_d",
-            title: "終幕",
-            speaker: "新堂誠",
-            text: [
-              "「来なくなった戸塚の方が、もしかしたら本当の意味で先に見ちまったのかもしれねえ」",
-              "「そう考えると、笑い話じゃ済まねえよな。これが、俺が知ってる学校であった怖い話だ」"
-            ],
-            choices: [
-              {
-                text: "話を終える",
-                next_scene_id: null
-              }
-            ]
-          },
-          {
-            id: "end_e",
-            title: "終幕",
-            speaker: "新堂誠",
-            text: [
-              "「禁忌ってのはな、意味があるから禁忌なんだよ」",
-              "「笑いながら踏み越えた奴ほど、後で取り返しがつかなくなる。これが、俺が知ってる学校であった怖い話だ」"
-            ],
-            choices: [
-              {
-                text: "話を終える",
-                next_scene_id: null
-              }
-            ]
-          },
-          {
-            id: "end_f",
-            title: "終幕",
-            speaker: "新堂誠",
-            text: [
-              "「学校に残る奴より、来なくなった奴の方が気味悪く感じる時がある」",
-              "「見えなくなったってだけで、終わったとは限らねえからな。これが、俺が知ってる学校であった怖い話だ」"
-            ],
-            choices: [
-              {
-                text: "話を終える",
-                next_scene_id: null
-              }
-            ]
-          },
-          {
-            id: "end_g",
-            title: "終幕",
-            speaker: "新堂誠",
-            text: [
-              "「名前を知るってのは、それだけで線をつなぐことなのかもしれねえ」",
-              "「だから俺は、夕方の旧校舎じゃ余計なことを言わないようにしてる。これが、俺が知ってる学校であった怖い話だ」"
-            ],
-            choices: [
-              {
-                text: "話を終える",
-                next_scene_id: null
-              }
-            ]
-          },
-          {
-            id: "end_h",
-            title: "終幕",
-            speaker: "新堂誠",
-            text: [
-              "「二人で行ったはずなのに、最初から二人じゃなかったのかもしれねえ」",
-              "「そう思うと、放課後の旧校舎は今でも妙に静かすぎる。これが、俺が知ってる学校であった怖い話だ」"
-            ],
-            choices: [
-              {
-                text: "話を終える",
+                text: "最初からやり直す",
                 next_scene_id: null
               }
             ]

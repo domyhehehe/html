@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>CSV読込テスト</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      margin: 16px;
+      background: #0f172a;
+      color: #e5e7eb;
+    }
+
+    h1 {
+      font-size: 20px;
+      margin: 0 0 12px;
+    }
+
+    .box {
+      background: #111827;
+      border: 1px solid #334155;
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+
+    .status {
+      margin: 8px 0 0;
+      color: #93c5fd;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    input[type="file"],
+    button {
+      font-size: 16px;
+      margin-top: 8px;
+    }
+
+    pre {
+      white-space: pre-wrap;
+      word-break: break-word;
+      background: #020617;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      padding: 12px;
+      min-height: 160px;
+      margin: 0;
+    }
+
+    code {
+      background: #1e293b;
+      padding: 2px 6px;
+      border-radius: 6px;
+    }
+  </style>
+</head>
+<body>
+  <h1>CSV読込テスト</h1>
+
+  <div class="box">
+    <p>
+      まず自動で <code>test.csv</code> の読込を試します。<br />
+      失敗した場合は下のファイル選択から手動で <code>test.csv</code> を選んでください。
+    </p>
+    <button id="retryButton" type="button">自動読み込みを再試行</button>
+    <br />
+    <input id="fileInput" type="file" accept=".csv,text/csv" />
+    <div id="status" class="status">起動中...</div>
+  </div>
+
+  <div class="box">
+    <p>読み込み結果</p>
+    <pre id="output">まだ読み込んでいません。</pre>
+  </div>
+
+  <script>
+    const fileInput = document.getElementById("fileInput");
+    const retryButton = document.getElementById("retryButton");
+    const output = document.getElementById("output");
+    const statusEl = document.getElementById("status");
+
+    function parseCSVLine(line) {
+      const result = [];
+      let current = "";
+      let inQuotes = false;
+
+      for (let i = 0; i < line.length; i++) {
+        const ch = line[i];
+        const next = line[i + 1];
+
+        if (ch === '"') {
+          if (inQuotes && next === '"') {
+            current += '"';
+            i++;
+          } else {
+            inQuotes = !inQuotes;
+          }
+        } else if (ch === "," && !inQuotes) {
+          result.push(current);
+          current = "";
+        } else {
+          current += ch;
+        }
+      }
+
+      result.push(current);
+      return result;
+    }
+
+    function parseCSV(text) {
+      const lines = text
+        .replace(/\r\n/g, "\n")
+        .replace(/\r/g, "\n")
+        .split("\n")
+        .filter(line => line.trim() !== "");
+
+      if (lines.length === 0) return [];
+
+      const headers = parseCSVLine(lines[0]).map(v => v.trim());
+      const rows = [];
+
+      for (let i = 1; i < lines.length; i++) {
+        const cols = parseCSVLine(lines[i]);
+        const row = {};
+
+        for (let j = 0; j < headers.length; j++) {
+          row[headers[j]] = (cols[j] ?? "").trim();
+        }
+
+        rows.push(row);
+      }
+
+      return rows;
+    }
+
+    function showResult(title, text, rows) {
+      output.textContent =
+        title + "\n\n" +
+        "生テキスト:\n" + text + "\n\n" +
+        "JSON化結果:\n" + JSON.stringify(rows, null, 2);
+    }
+
+    async function loadDefaultCSV() {
+      statusEl.textContent = "自動で test.csv の読み込みを試しています...";
+
+      try {
+        const res = await fetch("test.csv");
+
+        if (!res.ok) {
+          throw new Error("HTTP status " + res.status);
+        }
+
+        const text = await res.text();
+        const rows = parseCSV(text);
+
+        statusEl.textContent = "自動読み込み成功";
+        showResult("自動読み込み成功", text, rows);
+      } catch (err) {
+        console.log("自動読み込み失敗:", err);
+        statusEl.textContent =
+          "自動読み込み失敗。\n" +
+          "iPhoneの file:// 制限の可能性があります。\n" +
+          "下のファイル選択から test.csv を手動で選んでください。";
+      }
+    }
+
+    fileInput.addEventListener("change", async (event) => {
+      const file = event.target.files && event.target.files[0];
+
+      if (!file) {
+        statusEl.textContent = "ファイルが選択されていません。";
+        return;
+      }
+
+      try {
+        const text = await file.text();
+        const rows = parseCSV(text);
+
+        statusEl.textContent = "手動読み込み成功";
+        showResult("手動読み込み成功\nファイル名: " + file.name, text, rows);
+      } catch (err) {
+        console.log("手動読み込み失敗:", err);
+        statusEl.textContent = "手動読み込み失敗";
+        output.textContent = "読み込み失敗:\n" + String(err);
+      }
+    });
+
+    retryButton.addEventListener("click", () => {
+      loadDefaultCSV();
+    });
+
+    loadDefaultCSV();
+  </script>
+</body>
+</html>

@@ -1,0 +1,2098 @@
+<!DOCTYPE html>
+<!-- sound-novel-json-runner-new-json-old-message-window -->
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"
+  />
+  <title>汎用サウンドノベルJSONランナー 完全版</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --panel: #111827;
+      --panel2: #1f2937;
+      --panel3: #0b1220;
+      --text: #e5e7eb;
+      --muted: #94a3b8;
+      --accent: #38bdf8;
+      --ok: #22c55e;
+      --warn: #f59e0b;
+      --danger: #fb7185;
+      --border: #334155;
+    }
+
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      -webkit-text-size-adjust: 100%;
+    }
+
+    body {
+      min-height: 100vh;
+      padding: 12px;
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: manipulation;
+      overscroll-behavior: none;
+    }
+
+    input, textarea, select, pre, code {
+      user-select: text;
+      -webkit-user-select: text;
+    }
+
+    .app {
+      max-width: 960px;
+      margin: 0 auto;
+    }
+
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 14px;
+      margin-bottom: 12px;
+    }
+
+    h1, h2, h3, p {
+      margin: 0 0 10px;
+    }
+
+    .row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .button {
+      appearance: none;
+      -webkit-appearance: none;
+      border: 0;
+      border-radius: 12px;
+      padding: 12px 16px;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      background: var(--accent);
+      color: #001018;
+      touch-action: manipulation;
+    }
+
+    .button.secondary {
+      background: var(--panel2);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+
+    .button.ok {
+      background: var(--ok);
+      color: white;
+    }
+
+    .button.danger {
+      background: var(--danger);
+      color: white;
+    }
+
+    .button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .status {
+      white-space: pre-wrap;
+      word-break: break-word;
+      line-height: 1.5;
+      padding: 12px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: var(--panel2);
+    }
+
+    .status.ok {
+      background: rgba(34, 197, 94, 0.12);
+      border-color: rgba(34, 197, 94, 0.4);
+    }
+
+    .status.warn {
+      background: rgba(245, 158, 11, 0.12);
+      border-color: rgba(245, 158, 11, 0.4);
+    }
+
+    .status.fail {
+      background: rgba(251, 113, 133, 0.12);
+      border-color: rgba(251, 113, 133, 0.4);
+    }
+
+    .label {
+      display: block;
+      margin-bottom: 8px;
+      font-size: 14px;
+      color: var(--muted);
+      font-weight: 700;
+    }
+
+    textarea, select {
+      width: 100%;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: #020617;
+      color: var(--text);
+      padding: 12px;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    textarea {
+      min-height: 280px;
+      resize: vertical;
+    }
+
+    .topbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    .pill {
+      background: var(--panel2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 6px 10px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .pill strong {
+      color: var(--text);
+    }
+
+    .scene-title {
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: 10px;
+    }
+
+    .speaker-line {
+      margin-bottom: 10px;
+      font-size: 15px;
+      color: var(--accent);
+      font-weight: 700;
+    }
+
+    .message-window {
+      background: var(--panel3);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 10px 12px;
+      line-height: 1.5;
+      white-space: pre-wrap;
+      font-size: 16px;
+      height: 220px;
+      overflow-y: auto;
+    }
+
+    .choice-list {
+      display: grid;
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .choice-button {
+      width: 100%;
+      text-align: left;
+      padding: 14px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: var(--panel2);
+      color: var(--text);
+      font-size: 15px;
+      cursor: pointer;
+      touch-action: manipulation;
+      line-height: 1.5;
+    }
+
+    .choice-button:hover {
+      border-color: var(--accent);
+    }
+
+    .choice-button:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+    }
+
+    .log-list {
+      display: grid;
+      gap: 8px;
+      max-height: 260px;
+      overflow-y: auto;
+    }
+
+    .log-item {
+      background: var(--panel3);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px;
+      font-size: 14px;
+      line-height: 1.5;
+      white-space: pre-wrap;
+    }
+
+    .note {
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    code.inline {
+      background: #020617;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 2px 6px;
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <h1>汎用サウンドノベルJSONランナー 完全版</h1>
+
+    <div class="card">
+      <h2>通知</h2>
+      <div id="globalStatus" class="status warn">サンプルを読むか、AI用プロンプトをコピーしてJSONを作ってください。</div>
+      <div class="row" style="margin-top: 10px;">
+        <button id="copyStatusButton" class="button secondary" type="button">通知をコピー</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>セットアップ</h2>
+
+      <label class="label" for="promptModeSelect">コピーするAI用プロンプト</label>
+      <select id="promptModeSelect">
+        <option value="generic">汎用JSON台本ランナー用</option>
+        <option value="shindo">新堂誠・学校であった怖い話 用</option>
+      </select>
+
+      <label class="label" for="scriptInput" style="margin-top: 12px;">台本JSON</label>
+      <textarea id="scriptInput" spellcheck="false"></textarea>
+
+      <p class="note">
+        最小構造は <code class="inline">title</code>、<code class="inline">initial_state</code>、
+        <code class="inline">start_scene_id</code>、<code class="inline">scenes</code> です。
+        各 scene は <code class="inline">id</code>、<code class="inline">title</code>、
+        <code class="inline">text</code> を持ちます。必要に応じて
+        <code class="inline">actions</code>、<code class="inline">conditional_texts</code>、
+        <code class="inline">area_id</code>、<code class="inline">scene_type</code>、
+        <code class="inline">events</code>、<code class="inline">run_event</code> も使えます。
+      </p>
+
+      <div class="row">
+        <button id="loadExampleButton" class="button secondary" type="button">サンプル読込</button>
+        <button id="copyPromptButton" class="button secondary" type="button">AI用プロンプトをコピー</button>
+        <button id="pasteScriptButton" class="button secondary" type="button">全削除してクリップボード貼り付け</button>
+        <button id="loadScriptButton" class="button ok" type="button">このJSONで開始</button>
+        <button id="restartButton" class="button secondary" type="button">最初からやり直す</button>
+        <button id="copyStateButton" class="button secondary" type="button">現在状態をコピー</button>
+        <button id="copyContinuationButton" class="button secondary" type="button">続篇用プロンプトをコピー</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>進行</h2>
+      <div class="topbar">
+        <div class="pill"><strong>タイトル:</strong> <span id="gameTitle">-</span></div>
+        <div class="pill"><strong>現在シーン:</strong> <span id="currentSceneIdText">-</span></div>
+        <div class="pill"><strong>既読数:</strong> <span id="stepText">0</span></div>
+        <div class="pill"><strong>体力:</strong> <span id="healthText">-</span></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>状態</h2>
+      <div class="topbar">
+        <div class="pill"><strong>キーアイテム:</strong> <span id="keyItemsText">-</span></div>
+      </div>
+      <div id="statePreview" class="status"></div>
+    </div>
+
+    <div class="card">
+      <h2>本文</h2>
+      <div id="sceneTitle" class="scene-title">-</div>
+      <div id="speakerLine" class="speaker-line"></div>
+      <div id="textArea"></div>
+      <div id="choiceList" class="choice-list"></div>
+    </div>
+
+    <div class="card">
+      <h2>ログ</h2>
+      <div id="logList" class="log-list"></div>
+    </div>
+  </div>
+
+  <script>
+    (() => {
+      "use strict";
+
+      function isPlainObject(value) {
+        return value !== null && typeof value === "object" && !Array.isArray(value);
+      }
+
+      function cloneJson(value) {
+        return JSON.parse(JSON.stringify(value));
+      }
+
+      function parseJsonSafely(text) {
+        try {
+          return { ok: true, data: JSON.parse(text) };
+        } catch (error) {
+          return {
+            ok: false,
+            error: error instanceof Error ? error.message : String(error)
+          };
+        }
+      }
+
+      function isMeaningfulSceneId(sceneId) {
+        return /^[a-z][a-z0-9_-]*$/.test(sceneId);
+      }
+
+      async function copyTextToClipboard(text) {
+        if (navigator.clipboard && window.isSecureContext) {
+          await navigator.clipboard.writeText(text);
+          return;
+        }
+
+        const fallbackTextarea = document.createElement("textarea");
+        fallbackTextarea.value = text;
+        fallbackTextarea.setAttribute("readonly", "");
+        fallbackTextarea.style.position = "fixed";
+        fallbackTextarea.style.left = "-9999px";
+        document.body.appendChild(fallbackTextarea);
+        fallbackTextarea.focus();
+        fallbackTextarea.select();
+
+        const copied = document.execCommand("copy");
+        document.body.removeChild(fallbackTextarea);
+
+        if (!copied) {
+          throw new Error("この環境ではクリップボードへのコピーが許可されていません。");
+        }
+      }
+
+      async function readTextFromClipboard() {
+        if (navigator.clipboard && window.isSecureContext) {
+          return navigator.clipboard.readText();
+        }
+        throw new Error("この環境ではクリップボードの読み取りが許可されていません。");
+      }
+
+      function getNestedValue(target, path) {
+        const pathParts = path.split(".");
+        let current = target;
+
+        for (const part of pathParts) {
+          if (!isPlainObject(current) || !(part in current)) {
+            return undefined;
+          }
+          current = current[part];
+        }
+
+        return current;
+      }
+
+      function ensureNestedParent(target, path) {
+        const pathParts = path.split(".");
+        let current = target;
+
+        for (let i = 0; i < pathParts.length - 1; i += 1) {
+          const part = pathParts[i];
+          if (!isPlainObject(current[part])) {
+            current[part] = {};
+          }
+          current = current[part];
+        }
+
+        return {
+          parent: current,
+          key: pathParts[pathParts.length - 1]
+        };
+      }
+
+      function setNestedValue(target, path, value) {
+        const ref = ensureNestedParent(target, path);
+        ref.parent[ref.key] = value;
+      }
+
+      function addNestedNumber(target, path, delta) {
+        const currentValue = getNestedValue(target, path);
+        const baseValue = typeof currentValue === "number" ? currentValue : 0;
+        setNestedValue(target, path, baseValue + delta);
+      }
+
+      const ui = {
+        setup: {
+          promptModeSelect: document.getElementById("promptModeSelect"),
+          scriptInput: document.getElementById("scriptInput"),
+          loadExampleButton: document.getElementById("loadExampleButton"),
+          copyPromptButton: document.getElementById("copyPromptButton"),
+          pasteScriptButton: document.getElementById("pasteScriptButton"),
+          loadScriptButton: document.getElementById("loadScriptButton"),
+          restartButton: document.getElementById("restartButton"),
+          copyStateButton: document.getElementById("copyStateButton"),
+          copyContinuationButton: document.getElementById("copyContinuationButton"),
+          copyStatusButton: document.getElementById("copyStatusButton")
+        },
+        status: {
+          globalStatus: document.getElementById("globalStatus")
+        },
+        header: {
+          gameTitle: document.getElementById("gameTitle"),
+          currentSceneIdText: document.getElementById("currentSceneIdText"),
+          stepText: document.getElementById("stepText"),
+          healthText: document.getElementById("healthText")
+        },
+        state: {
+          keyItemsText: document.getElementById("keyItemsText"),
+          statePreview: document.getElementById("statePreview")
+        },
+        scene: {
+          sceneTitle: document.getElementById("sceneTitle"),
+          speakerLine: document.getElementById("speakerLine"),
+          textArea: document.getElementById("textArea"),
+          choiceList: document.getElementById("choiceList")
+        },
+        log: {
+          logList: document.getElementById("logList")
+        }
+      };
+
+      const MESSAGE_WINDOW_LIMIT = 3;
+      const HP_ZERO_EVENT_LIMIT = 3;
+
+      const game = {
+        loadedScriptSource: null,
+        activeScript: null,
+        playerState: null,
+        currentSceneId: "",
+        stepCount: 0,
+        logEntries: [],
+        messageHistory: [],
+        hpZeroEventStreak: 0
+      };
+
+      const SHINDO_BASE_PROMPT = [
+        "あなたはゲームマスターではなく、JSON台本の設計者です。",
+        "これから作るJSONは『学校であった怖い話』風のサウンドノベルとして使用されます。",
+        "語り手は固定で新堂誠です。",
+        "新堂誠の性格は、強面な兄貴肌の青年で、どことなく不良っぽい風貌と物腰を持つ人物です。",
+        "口調はやや乱暴だが聞きやすく、怖い話を半ば気だるそうに、しかし核心では急に真顔になるような語り口にしてください。",
+        "舞台は必ず学校に関する怖い話であること。",
+        "語り手の新堂誠本人は、話の中の登場人物としては出さないこと。",
+        "話の中に登場する人物は新規キャラクターをフルネームで登場させること。",
+        "サウンドノベルとして、本文を厚くし、分岐は少なめにすること。",
+        "各分岐は2〜3択を基本にし、見せかけ分岐は禁止です。",
+        "分岐した場合、選択肢ごとに別々の next_scene_id を必ず持たせてください。",
+        "IDは意味ベースで管理してください。例: temple_entrance / guardian_hall / ending_bad",
+        "基本は一本道寄りで、節目だけ2〜3択の分岐にしてください。",
+        "最後は『これが、俺が知ってる学校であった怖い話だ』のように新堂誠らしい締めにしてください。"
+      ].join("\n");
+
+      const SAMPLE_SCENARIO = {
+        "title": "呪われた山岳神殿からの脱出",
+        "initial_state": {
+          "player_name": "冒険者",
+          "体力": 70,
+          "location": "封印された神殿の入口",
+          "flags": [],
+          "key_items": [],
+          "unique": {
+            "筋力": 5
+          }
+        },
+        "start_scene_id": "temple_entrance",
+        "game_over_scene_id": "game_over_collapse",
+        "events": {
+          "read_inscription": {
+            "effects": {
+              "set_flags": ["inscription_read"]
+            },
+            "success_message": "罠回避の手順を理解した。"
+          },
+          "open_crate": {
+            "effects": {
+              "add_key_items": ["古い鍵"],
+              "set_flags": ["crate_opened"]
+            },
+            "success_message": "木箱の中から古い鍵を見つけた。"
+          },
+          "train_strength": {
+            "effects": {
+              "add_unique": { "筋力": 1 },
+              "add": { "体力": -5 },
+              "set_flags": ["strength_training_done"]
+            },
+            "success_message": "重い石柱を持ち上げ、筋力が1上がった。代わりに体力を5消耗した。"
+          },
+          "unlock_gate": {
+            "effects": {
+              "set_flags": ["gate_unlocked"]
+            },
+            "success_message": "鈍い音を立てて封印門が開いた。"
+          },
+          "use_force_gate": {
+            "effects": {
+              "set_flags": ["force_gate_used"]
+            }
+          },
+          "pull_lever": {
+            "effects": {
+              "set_flags": ["lever_used"],
+              "add": { "体力": -10 }
+            },
+            "success_message": "歯車音と共に脱出扉の封印が緩んだ。"
+          }
+        },
+        "scenes": [
+          {
+            "id": "temple_entrance",
+            "title": "神殿入口",
+            "scene_type": "area",
+            "area_id": "outer_gate",
+            "text": [
+              "山岳神殿の封印門が、雷鳴に合わせて鈍く震えている。",
+              "このままでは崩落に巻き込まれる。脱出路を見つけなければならない。"
+            ],
+            "conditional_texts": [
+              {
+                "conditions": {
+                  "required_flags": ["inscription_read"]
+                },
+                "text": [
+                  "碑文の内容を思い出す。罠を避けるには『静かに、重心を低く』だ。"
+                ]
+              },
+              {
+                "conditions": {
+                  "required_flags": ["gate_unlocked"]
+                },
+                "text": [
+                  "封印門はすでに解かれている。今なら奥へ進める。"
+                ]
+              },
+              {
+                "conditions": {
+                  "required_flags": ["crate_opened"]
+                },
+                "text": [
+                  "入口脇の木箱は開いたままで、中は空になっている。"
+                ]
+              },
+              {
+                "conditions": {
+                  "required_flags": ["strength_training_done"]
+                },
+                "text": [
+                  "崩れた石柱はすでに持ち上げた。腕には鈍い疲労が残っている。"
+                ]
+              },
+              {
+                "conditions": {
+                  "min_unique": { "筋力": 6 },
+                  "forbidden_flags": ["force_gate_used"]
+                },
+                "text": [
+                  "脇の石扉は重いが、今の筋力ならこじ開けられそうだ。"
+                ]
+              }
+            ],
+            "actions": [
+              {
+                "text": "壁面の碑文を読む",
+                "conditions": {
+                  "forbidden_flags": ["inscription_read"]
+                },
+                "run_event": "read_inscription",
+                "failure_message": "碑文はもう読み終えている。",
+                "hidden_when_disabled": true
+              },
+              {
+                "text": "入口脇の木箱を開ける",
+                "conditions": {
+                  "forbidden_flags": ["crate_opened"]
+                },
+                "run_event": "open_crate",
+                "failure_message": "もう鍵は入っていない。木箱の中は空だ。",
+                "disabled_text": "入口脇の木箱を確認する"
+              },
+              {
+                "text": "崩れた石柱を持ち上げて身体を慣らす",
+                "conditions": {
+                  "forbidden_flags": ["strength_training_done"]
+                },
+                "run_event": "train_strength",
+                "failure_message": "これ以上ここで鍛える余裕はない。",
+                "hidden_when_disabled": true
+              },
+              {
+                "text": "古い鍵で封印門を解錠する",
+                "conditions": {
+                  "required_key_items": ["古い鍵"],
+                  "forbidden_flags": ["gate_unlocked"]
+                },
+                "run_event": "unlock_gate",
+                "failure_message": "対応する鍵が必要だ。",
+                "hidden_when_disabled": true
+              }
+            ],
+            "choices": [
+              {
+                "text": "封印門の奥へ進む",
+                "conditions": {
+                  "required_flags": ["gate_unlocked"]
+                },
+                "disabled_text": "封印門は閉ざされている",
+                "failure_message": "古い鍵で封印を解かなければ進めない。",
+                "next_scene_id": "ritual_hall"
+              },
+              {
+                "text": "崩れた回廊を進む",
+                "next_scene_id": "collapsed_corridor"
+              },
+              {
+                "text": "石扉を力づくでこじ開ける",
+                "conditions": {
+                  "min_unique": { "筋力": 6 },
+                  "forbidden_flags": ["force_gate_used"]
+                },
+                "run_event": "use_force_gate",
+                "failure_message": "石扉はびくともしない。筋力が足りない。",
+                "hidden_when_disabled": true,
+                "next_scene_id": "hidden_chamber"
+              }
+            ]
+          },
+          {
+            "id": "collapsed_corridor",
+            "title": "崩れた回廊",
+            "text": [
+              "足場は崩れかけ、天井から砂塵が降り続けている。"
+            ],
+            "conditional_texts": [
+              {
+                "conditions": {
+                  "required_flags": ["inscription_read"]
+                },
+                "text": [
+                  "碑文の助言が頭に残っている。ここは静かに進めば突破できそうだ。"
+                ]
+              }
+            ],
+            "choices": [
+              {
+                "text": "慎重に進む",
+                "conditions": {
+                  "required_flags": ["inscription_read"]
+                },
+                "disabled_text": "慎重に進む（碑文の知識がないと危険）",
+                "failure_message": "足場の読み方がわからない。このままでは慎重に進めない。",
+                "next_scene_id": "ritual_hall"
+              },
+              {
+                "text": "急いで駆け抜ける",
+                "effects": {
+                  "add": { "体力": -80 }
+                },
+                "failure_message": "落石が直撃した。",
+                "next_scene_id": "collapsed_corridor"
+              },
+              {
+                "text": "入口へ戻る",
+                "next_scene_id": "temple_entrance"
+              }
+            ]
+          },
+          {
+            "id": "ritual_hall",
+            "title": "祭祀の間",
+            "scene_type": "area",
+            "area_id": "inner_hall",
+            "text": [
+              "中央に古い祭壇、奥に重い脱出扉が見える。",
+              "扉にはまだ封印の力が残っているようだ。"
+            ],
+            "conditional_texts": [
+              {
+                "conditions": {
+                  "required_flags": ["lever_used"]
+                },
+                "text": [
+                  "祭壇横の機構はすでに作動済みだ。脱出扉の封印は緩んでいる。"
+                ]
+              }
+            ],
+            "actions": [
+              {
+                "text": "祭壇横のレバーを引く",
+                "conditions": {
+                  "forbidden_flags": ["lever_used"]
+                },
+                "run_event": "pull_lever",
+                "failure_message": "レバーはすでに固定されている。",
+                "hidden_when_disabled": true
+              }
+            ],
+            "choices": [
+              {
+                "text": "脱出扉を開ける",
+                "conditions": {
+                  "required_flags": ["lever_used"]
+                },
+                "disabled_text": "封印が強すぎて開かない",
+                "failure_message": "祭壇の機構を動かさなければ、この扉は開かない。",
+                "next_scene_id": "escape_normal_end"
+              },
+              {
+                "text": "入口方面へ戻る",
+                "next_scene_id": "temple_entrance"
+              }
+            ]
+          },
+          {
+            "id": "hidden_chamber",
+            "title": "隠し部屋",
+            "scene_type": "area",
+            "area_id": "secret_route",
+            "text": [
+              "石扉の先には、神殿外壁へ繋がる細い風穴があった。",
+              "冷たい風が吹き込み、外の気配がかすかに感じられる。"
+            ],
+            "conditional_texts": [
+              {
+                "conditions": {
+                  "required_flags": ["vent_climbed"]
+                },
+                "text": [
+                  "風穴の縁には、爪で削ったような痕が残っている。"
+                ]
+              }
+            ],
+            "choices": [
+              {
+                "text": "風穴をよじ登る",
+                "conditions": {
+                  "min_unique": { "筋力": 6 },
+                  "forbidden_flags": ["vent_climbed"]
+                },
+                "effects": {
+                  "set_flags": ["vent_climbed"]
+                },
+                "failure_message": "腕力が足りず、風穴の途中で身体を支えきれない。",
+                "next_scene_id": "escape_power_end"
+              },
+              {
+                "text": "入口へ戻る",
+                "next_scene_id": "temple_entrance"
+              }
+            ]
+          },
+          {
+            "id": "escape_normal_end",
+            "title": "通常脱出",
+            "text": [
+              "重い扉が開き、夜明けの稜線へ飛び出した。",
+              "傷だらけだが、あなたは確かに生還した。"
+            ],
+            "choices": [
+              {
+                "text": "完",
+                "next_scene_id": null
+              }
+            ]
+          },
+          {
+            "id": "escape_power_end",
+            "title": "風穴脱出",
+            "text": [
+              "筋力で身体を引き上げ、狭い風穴をよじ登って外壁の裂け目から脱出した。",
+              "封印門も祭壇も使わない、異例の生還だ。"
+            ],
+            "choices": [
+              {
+                "text": "ユニークエンド",
+                "next_scene_id": null
+              }
+            ]
+          },
+          {
+            "id": "game_over_collapse",
+            "title": "神殿に飲み込まれて",
+            "text": [
+              "体の限界を超え、足が動かなくなった。",
+              "崩落音の中、あなたの意識は闇へ沈んでいく。"
+            ],
+            "choices": [
+              {
+                "text": "最初からやり直す",
+                "next_scene_id": null
+              }
+            ]
+          }
+        ]
+      };
+
+      const PROMPT_SAMPLE_JSON = JSON.stringify(SAMPLE_SCENARIO, null, 2);
+
+      const GENERIC_PROMPT = [
+        "以下を厳守して、汎用JSON台本ランナー用の台本JSONを1つだけ作成してください。",
+        "",
+        "【最重要】",
+        "- 出力はコードブロック1つのみ、内容は純粋なJSONのみ",
+        "- JSON以外の説明文・注釈・前置きは禁止",
+        "- 機能の全部盛りは禁止。物語に必要な機能だけ使うこと",
+        "- 未使用の flags / key_items / unique は作らないこと",
+        "",
+        "【構造ルール】",
+        "- scene.id は意味ベース英小文字ID（snake_case / kebab-case）",
+        "- 木構造ID（a/aa/aab）は使わない",
+        "- custom数値は initial_state.unique 配下にのみ定義",
+        "- key item は initial_state.key_items 配下で管理",
+        "- choices は遷移、actions はその場処理として分離",
+        "- conditional_texts で再訪時や状態差分本文を表現",
+        "- events は任意。再利用したい処理のみ定義",
+        "- action / choice は effects を直接書いてもよいし、run_event で events を呼んでもよい",
+        "",
+        "【conditions】",
+        "- required_flags / forbidden_flags",
+        "- required_key_items / forbidden_key_items",
+        "- min / max / min_unique / max_unique",
+        "",
+        "【条件未達時の表現】",
+        "- hidden_when_disabled / disabled_text / failure_message を必要に応じて使用（基本は hidden_when_disabled: true 推奨。残す運用は木箱など例外のみ）",
+        "",
+        "【一度きりaction（必須）】",
+        "- 報酬付きaction（アイテム取得、数値増減、鍵使用、装置起動など）は原則1回限り",
+        "- 再実行防止として forbidden_flags と set_flags を必ず組み合わせる",
+        "- 同じaction連打で key_items / unique / flags / 体力 を無限に増減できる構造は禁止",
+        "- 使用後は conditional_texts 等で本文へ反映する",
+        "",
+        "【出力形式（理想サンプル）】",
+        "```json",
+        PROMPT_SAMPLE_JSON,
+        "```"
+      ].join("\n");
+
+      const SHINDO_PROMPT = [
+        "以下を厳守して、学校ホラー向けJSON台本を1つだけ作成してください。",
+        "",
+        SHINDO_BASE_PROMPT,
+        "",
+        "【追加ルール】",
+        "- 舞台は学校関連ホラーに限定",
+        "- 同じ場所でも状態差分（conditional_texts）で不穏さをじわじわ見せる",
+        "- 露骨な見せかけ分岐は禁止",
+        "- choices（遷移）と actions（その場処理）を混同しない",
+        "",
+        "【必須制約】",
+        "- scene.id は意味ベース英小文字ID（snake_case / kebab-case）",
+        "- 木構造ID（a/aa/aab）禁止",
+        "- custom数値は initial_state.unique のみ",
+        "- 未使用の flags / key_items / unique を作らない",
+        "- 報酬付きactionは forbidden_flags + set_flags で1回限りにする",
+        "- action連打で無限成長できる構造は禁止",
+        "",
+        "【条件と表現】",
+        "- required_key_items / forbidden_key_items / min / max / min_unique / max_unique を必要な分だけ使用",
+        "- 条件未達表現として disabled_text / hidden_when_disabled / failure_message を使える",
+        "",
+        "【出力形式】",
+        "```json",
+        PROMPT_SAMPLE_JSON,
+        "```"
+      ].join("\n");
+
+      function setGlobalStatus(type, message) {
+        ui.status.globalStatus.className = "status " + type;
+        ui.status.globalStatus.textContent = message;
+      }
+
+      function getActiveSceneById(sceneId) {
+        if (!game.activeScript || !Array.isArray(game.activeScript.scenes)) {
+          return null;
+        }
+        return game.activeScript.scenes.find((scene) => scene.id === sceneId) || null;
+      }
+
+      function getCurrentScene() {
+        return getActiveSceneById(game.currentSceneId);
+      }
+
+      function getEventById(eventId) {
+        if (!isPlainObject(game.activeScript?.events)) {
+          return null;
+        }
+        return game.activeScript.events[eventId] || null;
+      }
+
+      function getPromptByMode(mode) {
+        return mode === "shindo" ? SHINDO_PROMPT : GENERIC_PROMPT;
+      }
+
+      function ensurePlayerStateCollections() {
+        if (!isPlainObject(game.playerState)) {
+          game.playerState = {};
+        }
+        if (!Array.isArray(game.playerState.flags)) {
+          game.playerState.flags = [];
+        }
+        if (!Array.isArray(game.playerState.key_items)) {
+          game.playerState.key_items = [];
+        }
+        if (!isPlainObject(game.playerState.unique)) {
+          game.playerState.unique = {};
+        }
+      }
+
+      function getHealthValue() {
+        if (!isPlainObject(game.playerState)) {
+          return null;
+        }
+
+        for (const key of ["health", "hp", "体力"]) {
+          if (typeof game.playerState[key] === "number") {
+            return game.playerState[key];
+          }
+        }
+
+        return null;
+      }
+
+      function getUniqueValue(uniqueKey) {
+        ensurePlayerStateCollections();
+        return game.playerState.unique[uniqueKey];
+      }
+
+      function setUniqueValue(uniqueKey, value) {
+        ensurePlayerStateCollections();
+        game.playerState.unique[uniqueKey] = value;
+      }
+
+      function addLogEntry(line) {
+        game.logEntries.push(line);
+        renderLogPanel();
+      }
+
+      function appendMessageLine(message) {
+        if (typeof message !== "string") {
+          return;
+        }
+
+        const trimmedMessage = message.trim();
+        if (trimmedMessage === "") {
+          return;
+        }
+
+        game.messageHistory.push(trimmedMessage);
+      }
+
+      function mergeEffects(baseEffects, overrideEffects) {
+        const result = cloneJson(baseEffects);
+
+        if (!isPlainObject(overrideEffects)) {
+          return result;
+        }
+
+        Object.entries(overrideEffects).forEach(([key, value]) => {
+          if (Array.isArray(value)) {
+            result[key] = Array.isArray(result[key])
+              ? [...result[key], ...value]
+              : [...value];
+            return;
+          }
+
+          if (isPlainObject(value)) {
+            result[key] = isPlainObject(result[key])
+              ? { ...result[key], ...value }
+              : { ...value };
+            return;
+          }
+
+          result[key] = value;
+        });
+
+        return result;
+      }
+
+      function resolveExecution(option) {
+        let mergedEffects = isPlainObject(option.effects) ? option.effects : null;
+        let successMessage = typeof option.success_message === "string" ? option.success_message : "";
+        let nextSceneId = option.next_scene_id;
+
+        if (typeof option.run_event === "string" && option.run_event.trim() !== "") {
+          const eventDef = getEventById(option.run_event.trim());
+          if (!eventDef) {
+            throw new Error("run_event の参照先が見つかりません: " + option.run_event);
+          }
+
+          if (isPlainObject(eventDef.effects)) {
+            mergedEffects = isPlainObject(mergedEffects)
+              ? mergeEffects(eventDef.effects, mergedEffects)
+              : cloneJson(eventDef.effects);
+          }
+
+          if (!successMessage && typeof eventDef.success_message === "string") {
+            successMessage = eventDef.success_message;
+          }
+
+          if ((nextSceneId === undefined || nextSceneId === null || nextSceneId === "") && eventDef.next_scene_id !== undefined) {
+            nextSceneId = eventDef.next_scene_id;
+          }
+        }
+
+        return {
+          effects: mergedEffects,
+          successMessage,
+          nextSceneId
+        };
+      }
+
+      function appendSceneTextToMessageHistory(scene) {
+        getVisibleSceneTextLines(scene).forEach((line) => {
+          appendMessageLine(line);
+        });
+      }
+
+      function checkConditions(conditions) {
+        if (!conditions || !game.playerState) {
+          return true;
+        }
+
+        ensurePlayerStateCollections();
+
+        if (Array.isArray(conditions.required_flags)) {
+          for (const flag of conditions.required_flags) {
+            if (!game.playerState.flags.includes(flag)) {
+              return false;
+            }
+          }
+        }
+
+        if (Array.isArray(conditions.forbidden_flags)) {
+          for (const flag of conditions.forbidden_flags) {
+            if (game.playerState.flags.includes(flag)) {
+              return false;
+            }
+          }
+        }
+
+        if (Array.isArray(conditions.required_key_items)) {
+          for (const item of conditions.required_key_items) {
+            if (!game.playerState.key_items.includes(item)) {
+              return false;
+            }
+          }
+        }
+
+        if (Array.isArray(conditions.forbidden_key_items)) {
+          for (const item of conditions.forbidden_key_items) {
+            if (game.playerState.key_items.includes(item)) {
+              return false;
+            }
+          }
+        }
+
+        if (isPlainObject(conditions.min)) {
+          for (const [path, minValue] of Object.entries(conditions.min)) {
+            const currentValue = getNestedValue(game.playerState, path);
+            if (typeof currentValue !== "number" || currentValue < minValue) {
+              return false;
+            }
+          }
+        }
+
+        if (isPlainObject(conditions.max)) {
+          for (const [path, maxValue] of Object.entries(conditions.max)) {
+            const currentValue = getNestedValue(game.playerState, path);
+            if (typeof currentValue !== "number" || currentValue > maxValue) {
+              return false;
+            }
+          }
+        }
+
+        if (isPlainObject(conditions.min_unique)) {
+          for (const [uniqueKey, minValue] of Object.entries(conditions.min_unique)) {
+            const currentValue = getUniqueValue(uniqueKey);
+            if (typeof currentValue !== "number" || currentValue < minValue) {
+              return false;
+            }
+          }
+        }
+
+        if (isPlainObject(conditions.max_unique)) {
+          for (const [uniqueKey, maxValue] of Object.entries(conditions.max_unique)) {
+            const currentValue = getUniqueValue(uniqueKey);
+            if (typeof currentValue !== "number" || currentValue > maxValue) {
+              return false;
+            }
+          }
+        }
+
+        return true;
+      }
+
+      function applyEffects(effects) {
+        if (!effects || !game.playerState) {
+          return;
+        }
+
+        ensurePlayerStateCollections();
+
+        if (isPlainObject(effects.add)) {
+          for (const [path, delta] of Object.entries(effects.add)) {
+            if (typeof delta === "number") {
+              addNestedNumber(game.playerState, path, delta);
+            }
+          }
+        }
+
+        if (isPlainObject(effects.set)) {
+          for (const [path, value] of Object.entries(effects.set)) {
+            setNestedValue(game.playerState, path, value);
+          }
+        }
+
+        if (Array.isArray(effects.set_flags)) {
+          effects.set_flags.forEach((flag) => {
+            if (!game.playerState.flags.includes(flag)) {
+              game.playerState.flags.push(flag);
+            }
+          });
+        }
+
+        if (Array.isArray(effects.remove_flags)) {
+          game.playerState.flags = game.playerState.flags.filter((flag) => !effects.remove_flags.includes(flag));
+        }
+
+        if (Array.isArray(effects.add_key_items)) {
+          effects.add_key_items.forEach((item) => {
+            if (typeof item === "string" && !game.playerState.key_items.includes(item)) {
+              game.playerState.key_items.push(item);
+            }
+          });
+        }
+
+        if (Array.isArray(effects.remove_key_items)) {
+          game.playerState.key_items = game.playerState.key_items.filter((item) => !effects.remove_key_items.includes(item));
+        }
+
+        if (isPlainObject(effects.add_unique)) {
+          for (const [uniqueKey, delta] of Object.entries(effects.add_unique)) {
+            if (typeof uniqueKey !== "string" || uniqueKey.trim() === "" || uniqueKey.includes(".")) {
+              continue;
+            }
+            if (typeof delta !== "number") {
+              continue;
+            }
+
+            const currentValue = getUniqueValue(uniqueKey);
+            const baseValue = typeof currentValue === "number" ? currentValue : 0;
+            setUniqueValue(uniqueKey, baseValue + delta);
+          }
+        }
+
+        if (isPlainObject(effects.set_unique)) {
+          for (const [uniqueKey, value] of Object.entries(effects.set_unique)) {
+            if (typeof uniqueKey !== "string" || uniqueKey.trim() === "" || uniqueKey.includes(".")) {
+              continue;
+            }
+            setUniqueValue(uniqueKey, value);
+          }
+        }
+      }
+
+      function getVisibleSceneTextLines(scene) {
+        const visibleLines = [];
+        const baseLines = Array.isArray(scene.text) ? scene.text : [];
+
+        baseLines.forEach((line) => {
+          if (typeof line === "string") {
+            visibleLines.push(line);
+          }
+        });
+
+        if (Array.isArray(scene.conditional_texts)) {
+          scene.conditional_texts.forEach((conditionalEntry) => {
+            if (!isPlainObject(conditionalEntry)) {
+              return;
+            }
+            if (!checkConditions(conditionalEntry.conditions)) {
+              return;
+            }
+
+            if (Array.isArray(conditionalEntry.text)) {
+              conditionalEntry.text.forEach((line) => {
+                if (typeof line === "string") {
+                  visibleLines.push(line);
+                }
+              });
+              return;
+            }
+
+            if (typeof conditionalEntry.text === "string") {
+              visibleLines.push(conditionalEntry.text);
+            }
+          });
+        }
+
+        return visibleLines;
+      }
+
+      function renderHeaderPanel() {
+        ui.header.gameTitle.textContent = game.activeScript ? game.activeScript.title : "-";
+        ui.header.currentSceneIdText.textContent = game.currentSceneId || "-";
+        ui.header.stepText.textContent = String(game.stepCount);
+
+        const healthValue = getHealthValue();
+        ui.header.healthText.textContent = healthValue === null ? "-" : String(healthValue);
+      }
+
+      function renderStatePanel() {
+        if (!isPlainObject(game.playerState)) {
+          ui.state.keyItemsText.textContent = "-";
+          ui.state.statePreview.textContent = "状態データなし";
+          return;
+        }
+
+        const keyItems = Array.isArray(game.playerState.key_items) ? game.playerState.key_items : [];
+        ui.state.keyItemsText.textContent = keyItems.length > 0 ? keyItems.join(" / ") : "なし";
+        ui.state.statePreview.textContent = JSON.stringify(game.playerState, null, 2);
+      }
+
+      function renderLogPanel() {
+        ui.log.logList.innerHTML = "";
+
+        game.logEntries
+          .slice()
+          .reverse()
+          .forEach((line) => {
+            const item = document.createElement("div");
+            item.className = "log-item";
+            item.textContent = line;
+            ui.log.logList.appendChild(item);
+          });
+      }
+
+      function renderMessageWindow() {
+        ui.scene.textArea.innerHTML = "";
+
+        const recentMessages = game.messageHistory.slice(-MESSAGE_WINDOW_LIMIT);
+        const paddedMessages = Array(Math.max(0, MESSAGE_WINDOW_LIMIT - recentMessages.length))
+          .fill("")
+          .concat(recentMessages);
+
+        const messageWindow = document.createElement("div");
+        messageWindow.className = "message-window";
+        messageWindow.textContent = paddedMessages.join("\n");
+
+        ui.scene.textArea.appendChild(messageWindow);
+      }
+
+      function renderSceneBody(scene) {
+        ui.scene.sceneTitle.textContent = scene.title || scene.id;
+        ui.scene.speakerLine.textContent = scene.speaker ? scene.speaker : "";
+        renderMessageWindow();
+      }
+
+      function renderOptionButton(option, optionKind, displayIndex) {
+        const conditionsMet = checkConditions(option.conditions);
+        const hiddenWhenDisabled = option.hidden_when_disabled === true;
+
+        if (!conditionsMet && hiddenWhenDisabled) {
+          return null;
+        }
+
+        const disabledLabel =
+          typeof option.disabled_text === "string" && option.disabled_text.trim() !== ""
+            ? option.disabled_text
+            : option.text;
+
+        const visibleLabel = conditionsMet ? option.text : disabledLabel;
+
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "choice-button";
+        button.textContent = String(displayIndex) + ". " + visibleLabel;
+
+        if (conditionsMet) {
+          if (optionKind === "choice") {
+            button.addEventListener("click", () => handleChoiceSelection(option));
+          } else {
+            button.addEventListener("click", () => handleSceneAction(option));
+          }
+          return button;
+        }
+
+        if (typeof option.failure_message === "string" && option.failure_message.trim() !== "") {
+          button.addEventListener("click", () => {
+            appendMessageLine("▶ " + option.text);
+            appendMessageLine(option.failure_message);
+            renderGameScreen();
+            setGlobalStatus("warn", option.failure_message);
+            addLogEntry("Blocked " + optionKind + ": " + option.text + " -> " + option.failure_message);
+          });
+          return button;
+        }
+
+        button.disabled = true;
+        return button;
+      }
+
+      function renderSceneOptions(scene) {
+        ui.scene.choiceList.innerHTML = "";
+
+        const sceneActions = Array.isArray(scene.actions) ? scene.actions : [];
+        const sceneChoices = Array.isArray(scene.choices) ? scene.choices : [];
+
+        const orderedOptions = [];
+
+        sceneActions.forEach((action) => {
+          if (isPlainObject(action) && typeof action.text === "string") {
+            orderedOptions.push({ kind: "action", option: action });
+          }
+        });
+
+        sceneChoices.forEach((choice) => {
+          if (isPlainObject(choice) && typeof choice.text === "string") {
+            orderedOptions.push({ kind: "choice", option: choice });
+          }
+        });
+
+        let displayIndex = 1;
+
+        orderedOptions.forEach(({ kind, option }) => {
+          const button = renderOptionButton(option, kind, displayIndex);
+          if (!button) {
+            return;
+          }
+          ui.scene.choiceList.appendChild(button);
+          displayIndex += 1;
+        });
+
+        if (ui.scene.choiceList.children.length === 0) {
+          setGlobalStatus("fail", "利用可能な選択肢/操作がありません。台本条件を確認してください。");
+          return;
+        }
+
+        setGlobalStatus("ok", "選択肢または操作を選んで進めてください。");
+      }
+
+      function renderEmptyScreen() {
+        ui.scene.sceneTitle.textContent = "-";
+        ui.scene.speakerLine.textContent = "";
+        ui.scene.textArea.innerHTML = "";
+        ui.scene.choiceList.innerHTML = "";
+        renderHeaderPanel();
+        renderStatePanel();
+      }
+
+      function renderGameScreen() {
+        if (!game.activeScript || !game.currentSceneId) {
+          renderEmptyScreen();
+          return;
+        }
+
+        const currentScene = getCurrentScene();
+
+        if (!currentScene) {
+          setGlobalStatus("fail", "scene が見つかりません: " + game.currentSceneId);
+          return;
+        }
+
+        renderHeaderPanel();
+        renderStatePanel();
+        renderSceneBody(currentScene);
+        renderSceneOptions(currentScene);
+      }
+
+      function renderEndScreen() {
+        renderHeaderPanel();
+        renderStatePanel();
+
+        ui.header.currentSceneIdText.textContent = "END";
+        ui.scene.sceneTitle.textContent = "終了";
+        ui.scene.speakerLine.textContent = "";
+
+        appendMessageLine("この話はこれで終わりです。");
+        renderMessageWindow();
+
+        ui.scene.choiceList.innerHTML = "";
+
+        const restartButton = document.createElement("button");
+        restartButton.type = "button";
+        restartButton.className = "choice-button";
+        restartButton.textContent = "最初からやり直す";
+        restartButton.addEventListener("click", () => {
+          if (!game.loadedScriptSource) {
+            setGlobalStatus("warn", "まだ読み込まれた台本がありません。");
+            return;
+          }
+          startScript(game.loadedScriptSource);
+          setGlobalStatus("ok", "最初からやり直しました。");
+        });
+
+        const continuationButton = document.createElement("button");
+        continuationButton.type = "button";
+        continuationButton.className = "choice-button";
+        continuationButton.textContent = "続篇用プロンプトをコピー";
+        continuationButton.addEventListener("click", copyContinuationPrompt);
+
+        ui.scene.choiceList.appendChild(restartButton);
+        ui.scene.choiceList.appendChild(continuationButton);
+
+        setGlobalStatus("ok", "エンディングに到達しました。続篇用プロンプトのコピーか、最初からやり直しを選べます。");
+      }
+
+      function renderFallbackGameOverScreen() {
+        renderHeaderPanel();
+        renderStatePanel();
+
+        ui.header.currentSceneIdText.textContent = "GAME OVER";
+        ui.scene.sceneTitle.textContent = "ゲームオーバー";
+        ui.scene.speakerLine.textContent = "";
+
+        appendMessageLine("体力が尽きました。");
+        renderMessageWindow();
+        ui.scene.choiceList.innerHTML = "";
+
+        addLogEntry("GameOver: HP<=0（専用シーン未設定）");
+        setGlobalStatus("fail", "体力が0以下です。game_over_scene_id が未設定のため、標準ゲームオーバー表示です。");
+      }
+
+      function enterScene(sceneId) {
+        game.currentSceneId = sceneId;
+
+        const scene = getCurrentScene();
+        if (!scene) {
+          renderGameScreen();
+          return;
+        }
+
+        appendSceneTextToMessageHistory(scene);
+        renderGameScreen();
+      }
+
+      function tryHandleGameOverTransition() {
+        const healthValue = getHealthValue();
+
+        if (healthValue === null || healthValue > 0 || !game.activeScript) {
+          game.hpZeroEventStreak = 0;
+          return false;
+        }
+
+        game.hpZeroEventStreak += 1;
+
+        if (game.hpZeroEventStreak >= HP_ZERO_EVENT_LIMIT) {
+          addLogEntry("GameOver: 体力0イベントが連続" + game.hpZeroEventStreak + "回のためタイトルへ戻します");
+          if (game.loadedScriptSource) {
+            startScript(game.loadedScriptSource);
+            setGlobalStatus("warn", "体力0イベントの連続発生を検知したため、タイトルへ戻しました。");
+            return true;
+          }
+        }
+
+        const gameOverSceneId =
+          typeof game.activeScript.game_over_scene_id === "string"
+            ? game.activeScript.game_over_scene_id.trim()
+            : "";
+
+        if (gameOverSceneId !== "") {
+          const gameOverScene = getActiveSceneById(gameOverSceneId);
+          if (gameOverScene) {
+            addLogEntry("GameOver: HP<=0 により " + gameOverSceneId + " へ遷移");
+            enterScene(gameOverSceneId);
+            setGlobalStatus("fail", "体力が0以下になったため、ゲームオーバーへ遷移しました。");
+            return true;
+          }
+        }
+
+        renderFallbackGameOverScreen();
+        return true;
+      }
+
+      function recordStepLog(kindLabel, optionText) {
+        const currentScene = getCurrentScene();
+        game.stepCount += 1;
+
+        addLogEntry(
+          [
+            "Step " + game.stepCount,
+            "Scene: " + (currentScene ? currentScene.id : "-"),
+            kindLabel + ": " + optionText
+          ].join("\n")
+        );
+      }
+
+      function handleSceneAction(action) {
+        recordStepLog("Action", action.text);
+        appendMessageLine("▶ " + action.text);
+
+        if (!checkConditions(action.conditions)) {
+          const message =
+            typeof action.failure_message === "string"
+              ? action.failure_message
+              : "条件を満たしていません。";
+
+          appendMessageLine(message);
+          renderGameScreen();
+          setGlobalStatus("warn", message);
+          return;
+        }
+
+        let execution;
+        try {
+          execution = resolveExecution(action);
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error);
+          appendMessageLine(message);
+          renderGameScreen();
+          setGlobalStatus("fail", message);
+          return;
+        }
+
+        applyEffects(execution.effects);
+
+        if (typeof execution.successMessage === "string" && execution.successMessage.trim() !== "") {
+          appendMessageLine(execution.successMessage);
+          addLogEntry("Result: " + execution.successMessage);
+        }
+
+        if (tryHandleGameOverTransition()) {
+          return;
+        }
+
+        if (execution.nextSceneId === null) {
+          renderEndScreen();
+          return;
+        }
+
+        if (typeof execution.nextSceneId === "string" && execution.nextSceneId.trim() !== "") {
+          enterScene(execution.nextSceneId);
+          return;
+        }
+
+        renderGameScreen();
+      }
+
+      function handleChoiceSelection(choice) {
+        recordStepLog("Choice", choice.text);
+        appendMessageLine("▶ " + choice.text);
+
+        let execution;
+        try {
+          execution = resolveExecution(choice);
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error);
+          appendMessageLine(message);
+          renderGameScreen();
+          setGlobalStatus("fail", message);
+          return;
+        }
+
+        applyEffects(execution.effects);
+
+        if (typeof execution.successMessage === "string" && execution.successMessage.trim() !== "") {
+          appendMessageLine(execution.successMessage);
+          addLogEntry("Result: " + execution.successMessage);
+        }
+
+        if (execution.nextSceneId === null) {
+          renderEndScreen();
+          return;
+        }
+
+        const gameOverSceneId =
+          typeof game.activeScript?.game_over_scene_id === "string"
+            ? game.activeScript.game_over_scene_id.trim()
+            : "";
+
+        const isAlreadyInsideGameOverScene =
+          game.currentSceneId === gameOverSceneId && gameOverSceneId !== "";
+
+        if (!isAlreadyInsideGameOverScene && tryHandleGameOverTransition()) {
+          return;
+        }
+
+        if (typeof execution.nextSceneId === "string" && execution.nextSceneId.trim() !== "") {
+          enterScene(execution.nextSceneId);
+          return;
+        }
+
+        appendMessageLine("choice の遷移先が不正です。");
+        renderGameScreen();
+        setGlobalStatus("fail", "choice の遷移先が不正です。");
+      }
+
+      function startScript(scriptData) {
+        game.loadedScriptSource = cloneJson(scriptData);
+        game.activeScript = cloneJson(scriptData);
+        game.playerState = cloneJson(scriptData.initial_state || {});
+        ensurePlayerStateCollections();
+
+        game.currentSceneId = scriptData.start_scene_id;
+        game.stepCount = 0;
+        game.logEntries = [];
+        game.messageHistory = [];
+        game.hpZeroEventStreak = 0;
+
+        addLogEntry("開始: " + scriptData.title);
+
+        if (tryHandleGameOverTransition()) {
+          return;
+        }
+
+        enterScene(scriptData.start_scene_id);
+      }
+
+      async function copyCurrentState() {
+        const payload = {
+          title: game.activeScript ? game.activeScript.title : null,
+          current_scene_id: game.currentSceneId,
+          step: game.stepCount,
+          state: game.playerState,
+          log: game.logEntries
+        };
+
+        await copyTextToClipboard(JSON.stringify(payload, null, 2));
+      }
+
+      function buildContinuationPrompt() {
+        const payload = {
+          title: game.activeScript ? game.activeScript.title : null,
+          current_scene_id: game.currentSceneId || null,
+          step: game.stepCount,
+          game_over_scene_id: game.activeScript?.game_over_scene_id ?? null,
+          health: getHealthValue(),
+          flags: Array.isArray(game.playerState?.flags) ? game.playerState.flags : [],
+          key_items: Array.isArray(game.playerState?.key_items) ? game.playerState.key_items : [],
+          unique: isPlainObject(game.playerState?.unique) ? game.playerState.unique : {},
+          state: game.playerState,
+          log: Array.isArray(game.logEntries) ? game.logEntries : []
+        };
+
+        return [
+          "以下の引き継ぎ情報を使って、続篇となる新しいJSON台本を1つ作成してください。",
+          "既存JSONへの追記ではなく、新しい別JSONとして作成してください。",
+          "前回の state を initial_state に引き継ぎ、flags / key_items / unique を保持してください。",
+          "scene.id は意味ベースID（snake_case または kebab-case）を使い、choices と actions を分けてください。",
+          "未使用のパラメータを作らず、一度きり action には再実行防止（forbidden_flags + set_flags 等）を入れてください。",
+          "",
+          "【引き継ぎ情報(JSON)】",
+          JSON.stringify(payload, null, 2),
+          "",
+          "【出力形式】",
+          "- コードブロックは1つのみ",
+          "- コードブロックの中身は純粋なJSONのみ",
+          "- JSON以外の説明文・前置き・注釈は禁止"
+        ].join("\n");
+      }
+
+      async function copyContinuationPrompt() {
+        try {
+          await copyTextToClipboard(buildContinuationPrompt());
+          setGlobalStatus("ok", "続篇作成用プロンプトをクリップボードへコピーしました。");
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error);
+          setGlobalStatus("fail", "続篇プロンプトコピー失敗: " + message);
+        }
+      }
+
+      function validateScript(scriptData) {
+        const errors = [];
+
+        if (!isPlainObject(scriptData)) {
+          errors.push("JSON全体はオブジェクトである必要があります。");
+          return errors;
+        }
+
+        if (typeof scriptData.title !== "string" || scriptData.title.trim() === "") {
+          errors.push("title は空でない文字列である必要があります。");
+        }
+
+        if (!isPlainObject(scriptData.initial_state)) {
+          errors.push("initial_state はオブジェクトである必要があります。");
+        }
+
+        if (
+          isPlainObject(scriptData.initial_state) &&
+          scriptData.initial_state.unique !== undefined &&
+          !isPlainObject(scriptData.initial_state.unique)
+        ) {
+          errors.push("initial_state.unique はオブジェクトである必要があります。");
+        }
+
+        if (typeof scriptData.start_scene_id !== "string" || scriptData.start_scene_id.trim() === "") {
+          errors.push("start_scene_id は空でない文字列である必要があります。");
+        }
+
+        if (scriptData.game_over_scene_id !== undefined) {
+          if (typeof scriptData.game_over_scene_id !== "string" || scriptData.game_over_scene_id.trim() === "") {
+            errors.push("game_over_scene_id は空でない文字列である必要があります（未使用なら省略してください）。");
+          }
+        }
+
+        if (scriptData.events !== undefined && !isPlainObject(scriptData.events)) {
+          errors.push("events はオブジェクトである必要があります。");
+        }
+
+        if (isPlainObject(scriptData.events)) {
+          Object.entries(scriptData.events).forEach(([eventId, eventDef]) => {
+            const eventLabel = "events." + eventId;
+            if (!isPlainObject(eventDef)) {
+              errors.push(eventLabel + " はオブジェクトである必要があります。");
+              return;
+            }
+
+            if (eventDef.effects !== undefined && !isPlainObject(eventDef.effects)) {
+              errors.push(eventLabel + ".effects はオブジェクトである必要があります。");
+            }
+
+            if (eventDef.next_scene_id !== undefined && eventDef.next_scene_id !== null && typeof eventDef.next_scene_id !== "string") {
+              errors.push(eventLabel + ".next_scene_id は文字列または null である必要があります。");
+            }
+
+            if (eventDef.success_message !== undefined && typeof eventDef.success_message !== "string") {
+              errors.push(eventLabel + ".success_message は文字列である必要があります。");
+            }
+          });
+        }
+
+        if (!Array.isArray(scriptData.scenes) || scriptData.scenes.length === 0) {
+          errors.push("scenes は1件以上の配列である必要があります。");
+          return errors;
+        }
+
+        const sceneIdSet = new Set();
+
+        scriptData.scenes.forEach((scene, sceneIndex) => {
+          const sceneLabel = "scenes[" + sceneIndex + "]";
+
+          if (!isPlainObject(scene)) {
+            errors.push(sceneLabel + " はオブジェクトである必要があります。");
+            return;
+          }
+
+          if (typeof scene.id !== "string" || scene.id.trim() === "") {
+            errors.push(sceneLabel + ".id は空でない文字列である必要があります。");
+          } else {
+            if (!isMeaningfulSceneId(scene.id)) {
+              errors.push(sceneLabel + ".id は意味ベース英小文字ID（snake_case / kebab-case）にしてください: " + scene.id);
+            }
+            if (sceneIdSet.has(scene.id)) {
+              errors.push(sceneLabel + ".id が重複しています: " + scene.id);
+            }
+            sceneIdSet.add(scene.id);
+          }
+
+          if (scene.speaker !== undefined && typeof scene.speaker !== "string") {
+            errors.push(sceneLabel + ".speaker は文字列である必要があります。");
+          }
+
+          if (typeof scene.title !== "string") {
+            errors.push(sceneLabel + ".title は文字列である必要があります。");
+          }
+
+          if (!Array.isArray(scene.text) || scene.text.length === 0) {
+            errors.push(sceneLabel + ".text は1件以上の文字列配列である必要があります。");
+          } else {
+            scene.text.forEach((line, textIndex) => {
+              if (typeof line !== "string") {
+                errors.push(sceneLabel + ".text[" + textIndex + "] は文字列である必要があります。");
+              }
+            });
+          }
+
+          if (scene.area_id !== undefined && typeof scene.area_id !== "string") {
+            errors.push(sceneLabel + ".area_id は文字列である必要があります。");
+          }
+
+          if (scene.scene_type !== undefined && typeof scene.scene_type !== "string") {
+            errors.push(sceneLabel + ".scene_type は文字列である必要があります。");
+          }
+
+          if (scene.conditional_texts !== undefined) {
+            if (!Array.isArray(scene.conditional_texts)) {
+              errors.push(sceneLabel + ".conditional_texts は配列である必要があります。");
+            } else {
+              scene.conditional_texts.forEach((entry, entryIndex) => {
+                const entryLabel = sceneLabel + ".conditional_texts[" + entryIndex + "]";
+
+                if (!isPlainObject(entry)) {
+                  errors.push(entryLabel + " はオブジェクトである必要があります。");
+                  return;
+                }
+
+                if (entry.conditions !== undefined && !isPlainObject(entry.conditions)) {
+                  errors.push(entryLabel + ".conditions はオブジェクトである必要があります。");
+                }
+
+                const isValidText =
+                  typeof entry.text === "string" ||
+                  (Array.isArray(entry.text) && entry.text.every((line) => typeof line === "string"));
+
+                if (!isValidText) {
+                  errors.push(entryLabel + ".text は文字列または文字列配列である必要があります。");
+                }
+              });
+            }
+          }
+
+          const sceneChoices = Array.isArray(scene.choices) ? scene.choices : [];
+          const sceneActions = Array.isArray(scene.actions) ? scene.actions : [];
+
+          if (sceneChoices.length === 0 && sceneActions.length === 0) {
+            errors.push(sceneLabel + ".choices または " + sceneLabel + ".actions のいずれか1件以上が必要です。");
+          }
+
+          function validateSceneOption(option, optionLabel) {
+            if (!isPlainObject(option)) {
+              errors.push(optionLabel + " はオブジェクトである必要があります。");
+              return;
+            }
+
+            if (typeof option.text !== "string" || option.text.trim() === "") {
+              errors.push(optionLabel + ".text は空でない文字列である必要があります。");
+            }
+
+            if (option.next_scene_id !== undefined && option.next_scene_id !== null && typeof option.next_scene_id !== "string") {
+              errors.push(optionLabel + ".next_scene_id は文字列または null である必要があります。");
+            }
+
+            if (option.effects !== undefined && !isPlainObject(option.effects)) {
+              errors.push(optionLabel + ".effects はオブジェクトである必要があります。");
+            }
+
+            if (option.conditions !== undefined && !isPlainObject(option.conditions)) {
+              errors.push(optionLabel + ".conditions はオブジェクトである必要があります。");
+            }
+
+            if (option.run_event !== undefined && typeof option.run_event !== "string") {
+              errors.push(optionLabel + ".run_event は文字列である必要があります。");
+            }
+
+            if (typeof option.run_event === "string" && option.run_event.trim() !== "") {
+              if (!isPlainObject(scriptData.events) || !isPlainObject(scriptData.events[option.run_event])) {
+                errors.push(optionLabel + ".run_event の参照先が存在しません: " + option.run_event);
+              }
+            }
+
+            if (option.disabled_text !== undefined && typeof option.disabled_text !== "string") {
+              errors.push(optionLabel + ".disabled_text は文字列である必要があります。");
+            }
+
+            if (option.hidden_when_disabled !== undefined && typeof option.hidden_when_disabled !== "boolean") {
+              errors.push(optionLabel + ".hidden_when_disabled は boolean である必要があります。");
+            }
+
+            if (option.failure_message !== undefined && typeof option.failure_message !== "string") {
+              errors.push(optionLabel + ".failure_message は文字列である必要があります。");
+            }
+
+            if (option.success_message !== undefined && typeof option.success_message !== "string") {
+              errors.push(optionLabel + ".success_message は文字列である必要があります。");
+            }
+
+            if (
+              option.conditions &&
+              option.conditions.required_key_items !== undefined &&
+              !Array.isArray(option.conditions.required_key_items)
+            ) {
+              errors.push(optionLabel + ".conditions.required_key_items は配列である必要があります。");
+            }
+
+            if (
+              option.conditions &&
+              option.conditions.forbidden_key_items !== undefined &&
+              !Array.isArray(option.conditions.forbidden_key_items)
+            ) {
+              errors.push(optionLabel + ".conditions.forbidden_key_items は配列である必要があります。");
+            }
+          }
+
+          sceneChoices.forEach((choice, choiceIndex) => {
+            validateSceneOption(choice, sceneLabel + ".choices[" + choiceIndex + "]");
+          });
+
+          sceneActions.forEach((action, actionIndex) => {
+            validateSceneOption(action, sceneLabel + ".actions[" + actionIndex + "]");
+          });
+
+          const nonNullChoiceTargets = sceneChoices
+            .map((choice) => {
+              let target = choice.next_scene_id;
+              if ((target === undefined || target === null || target === "") && typeof choice.run_event === "string" && isPlainObject(scriptData.events?.[choice.run_event])) {
+                target = scriptData.events[choice.run_event].next_scene_id;
+              }
+              return target;
+            })
+            .filter((nextSceneId) => typeof nextSceneId === "string" && nextSceneId.trim() !== "");
+
+          if (sceneChoices.length >= 2 && nonNullChoiceTargets.length >= 2) {
+            const distinctTargets = new Set(nonNullChoiceTargets);
+            if (distinctTargets.size === 1) {
+              errors.push(sceneLabel + ".choices が見せかけ分岐になっています。2択以上ある場合は別々の next_scene_id を指定してください。");
+            }
+          }
+        });
+
+        if (typeof scriptData.start_scene_id === "string" && scriptData.start_scene_id.trim() !== "") {
+          const startSceneExists = scriptData.scenes.some((scene) => scene.id === scriptData.start_scene_id);
+          if (!startSceneExists) {
+            errors.push("start_scene_id に対応する scene が存在しません。");
+          }
+        }
+
+        if (typeof scriptData.game_over_scene_id === "string" && scriptData.game_over_scene_id.trim() !== "") {
+          const gameOverSceneExists = scriptData.scenes.some((scene) => scene.id === scriptData.game_over_scene_id);
+          if (!gameOverSceneExists) {
+            errors.push("game_over_scene_id に対応する scene が存在しません。");
+          }
+        }
+
+        scriptData.scenes.forEach((scene, sceneIndex) => {
+          [
+            { key: "choices", list: Array.isArray(scene.choices) ? scene.choices : [] },
+            { key: "actions", list: Array.isArray(scene.actions) ? scene.actions : [] }
+          ].forEach(({ key, list }) => {
+            list.forEach((item, itemIndex) => {
+              let target = item.next_scene_id;
+
+              if ((target === undefined || target === null || target === "") && typeof item.run_event === "string" && isPlainObject(scriptData.events?.[item.run_event])) {
+                target = scriptData.events[item.run_event].next_scene_id;
+              }
+
+              if (typeof target === "string" && target.trim() !== "") {
+                const targetExists = scriptData.scenes.some((candidateScene) => candidateScene.id === target);
+                if (!targetExists) {
+                  errors.push("scenes[" + sceneIndex + "]." + key + "[" + itemIndex + "].next_scene_id が存在しません: " + target);
+                }
+              }
+            });
+          });
+        });
+
+        return errors;
+      }
+
+      const exampleScript = cloneJson(SAMPLE_SCENARIO);
+
+      function loadExampleIntoTextarea() {
+        ui.setup.scriptInput.value = JSON.stringify(exampleScript, null, 2);
+        setGlobalStatus("ok", "サンプルJSONを読み込みました。");
+      }
+
+      async function handleCopyPrompt() {
+        try {
+          const selectedMode = ui.setup.promptModeSelect.value;
+          await copyTextToClipboard(getPromptByMode(selectedMode));
+
+          setGlobalStatus(
+            "ok",
+            selectedMode === "shindo"
+              ? "新堂誠用プロンプトをクリップボードへコピーしました。"
+              : "汎用プロンプトをクリップボードへコピーしました。"
+          );
+        } catch (error) {
+          setGlobalStatus("fail", "コピー失敗: " + (error instanceof Error ? error.message : String(error)));
+        }
+      }
+
+      async function handlePasteScript() {
+        try {
+          ui.setup.scriptInput.value = "";
+          ui.setup.scriptInput.value = await readTextFromClipboard();
+          setGlobalStatus("ok", "JSON入力欄を全削除し、クリップボードの内容を貼り付けました。");
+        } catch (error) {
+          setGlobalStatus("fail", "貼り付け失敗: " + (error instanceof Error ? error.message : String(error)));
+        }
+      }
+
+      function loadScriptFromTextarea() {
+        const jsonText = ui.setup.scriptInput.value.trim();
+        const parsed = parseJsonSafely(jsonText);
+
+        if (!parsed.ok) {
+          setGlobalStatus("fail", "JSON解析失敗:\n" + parsed.error);
+          return;
+        }
+
+        const validationErrors = validateScript(parsed.data);
+        if (validationErrors.length > 0) {
+          setGlobalStatus("fail", "台本エラー:\n" + validationErrors.join("\n"));
+          return;
+        }
+
+        startScript(parsed.data);
+        setGlobalStatus("ok", "台本を読み込みました。");
+      }
+
+      function restartLoadedScript() {
+        if (!game.loadedScriptSource) {
+          setGlobalStatus("warn", "まだ読み込まれた台本がありません。");
+          return;
+        }
+
+        startScript(game.loadedScriptSource);
+        setGlobalStatus("ok", "最初からやり直しました。");
+      }
+
+      function bindUiEvents() {
+        ui.setup.loadExampleButton.addEventListener("click", loadExampleIntoTextarea);
+        ui.setup.copyPromptButton.addEventListener("click", handleCopyPrompt);
+        ui.setup.pasteScriptButton.addEventListener("click", handlePasteScript);
+        ui.setup.loadScriptButton.addEventListener("click", loadScriptFromTextarea);
+        ui.setup.restartButton.addEventListener("click", restartLoadedScript);
+
+        ui.setup.copyStatusButton.addEventListener("click", async () => {
+          try {
+            await copyTextToClipboard(ui.status.globalStatus.textContent || "");
+            setGlobalStatus("ok", "通知欄の内容をコピーしました。AIへそのまま貼り付けできます。");
+          } catch (error) {
+            setGlobalStatus("fail", "通知コピー失敗: " + (error instanceof Error ? error.message : String(error)));
+          }
+        });
+
+        ui.setup.copyStateButton.addEventListener("click", async () => {
+          try {
+            await copyCurrentState();
+            setGlobalStatus("ok", "現在状態をクリップボードへコピーしました。");
+          } catch (error) {
+            setGlobalStatus("fail", "コピー失敗: " + (error instanceof Error ? error.message : String(error)));
+          }
+        });
+
+        ui.setup.copyContinuationButton.addEventListener("click", copyContinuationPrompt);
+      }
+
+      function initializeApp() {
+        renderHeaderPanel();
+        renderStatePanel();
+        renderLogPanel();
+        bindUiEvents();
+        loadExampleIntoTextarea();
+      }
+
+      initializeApp();
+    })();
+  </script>
+</body>
+</html>

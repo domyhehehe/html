@@ -1,0 +1,1905 @@
+<!DOCTYPE html>
+<!-- sound-novel-json-runner-world-scenario-only-final -->
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+  <title>汎用サウンドノベルJSONランナー 完全版</title>
+  <style>
+    :root {
+      --bg:#0f172a;
+      --panel:#111827;
+      --panel2:#1f2937;
+      --panel3:#0b1220;
+      --text:#e5e7eb;
+      --muted:#94a3b8;
+      --accent:#38bdf8;
+      --ok:#22c55e;
+      --warn:#f59e0b;
+      --danger:#fb7185;
+      --border:#334155;
+    }
+    * {
+      box-sizing:border-box;
+      -webkit-tap-highlight-color:transparent;
+    }
+    html,body {
+      margin:0;
+      padding:0;
+      background:var(--bg);
+      color:var(--text);
+      font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+      -webkit-text-size-adjust:100%;
+    }
+    body {
+      min-height:100vh;
+      padding:12px;
+      user-select:none;
+      -webkit-user-select:none;
+      touch-action:manipulation;
+      overscroll-behavior:none;
+    }
+    input,textarea,select,pre,code {
+      user-select:text;
+      -webkit-user-select:text;
+    }
+    .app {
+      max-width:960px;
+      margin:0 auto;
+    }
+    .card {
+      background:var(--panel);
+      border:1px solid var(--border);
+      border-radius:16px;
+      padding:14px;
+      margin-bottom:12px;
+    }
+    h1,h2,h3,p {
+      margin:0 0 10px;
+    }
+    .row {
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+    }
+    .button {
+      appearance:none;
+      -webkit-appearance:none;
+      border:0;
+      border-radius:12px;
+      padding:12px 16px;
+      font-size:16px;
+      font-weight:700;
+      cursor:pointer;
+      background:var(--accent);
+      color:#001018;
+      touch-action:manipulation;
+    }
+    .button.secondary {
+      background:var(--panel2);
+      color:var(--text);
+      border:1px solid var(--border);
+    }
+    .button.ok {
+      background:var(--ok);
+      color:white;
+    }
+    .button:disabled {
+      opacity:.5;
+      cursor:not-allowed;
+    }
+    .status {
+      white-space:pre-wrap;
+      word-break:break-word;
+      line-height:1.5;
+      padding:12px;
+      border-radius:12px;
+      border:1px solid var(--border);
+      background:var(--panel2);
+    }
+    .status.ok {
+      background:rgba(34,197,94,.12);
+      border-color:rgba(34,197,94,.4);
+    }
+    .status.warn {
+      background:rgba(245,158,11,.12);
+      border-color:rgba(245,158,11,.4);
+    }
+    .status.fail {
+      background:rgba(251,113,133,.12);
+      border-color:rgba(251,113,133,.4);
+    }
+    .label {
+      display:block;
+      margin-bottom:8px;
+      font-size:14px;
+      color:var(--muted);
+      font-weight:700;
+    }
+    textarea,select {
+      width:100%;
+      border-radius:12px;
+      border:1px solid var(--border);
+      background:#020617;
+      color:var(--text);
+      padding:12px;
+      font-size:14px;
+      line-height:1.5;
+    }
+    textarea {
+      min-height:280px;
+      resize:vertical;
+    }
+    .topbar {
+      display:flex;
+      flex-wrap:wrap;
+      gap:8px;
+      margin-bottom:10px;
+    }
+    .pill {
+      background:var(--panel2);
+      border:1px solid var(--border);
+      border-radius:10px;
+      padding:6px 10px;
+      color:var(--muted);
+      font-size:13px;
+    }
+    .pill strong {
+      color:var(--text);
+    }
+    .scene-title {
+      font-size:18px;
+      font-weight:700;
+      margin-bottom:10px;
+    }
+    .speaker-line {
+      margin-bottom:10px;
+      font-size:15px;
+      color:var(--accent);
+      font-weight:700;
+    }
+    .message-window {
+      background:var(--panel3);
+      border:1px solid var(--border);
+      border-radius:12px;
+      padding:10px 12px;
+      line-height:1.5;
+      white-space:pre-wrap;
+      font-size:16px;
+      height:220px;
+      overflow-y:auto;
+    }
+    .choice-list {
+      display:grid;
+      gap:10px;
+      margin-top:12px;
+    }
+    .choice-button {
+      width:100%;
+      text-align:left;
+      padding:14px;
+      border-radius:12px;
+      border:1px solid var(--border);
+      background:var(--panel2);
+      color:var(--text);
+      font-size:15px;
+      cursor:pointer;
+      touch-action:manipulation;
+      line-height:1.5;
+    }
+    .choice-button:disabled {
+      opacity:.55;
+      cursor:not-allowed;
+    }
+    .choice-button:hover {
+      border-color:var(--accent);
+    }
+    .log-list {
+      display:grid;
+      gap:8px;
+      max-height:260px;
+      overflow-y:auto;
+    }
+    .log-item {
+      background:var(--panel3);
+      border:1px solid var(--border);
+      border-radius:10px;
+      padding:10px;
+      font-size:14px;
+      line-height:1.5;
+      white-space:pre-wrap;
+    }
+    .note {
+      color:var(--muted);
+      font-size:14px;
+      line-height:1.5;
+    }
+    code.inline {
+      background:#020617;
+      border:1px solid var(--border);
+      border-radius:8px;
+      padding:2px 6px;
+    }
+    .hidden {
+      display:none;
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <h1>汎用サウンドノベルJSONランナー 完全版</h1>
+
+    <div class="card">
+      <h2>通知</h2>
+      <div id="globalStatus" class="status warn">サンプルを読むか、AI用プロンプトをコピーしてJSONを作ってください。</div>
+      <div class="row" style="margin-top:10px;">
+        <button id="copyStatusButton" class="button secondary" type="button">通知をコピー</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>セットアップ</h2>
+      <label class="label" for="promptModeSelect">コピーするAI用プロンプト</label>
+      <select id="promptModeSelect">
+        <option value="generic">汎用JSON台本ランナー用</option>
+        <option value="shindo">新堂誠・学校であった怖い話 用</option>
+      </select>
+
+      <label class="label" for="scriptInput" style="margin-top:12px;">台本JSON</label>
+      <textarea id="scriptInput" spellcheck="false"></textarea>
+
+      <p class="note">
+        新仕様専用: <code class="inline">definitions / world / scenario / initial_state</code>。
+        進行は <code class="inline">scenario.events</code> と <code class="inline">current_event_id / next_event_id</code>。
+      </p>
+
+      <div class="row">
+        <button id="loadExampleButton" class="button secondary" type="button">サンプル読込</button>
+        <button id="copyPromptButton" class="button secondary" type="button">AI用プロンプトをコピー</button>
+        <button id="pasteScriptButton" class="button secondary" type="button">全削除してクリップボード貼り付け</button>
+        <button id="loadScriptButton" class="button ok" type="button">このJSONで開始</button>
+        <button id="restartButton" class="button secondary" type="button">最初からやり直す</button>
+        <button id="copyStateButton" class="button secondary" type="button">現在状態をコピー</button>
+        <button id="copyContinuationButton" class="button secondary" type="button">続篇用プロンプトをコピー</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>進行</h2>
+      <div class="topbar">
+        <div class="pill"><strong>タイトル:</strong> <span id="gameTitle">-</span></div>
+        <div class="pill"><strong>現在イベント:</strong> <span id="currentEventIdText">-</span></div>
+        <div class="pill"><strong>現在スポット:</strong> <span id="currentSpotIdText">-</span></div>
+        <div class="pill"><strong>時刻:</strong> <span id="currentTimeText">-</span></div>
+        <div class="pill"><strong>既読数:</strong> <span id="stepText">0</span></div>
+        <div class="pill"><strong>体力:</strong> <span id="healthText">-</span></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>状態</h2>
+      <div class="topbar">
+        <div class="pill"><strong>所持アイテム:</strong> <span id="itemsText">-</span></div>
+      </div>
+      <div id="statePreview" class="status"></div>
+      <div class="row" style="margin-top:10px;">
+        <button id="toggleRawStateButton" class="button secondary" type="button">詳細JSONを表示</button>
+      </div>
+      <textarea id="rawStateArea" class="hidden" readonly style="margin-top:10px; min-height:240px;"></textarea>
+    </div>
+
+    <div class="card">
+      <h2>本文</h2>
+      <div id="eventTitle" class="scene-title">-</div>
+      <div id="speakerLine" class="speaker-line"></div>
+      <div id="textArea"></div>
+      <div id="choiceList" class="choice-list"></div>
+    </div>
+
+    <div class="card">
+      <h2>ログ</h2>
+      <div id="logList" class="log-list"></div>
+    </div>
+  </div>
+
+  <script>
+  (() => {
+    "use strict";
+
+    function isPlainObject(v) {
+      return v !== null && typeof v === "object" && !Array.isArray(v);
+    }
+
+    function cloneJson(v) {
+      return JSON.parse(JSON.stringify(v));
+    }
+
+    function parseJsonSafely(text) {
+      try {
+        return { ok: true, data: JSON.parse(text) };
+      } catch (error) {
+        return {
+          ok: false,
+          error: error instanceof Error ? error.message : String(error)
+        };
+      }
+    }
+
+    function isMeaningfulId(id) {
+      return /^[a-z][a-z0-9_-]*$/.test(id);
+    }
+
+    async function copyTextToClipboard(text) {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(text);
+        return;
+      }
+      const t = document.createElement("textarea");
+      t.value = text;
+      t.setAttribute("readonly", "");
+      t.style.position = "fixed";
+      t.style.left = "-9999px";
+      document.body.appendChild(t);
+      t.focus();
+      t.select();
+      const ok = document.execCommand("copy");
+      document.body.removeChild(t);
+      if (!ok) {
+        throw new Error("この環境ではクリップボードへのコピーが許可されていません。");
+      }
+    }
+
+    async function readTextFromClipboard() {
+      if (navigator.clipboard && window.isSecureContext) {
+        return navigator.clipboard.readText();
+      }
+      throw new Error("この環境ではクリップボードの読み取りが許可されていません。");
+    }
+
+    function toArrayText(text) {
+      if (typeof text === "string") return [text];
+      if (Array.isArray(text)) return text.filter((line) => typeof line === "string");
+      return [];
+    }
+
+    function getNestedValue(target, path) {
+      const parts = path.split(".");
+      let current = target;
+      for (const part of parts) {
+        if (!isPlainObject(current) || !(part in current)) return undefined;
+        current = current[part];
+      }
+      return current;
+    }
+
+    function ensureNestedParent(target, path) {
+      const parts = path.split(".");
+      let current = target;
+      for (let i = 0; i < parts.length - 1; i += 1) {
+        const part = parts[i];
+        if (!isPlainObject(current[part])) current[part] = {};
+        current = current[part];
+      }
+      return { parent: current, key: parts[parts.length - 1] };
+    }
+
+    function setNestedValue(target, path, value) {
+      const ref = ensureNestedParent(target, path);
+      ref.parent[ref.key] = value;
+    }
+
+    function addNestedNumber(target, path, delta) {
+      const now = getNestedValue(target, path);
+      const base = typeof now === "number" ? now : 0;
+      setNestedValue(target, path, base + delta);
+    }
+
+    function addMinutesToTime(timeObj, minutes) {
+      if (!isPlainObject(timeObj) || typeof minutes !== "number") return;
+      const date = new Date(
+        typeof timeObj.year === "number" ? timeObj.year : 2000,
+        typeof timeObj.month === "number" ? timeObj.month - 1 : 0,
+        typeof timeObj.day === "number" ? timeObj.day : 1,
+        typeof timeObj.hour === "number" ? timeObj.hour : 0,
+        typeof timeObj.minute === "number" ? timeObj.minute : 0
+      );
+      date.setMinutes(date.getMinutes() + minutes);
+      timeObj.year = date.getFullYear();
+      timeObj.month = date.getMonth() + 1;
+      timeObj.day = date.getDate();
+      timeObj.hour = date.getHours();
+      timeObj.minute = date.getMinutes();
+      timeObj.turn = typeof timeObj.turn === "number" ? timeObj.turn + 1 : 1;
+    }
+
+    function formatTime(timeObj) {
+      if (!isPlainObject(timeObj)) return "-";
+      const pad = (n) => String(n).padStart(2, "0");
+      if (["year", "month", "day", "hour", "minute"].every((k) => typeof timeObj[k] === "number")) {
+        return `${timeObj.year}/${pad(timeObj.month)}/${pad(timeObj.day)} ${pad(timeObj.hour)}:${pad(timeObj.minute)} (T${typeof timeObj.turn === "number" ? timeObj.turn : 0})`;
+      }
+      return "-";
+    }
+
+    const ui = {
+      setup: {
+        promptModeSelect: document.getElementById("promptModeSelect"),
+        scriptInput: document.getElementById("scriptInput"),
+        loadExampleButton: document.getElementById("loadExampleButton"),
+        copyPromptButton: document.getElementById("copyPromptButton"),
+        pasteScriptButton: document.getElementById("pasteScriptButton"),
+        loadScriptButton: document.getElementById("loadScriptButton"),
+        restartButton: document.getElementById("restartButton"),
+        copyStateButton: document.getElementById("copyStateButton"),
+        copyStatusButton: document.getElementById("copyStatusButton"),
+        copyContinuationButton: document.getElementById("copyContinuationButton")
+      },
+      stateTools: {
+        toggleRawStateButton: document.getElementById("toggleRawStateButton"),
+        rawStateArea: document.getElementById("rawStateArea")
+      },
+      status: {
+        globalStatus: document.getElementById("globalStatus")
+      },
+      header: {
+        gameTitle: document.getElementById("gameTitle"),
+        currentEventIdText: document.getElementById("currentEventIdText"),
+        currentSpotIdText: document.getElementById("currentSpotIdText"),
+        currentTimeText: document.getElementById("currentTimeText"),
+        stepText: document.getElementById("stepText"),
+        healthText: document.getElementById("healthText")
+      },
+      state: {
+        itemsText: document.getElementById("itemsText"),
+        statePreview: document.getElementById("statePreview")
+      },
+      event: {
+        eventTitle: document.getElementById("eventTitle"),
+        speakerLine: document.getElementById("speakerLine"),
+        textArea: document.getElementById("textArea"),
+        choiceList: document.getElementById("choiceList")
+      },
+      log: {
+        logList: document.getElementById("logList")
+      }
+    };
+
+    const MESSAGE_WINDOW_LIMIT = 3;
+
+    const game = {
+      loadedSource: null,
+      runtime: null,
+      state: null,
+      currentEventId: "",
+      stepCount: 0,
+      logEntries: [],
+      messageHistory: [],
+      isRawStateVisible: false
+    };
+
+    const SAMPLE_SCENARIO = {
+      "title": "呪われた山岳神殿からの脱出",
+      "version": "2.0",
+      "definitions": {
+        "characters": {
+          "adventurer": {
+            "name": "冒険者",
+            "tags": ["player", "human", "explorer"],
+            "base_stats": {
+              "体力": 70,
+              "筋力": 5
+            },
+            "description": "崩落しかけた古代神殿に足を踏み入れた単独の探索者。"
+          }
+        },
+        "items": {
+          "old_key": {
+            "name": "古い鍵",
+            "item_type": "key",
+            "tags": ["quest", "unlock"],
+            "description": "神殿入口の封印門に対応する古びた鍵。",
+            "stackable": false,
+            "consumable": false
+          }
+        }
+      },
+      "world": {
+        "settings": {
+          "genre": "fantasy_escape",
+          "default_language": "ja"
+        },
+        "time_system": {
+          "calendar_type": "gregorian",
+          "default_timezone": "Asia/Tokyo",
+          "turn_unit": "minute",
+          "minutes_per_turn": 5
+        },
+        "areas": {
+          "sealed_mountain_region": {
+            "name": "封印された山岳地帯",
+            "description": "雷鳴に包まれた山中に、古代神殿が眠っている。"
+          }
+        },
+        "dungeons": {
+          "cursed_mountain_temple": {
+            "name": "呪われた山岳神殿",
+            "area_id": "sealed_mountain_region",
+            "type": "temple",
+            "description": "崩落寸前の古代祭祀神殿。"
+          }
+        },
+        "spots": {
+          "temple_entrance": {
+            "name": "神殿入口",
+            "area_id": "sealed_mountain_region",
+            "dungeon_id": "cursed_mountain_temple",
+            "spot_type": "entrance",
+            "connections": ["collapsed_corridor", "ritual_hall", "hidden_chamber"]
+          },
+          "collapsed_corridor": {
+            "name": "崩れた回廊",
+            "area_id": "sealed_mountain_region",
+            "dungeon_id": "cursed_mountain_temple",
+            "spot_type": "corridor",
+            "connections": ["temple_entrance", "ritual_hall"]
+          },
+          "ritual_hall": {
+            "name": "祭祀の間",
+            "area_id": "sealed_mountain_region",
+            "dungeon_id": "cursed_mountain_temple",
+            "spot_type": "hall",
+            "connections": ["temple_entrance"]
+          },
+          "hidden_chamber": {
+            "name": "隠し部屋",
+            "area_id": "sealed_mountain_region",
+            "dungeon_id": "cursed_mountain_temple",
+            "spot_type": "secret_room",
+            "connections": ["temple_entrance", "outer_wall_exit"]
+          },
+          "outer_wall_exit": {
+            "name": "外壁の裂け目",
+            "area_id": "sealed_mountain_region",
+            "dungeon_id": "cursed_mountain_temple",
+            "spot_type": "exit",
+            "connections": []
+          }
+        }
+      },
+      "scenario": {
+        "start_event_id": "temple_entrance_event",
+        "game_over_event_id": "collapse_game_over_event",
+        "quests": {
+          "escape_temple": {
+            "title": "神殿から脱出する",
+            "description": "崩落する神殿から生還する。",
+            "restrictions": {
+              "allowed_area_ids": ["sealed_mountain_region"],
+              "allowed_dungeon_ids": ["cursed_mountain_temple"],
+              "allowed_character_ids": ["adventurer"],
+              "allowed_event_ids": [
+                "temple_entrance_event",
+                "collapsed_corridor_event",
+                "ritual_hall_event",
+                "hidden_chamber_event",
+                "normal_escape_end_event",
+                "power_escape_end_event",
+                "collapse_game_over_event"
+              ]
+            },
+            "completion": {
+              "required_any_flags": ["escaped_normal", "escaped_power"]
+            }
+          }
+        },
+        "events": {
+          "temple_entrance_event": {
+            "title": "神殿入口",
+            "event_type": "spot_event",
+            "spot_id": "temple_entrance",
+            "participants": ["adventurer"],
+            "text": [
+              "山岳神殿の封印門が、雷鳴に合わせて鈍く震えている。",
+              "このままでは崩落に巻き込まれる。脱出路を見つけなければならない。"
+            ],
+            "conditional_texts": [
+              {
+                "conditions": { "required_flags": ["inscription_read"] },
+                "text": ["碑文の内容を思い出す。罠を避けるには『静かに、重心を低く』だ。"]
+              },
+              {
+                "conditions": { "required_flags": ["gate_unlocked"] },
+                "text": ["封印門はすでに解かれている。今なら奥へ進める。"]
+              },
+              {
+                "conditions": { "required_flags": ["crate_opened"] },
+                "text": ["入口脇の木箱は開いたままで、中は空になっている。"]
+              },
+              {
+                "conditions": { "required_flags": ["strength_training_done"] },
+                "text": ["崩れた石柱はすでに持ち上げた。腕には鈍い疲労が残っている。"]
+              },
+              {
+                "conditions": { "min_unique": { "筋力": 6 }, "forbidden_flags": ["force_gate_used"] },
+                "text": ["脇の石扉は重いが、今の筋力ならこじ開けられそうだ。"]
+              }
+            ],
+            "actions": [
+              {
+                "id": "read_inscription",
+                "text": "壁面の碑文を読む",
+                "conditions": { "forbidden_flags": ["inscription_read"] },
+                "effects": { "set_flags": ["inscription_read"], "add_time": { "minutes": 5 } },
+                "success_message": "罠回避の手順を理解した。",
+                "failure_message": "碑文はもう読み終えている。",
+                "hidden_when_disabled": true
+              },
+              {
+                "id": "open_crate",
+                "text": "入口脇の木箱を開ける",
+                "conditions": { "forbidden_flags": ["crate_opened"] },
+                "effects": {
+                  "add_items": [{ "item_id": "old_key", "quantity": 1 }],
+                  "remove_spot_items": [{ "spot_id": "temple_entrance", "item_id": "old_key", "quantity": 1 }],
+                  "set_flags": ["crate_opened"],
+                  "add_time": { "minutes": 1 }
+                },
+                "success_message": "木箱の中から古い鍵を見つけた。",
+                "failure_message": "もう鍵は入っていない。木箱の中は空だ。",
+                "disabled_text": "入口脇の木箱を確認する"
+              },
+              {
+                "id": "train_strength",
+                "text": "崩れた石柱を持ち上げて身体を慣らす",
+                "conditions": { "forbidden_flags": ["strength_training_done"] },
+                "effects": {
+                  "add_unique": { "筋力": 1 },
+                  "add": { "characters.adventurer.current_stats.体力": -5 },
+                  "set_flags": ["strength_training_done"],
+                  "add_time": { "minutes": 15 }
+                },
+                "success_message": "重い石柱を持ち上げ、筋力が1上がった。代わりに体力を5消耗した。",
+                "failure_message": "これ以上ここで鍛える余裕はない。",
+                "hidden_when_disabled": true
+              },
+              {
+                "id": "unlock_gate",
+                "text": "古い鍵で封印門を解錠する",
+                "conditions": { "required_items": [{ "item_id": "old_key", "quantity": 1 }], "forbidden_flags": ["gate_unlocked"] },
+                "effects": { "set_flags": ["gate_unlocked"], "add_time": { "minutes": 2 } },
+                "success_message": "鈍い音を立てて封印門が開いた。",
+                "failure_message": "対応する鍵が必要だ。",
+                "hidden_when_disabled": true
+              }
+            ],
+            "choices": [
+              {
+                "text": "封印門の奥へ進む",
+                "conditions": { "required_flags": ["gate_unlocked"] },
+                "disabled_text": "封印門は閉ざされている",
+                "failure_message": "古い鍵で封印を解かなければ進めない。",
+                "effects": {
+                  "set": {
+                    "current_spot_id": "ritual_hall",
+                    "characters.adventurer.spot_id": "ritual_hall"
+                  },
+                  "add_time": { "minutes": 3 }
+                },
+                "next_event_id": "ritual_hall_event"
+              },
+              {
+                "text": "崩れた回廊を進む",
+                "effects": {
+                  "set": {
+                    "current_spot_id": "collapsed_corridor",
+                    "characters.adventurer.spot_id": "collapsed_corridor"
+                  },
+                  "add_time": { "minutes": 3 }
+                },
+                "next_event_id": "collapsed_corridor_event"
+              },
+              {
+                "text": "石扉を力づくでこじ開ける",
+                "conditions": { "min_unique": { "筋力": 6 }, "forbidden_flags": ["force_gate_used"] },
+                "effects": {
+                  "set_flags": ["force_gate_used"],
+                  "set": {
+                    "current_spot_id": "hidden_chamber",
+                    "characters.adventurer.spot_id": "hidden_chamber"
+                  },
+                  "add_time": { "minutes": 4 }
+                },
+                "failure_message": "石扉はびくともしない。筋力が足りない。",
+                "hidden_when_disabled": true,
+                "next_event_id": "hidden_chamber_event"
+              }
+            ]
+          },
+          "collapsed_corridor_event": {
+            "title": "崩れた回廊",
+            "event_type": "spot_event",
+            "spot_id": "collapsed_corridor",
+            "participants": ["adventurer"],
+            "text": ["足場は崩れかけ、天井から砂塵が降り続けている。"],
+            "conditional_texts": [
+              {
+                "conditions": { "required_flags": ["inscription_read"] },
+                "text": ["碑文の助言が頭に残っている。ここは静かに進めば突破できそうだ。"]
+              }
+            ],
+            "choices": [
+              {
+                "text": "慎重に進む",
+                "conditions": { "required_flags": ["inscription_read"] },
+                "disabled_text": "慎重に進む（碑文の知識がないと危険）",
+                "failure_message": "足場の読み方がわからない。このままでは慎重に進めない。",
+                "effects": {
+                  "set": {
+                    "current_spot_id": "ritual_hall",
+                    "characters.adventurer.spot_id": "ritual_hall"
+                  },
+                  "add_time": { "minutes": 10 }
+                },
+                "next_event_id": "ritual_hall_event"
+              },
+              {
+                "text": "急いで駆け抜ける",
+                "effects": {
+                  "add": { "characters.adventurer.current_stats.体力": -80 },
+                  "add_time": { "minutes": 2 }
+                },
+                "failure_message": "落石が直撃した。",
+                "next_event_id": "collapsed_corridor_event"
+              },
+              {
+                "text": "入口へ戻る",
+                "effects": {
+                  "set": {
+                    "current_spot_id": "temple_entrance",
+                    "characters.adventurer.spot_id": "temple_entrance"
+                  },
+                  "add_time": { "minutes": 3 }
+                },
+                "next_event_id": "temple_entrance_event"
+              }
+            ]
+          },
+          "ritual_hall_event": {
+            "title": "祭祀の間",
+            "event_type": "spot_event",
+            "spot_id": "ritual_hall",
+            "participants": ["adventurer"],
+            "text": [
+              "中央に古い祭壇、奥に重い脱出扉が見える。",
+              "扉にはまだ封印の力が残っているようだ。"
+            ],
+            "conditional_texts": [
+              {
+                "conditions": { "required_flags": ["lever_used"] },
+                "text": ["祭壇横の機構はすでに作動済みだ。脱出扉の封印は緩んでいる。"]
+              }
+            ],
+            "actions": [
+              {
+                "id": "pull_lever",
+                "text": "祭壇横のレバーを引く",
+                "conditions": { "forbidden_flags": ["lever_used"] },
+                "effects": {
+                  "set_flags": ["lever_used"],
+                  "add": { "characters.adventurer.current_stats.体力": -10 },
+                  "add_time": { "minutes": 5 }
+                },
+                "success_message": "歯車音と共に脱出扉の封印が緩んだ。",
+                "failure_message": "レバーはすでに固定されている。",
+                "hidden_when_disabled": true
+              }
+            ],
+            "choices": [
+              {
+                "text": "脱出扉を開ける",
+                "conditions": { "required_flags": ["lever_used"] },
+                "disabled_text": "封印が強すぎて開かない",
+                "failure_message": "祭壇の機構を動かさなければ、この扉は開かない。",
+                "effects": {
+                  "set_flags": ["escaped_normal"],
+                  "set": {
+                    "current_spot_id": "outer_wall_exit",
+                    "characters.adventurer.spot_id": "outer_wall_exit"
+                  },
+                  "add_time": { "minutes": 3 }
+                },
+                "next_event_id": "normal_escape_end_event"
+              },
+              {
+                "text": "入口方面へ戻る",
+                "effects": {
+                  "set": {
+                    "current_spot_id": "temple_entrance",
+                    "characters.adventurer.spot_id": "temple_entrance"
+                  },
+                  "add_time": { "minutes": 3 }
+                },
+                "next_event_id": "temple_entrance_event"
+              }
+            ]
+          },
+          "hidden_chamber_event": {
+            "title": "隠し部屋",
+            "event_type": "spot_event",
+            "spot_id": "hidden_chamber",
+            "participants": ["adventurer"],
+            "text": [
+              "石扉の先には、神殿外壁へ繋がる細い風穴があった。",
+              "冷たい風が吹き込み、外の気配がかすかに感じられる。"
+            ],
+            "conditional_texts": [
+              {
+                "conditions": { "required_flags": ["vent_climbed"] },
+                "text": ["風穴の縁には、爪で削ったような痕が残っている。"]
+              }
+            ],
+            "choices": [
+              {
+                "text": "風穴をよじ登る",
+                "conditions": { "min_unique": { "筋力": 6 }, "forbidden_flags": ["vent_climbed"] },
+                "effects": {
+                  "set_flags": ["vent_climbed", "escaped_power"],
+                  "set": {
+                    "current_spot_id": "outer_wall_exit",
+                    "characters.adventurer.spot_id": "outer_wall_exit"
+                  },
+                  "add_time": { "minutes": 8 }
+                },
+                "failure_message": "腕力が足りず、風穴の途中で身体を支えきれない。",
+                "next_event_id": "power_escape_end_event"
+              },
+              {
+                "text": "入口へ戻る",
+                "effects": {
+                  "set": {
+                    "current_spot_id": "temple_entrance",
+                    "characters.adventurer.spot_id": "temple_entrance"
+                  },
+                  "add_time": { "minutes": 3 }
+                },
+                "next_event_id": "temple_entrance_event"
+              }
+            ]
+          },
+          "normal_escape_end_event": {
+            "title": "通常脱出",
+            "event_type": "ending",
+            "spot_id": "outer_wall_exit",
+            "participants": ["adventurer"],
+            "text": [
+              "重い扉が開き、夜明けの稜線へ飛び出した。",
+              "傷だらけだが、あなたは確かに生還した。"
+            ],
+            "choices": [
+              { "text": "完", "next_event_id": null }
+            ]
+          },
+          "power_escape_end_event": {
+            "title": "風穴脱出",
+            "event_type": "ending",
+            "spot_id": "outer_wall_exit",
+            "participants": ["adventurer"],
+            "text": [
+              "筋力で身体を引き上げ、狭い風穴をよじ登って外壁の裂け目から脱出した。",
+              "封印門も祭壇も使わない、異例の生還だ。"
+            ],
+            "choices": [
+              { "text": "ユニークエンド", "next_event_id": null }
+            ]
+          },
+          "collapse_game_over_event": {
+            "title": "神殿に飲み込まれて",
+            "event_type": "game_over",
+            "participants": ["adventurer"],
+            "text": [
+              "体の限界を超え、足が動かなくなった。",
+              "崩落音の中、あなたの意識は闇へ沈んでいく。"
+            ],
+            "choices": [
+              { "text": "最初からやり直す", "next_event_id": null }
+            ]
+          }
+        }
+      },
+      "initial_state": {
+        "player_character_id": "adventurer",
+        "current_quest_id": "escape_temple",
+        "current_event_id": "temple_entrance_event",
+        "current_spot_id": "temple_entrance",
+        "time": {
+          "year": 2026,
+          "month": 3,
+          "day": 15,
+          "hour": 4,
+          "minute": 30,
+          "turn": 0
+        },
+        "flags": [],
+        "unique": { "筋力": 5 },
+        "characters": {
+          "adventurer": {
+            "spot_id": "temple_entrance",
+            "status": "active",
+            "current_stats": { "体力": 70 },
+            "inventory": [],
+            "relationships": {}
+          }
+        },
+        "spot_states": {
+          "temple_entrance": {
+            "items": [
+              {
+                "item_id": "old_key",
+                "quantity": 1,
+                "container_id": "entrance_crate"
+              }
+            ]
+          }
+        }
+      }
+    };
+
+    const PROMPT_SAMPLE_JSON = JSON.stringify(SAMPLE_SCENARIO, null, 2);
+
+    const GENERIC_PROMPT = [
+      "以下を厳守して、新仕様(world/scenario/initial_state)のJSON台本を1つ作成してください。",
+      "",
+      "【必須】",
+      "- top-level は title/version/definitions/world/scenario/initial_state 構造",
+      "- 進行は scenario.events を主系として current_event_id / next_event_id で行う",
+      "- scenes/start_scene_id/next_scene_id は使わない",
+      "- 主人公体力は initial_state.characters[player_character_id].current_stats に置く",
+      "- inventory は initial_state.characters[character_id].inventory を使う",
+      "- spot 上アイテムは initial_state.spot_states を使う",
+      "- effects.add_time / required_items / add_items / remove_spot_items を使える形にする",
+      "",
+      "【出力形式】",
+      "```json",
+      PROMPT_SAMPLE_JSON,
+      "```"
+    ].join("\n");
+
+    const SHINDO_PROMPT = [
+      "新堂誠・学校ホラー向けで、world/scenario/initial_state 新仕様JSONを1つ作ってください。",
+      "進行は scenario.events + current_event_id / next_event_id のみを使うこと。",
+      "```json",
+      PROMPT_SAMPLE_JSON,
+      "```"
+    ].join("\n");
+
+    function ensureStateCollections() {
+      if (!isPlainObject(game.state)) game.state = {};
+      if (!Array.isArray(game.state.flags)) game.state.flags = [];
+      if (!isPlainObject(game.state.unique)) game.state.unique = {};
+      if (!isPlainObject(game.state.characters)) game.state.characters = {};
+      if (!isPlainObject(game.state.spot_states)) game.state.spot_states = {};
+    }
+
+    function getPlayerCharacterId() {
+      return typeof game.state?.player_character_id === "string" ? game.state.player_character_id : "";
+    }
+
+    function getPlayerCharacter() {
+      const id = getPlayerCharacterId();
+      return id && isPlainObject(game.state?.characters?.[id]) ? game.state.characters[id] : null;
+    }
+
+    function getPlayerInventory() {
+      const ch = getPlayerCharacter();
+      if (!ch) return [];
+      if (!Array.isArray(ch.inventory)) ch.inventory = [];
+      return ch.inventory;
+    }
+
+    function getInventoryQuantity(itemId) {
+      if (typeof itemId !== "string" || !itemId.trim()) return 0;
+      let total = 0;
+      getPlayerInventory().forEach((entry) => {
+        if (typeof entry === "string") {
+          if (entry === itemId) total += 1;
+          return;
+        }
+        if (isPlainObject(entry) && entry.item_id === itemId) {
+          total += typeof entry.quantity === "number" ? entry.quantity : 1;
+        }
+      });
+      return total;
+    }
+
+    function inventoryHasItem(itemId, quantity) {
+      const need = typeof quantity === "number" && quantity > 0 ? quantity : 1;
+      return getInventoryQuantity(itemId) >= need;
+    }
+
+    function addItemToInventory(itemId, quantity) {
+      const inv = getPlayerInventory();
+      const q = typeof quantity === "number" && quantity > 0 ? quantity : 1;
+      const found = inv.find((entry) => isPlainObject(entry) && entry.item_id === itemId);
+      if (found) {
+        found.quantity = (typeof found.quantity === "number" ? found.quantity : 1) + q;
+      } else {
+        inv.push({ item_id: itemId, quantity: q });
+      }
+    }
+
+    function removeItemFromInventory(itemId, quantity) {
+      const inv = getPlayerInventory();
+      let q = typeof quantity === "number" && quantity > 0 ? quantity : 1;
+      for (let i = inv.length - 1; i >= 0 && q > 0; i -= 1) {
+        const entry = inv[i];
+        if (typeof entry === "string" && entry === itemId) {
+          inv.splice(i, 1);
+          q -= 1;
+          continue;
+        }
+        if (isPlainObject(entry) && entry.item_id === itemId) {
+          const cur = typeof entry.quantity === "number" ? entry.quantity : 1;
+          if (cur <= q) {
+            q -= cur;
+            inv.splice(i, 1);
+          } else {
+            entry.quantity = cur - q;
+            q = 0;
+          }
+        }
+      }
+    }
+
+    function getHealthValue() {
+      const ch = getPlayerCharacter();
+      const stats = isPlainObject(ch?.current_stats) ? ch.current_stats : null;
+      if (!stats) return null;
+      for (const key of ["体力", "hp", "health"]) {
+        if (typeof stats[key] === "number") return stats[key];
+      }
+      return null;
+    }
+
+    function getActiveEventById(eventId) {
+      return isPlainObject(game.runtime?.scenario?.events) ? game.runtime.scenario.events[eventId] || null : null;
+    }
+
+    function getCurrentEvent() {
+      return getActiveEventById(game.currentEventId);
+    }
+
+    function getSpotById(spotId) {
+      return isPlainObject(game.runtime?.world?.spots) ? game.runtime.world.spots[spotId] || null : null;
+    }
+
+    function getDisplaySpotName(spotId) {
+      const spot = getSpotById(spotId);
+      return spot && typeof spot.name === "string" ? spot.name : (spotId || "-");
+    }
+
+    function getDisplayItemNames() {
+      const defs = game.runtime?.definitions?.items;
+      const names = [];
+      getPlayerInventory().forEach((entry) => {
+        const itemId = typeof entry === "string" ? entry : (isPlainObject(entry) ? entry.item_id : null);
+        const quantity = typeof entry === "string" ? 1 : (isPlainObject(entry) && typeof entry.quantity === "number" ? entry.quantity : 1);
+        if (!itemId) return;
+        const label = isPlainObject(defs?.[itemId]) && typeof defs[itemId].name === "string" ? defs[itemId].name : itemId;
+        names.push(`${label} x${quantity}`);
+      });
+      return names;
+    }
+
+    function getCurrentSpotItemsText() {
+      const currentSpotId = typeof game.state?.current_spot_id === "string" ? game.state.current_spot_id : "";
+      const spotState = isPlainObject(game.state?.spot_states?.[currentSpotId]) ? game.state.spot_states[currentSpotId] : null;
+      if (!spotState || !Array.isArray(spotState.items) || spotState.items.length === 0) {
+        return "なし";
+      }
+      const defs = game.runtime?.definitions?.items;
+      return spotState.items.map((entry) => {
+        const itemId = entry.item_id;
+        const quantity = typeof entry.quantity === "number" ? entry.quantity : 1;
+        const label = isPlainObject(defs?.[itemId]) && typeof defs[itemId].name === "string" ? defs[itemId].name : itemId;
+        return `${label} x${quantity}`;
+      }).join(" / ");
+    }
+
+    function buildStateSummary() {
+      if (!isPlainObject(game.state)) {
+        return "状態データなし";
+      }
+
+      const lines = [];
+      const playerId = getPlayerCharacterId();
+      const player = getPlayerCharacter();
+      const questId = typeof game.state.current_quest_id === "string" ? game.state.current_quest_id : "";
+      const quest = isPlainObject(game.runtime?.scenario?.quests?.[questId]) ? game.runtime.scenario.quests[questId] : null;
+      const spotId = typeof game.state.current_spot_id === "string" ? game.state.current_spot_id : "";
+      const eventId = typeof game.state.current_event_id === "string" ? game.state.current_event_id : "";
+
+      if (playerId) {
+        const playerName = game.runtime?.definitions?.characters?.[playerId]?.name || playerId;
+        lines.push(`プレイヤー: ${playerName}`);
+      }
+
+      if (quest) {
+        lines.push(`クエスト: ${quest.title}`);
+      } else if (questId) {
+        lines.push(`クエストID: ${questId}`);
+      }
+
+      if (spotId) {
+        lines.push(`現在地: ${getDisplaySpotName(spotId)}`);
+      }
+
+      if (eventId) {
+        lines.push(`現在イベントID: ${eventId}`);
+      }
+
+      if (player && isPlainObject(player.current_stats)) {
+        const statEntries = Object.entries(player.current_stats)
+          .filter(([, value]) => typeof value === "number")
+          .map(([key, value]) => `${key}: ${value}`);
+        if (statEntries.length) {
+          lines.push(`ステータス: ${statEntries.join(" / ")}`);
+        }
+      }
+
+      if (isPlainObject(game.state.unique) && Object.keys(game.state.unique).length > 0) {
+        const uniqueEntries = Object.entries(game.state.unique)
+          .map(([key, value]) => `${key}: ${value}`);
+        lines.push(`固有値: ${uniqueEntries.join(" / ")}`);
+      }
+
+      if (Array.isArray(game.state.flags) && game.state.flags.length > 0) {
+        lines.push(`フラグ: ${game.state.flags.join(" / ")}`);
+      } else {
+        lines.push("フラグ: なし");
+      }
+
+      lines.push(`この場所の残アイテム: ${getCurrentSpotItemsText()}`);
+
+      return lines.join("\n");
+    }
+
+    function setGlobalStatus(type, message) {
+      ui.status.globalStatus.className = "status " + type;
+      ui.status.globalStatus.textContent = message;
+    }
+
+    function addLogEntry(line) {
+      game.logEntries.push(line);
+      renderLogPanel();
+    }
+
+    function appendMessageLine(line) {
+      if (typeof line !== "string") return;
+      const trimmed = line.trim();
+      if (trimmed) game.messageHistory.push(trimmed);
+    }
+
+    function renderHeaderPanel() {
+      ui.header.gameTitle.textContent = game.runtime ? game.runtime.title : "-";
+      ui.header.currentEventIdText.textContent = game.currentEventId || "-";
+      ui.header.currentSpotIdText.textContent = getDisplaySpotName(typeof game.state?.current_spot_id === "string" ? game.state.current_spot_id : "");
+      ui.header.currentTimeText.textContent = formatTime(game.state?.time);
+      ui.header.stepText.textContent = String(game.stepCount);
+      const hp = getHealthValue();
+      ui.header.healthText.textContent = hp === null ? "-" : String(hp);
+    }
+
+    function renderStatePanel() {
+      if (!isPlainObject(game.state)) {
+        ui.state.itemsText.textContent = "-";
+        ui.state.statePreview.textContent = "状態データなし";
+        ui.stateTools.rawStateArea.value = "";
+        return;
+      }
+
+      const itemNames = getDisplayItemNames();
+      ui.state.itemsText.textContent = itemNames.length ? itemNames.join(" / ") : "なし";
+      ui.state.statePreview.textContent = buildStateSummary();
+      ui.stateTools.rawStateArea.value = JSON.stringify(game.state, null, 2);
+
+      if (game.isRawStateVisible) {
+        ui.stateTools.rawStateArea.classList.remove("hidden");
+        ui.stateTools.toggleRawStateButton.textContent = "詳細JSONを隠す";
+      } else {
+        ui.stateTools.rawStateArea.classList.add("hidden");
+        ui.stateTools.toggleRawStateButton.textContent = "詳細JSONを表示";
+      }
+    }
+
+    function renderLogPanel() {
+      ui.log.logList.innerHTML = "";
+      game.logEntries.slice().reverse().forEach((line) => {
+        const item = document.createElement("div");
+        item.className = "log-item";
+        item.textContent = line;
+        ui.log.logList.appendChild(item);
+      });
+    }
+
+    function renderMessageWindow() {
+      ui.event.textArea.innerHTML = "";
+      const recent = game.messageHistory.slice(-MESSAGE_WINDOW_LIMIT);
+      const padded = Array(Math.max(0, MESSAGE_WINDOW_LIMIT - recent.length)).fill("").concat(recent);
+      const box = document.createElement("div");
+      box.className = "message-window";
+      box.textContent = padded.join("\n");
+      ui.event.textArea.appendChild(box);
+    }
+
+    function checkConditions(conditions) {
+      if (!isPlainObject(conditions)) return true;
+      ensureStateCollections();
+
+      if (Array.isArray(conditions.required_flags) && conditions.required_flags.some((flag) => !game.state.flags.includes(flag))) {
+        return false;
+      }
+
+      if (Array.isArray(conditions.forbidden_flags) && conditions.forbidden_flags.some((flag) => game.state.flags.includes(flag))) {
+        return false;
+      }
+
+      if (Array.isArray(conditions.required_items)) {
+        for (const item of conditions.required_items) {
+          if (typeof item === "string") {
+            if (!inventoryHasItem(item, 1)) return false;
+            continue;
+          }
+          if (isPlainObject(item) && typeof item.item_id === "string") {
+            if (!inventoryHasItem(item.item_id, item.quantity)) return false;
+            continue;
+          }
+          return false;
+        }
+      }
+
+      if (isPlainObject(conditions.min)) {
+        for (const [path, min] of Object.entries(conditions.min)) {
+          const v = getNestedValue(game.state, path);
+          if (typeof v !== "number" || v < min) return false;
+        }
+      }
+
+      if (isPlainObject(conditions.max)) {
+        for (const [path, max] of Object.entries(conditions.max)) {
+          const v = getNestedValue(game.state, path);
+          if (typeof v !== "number" || v > max) return false;
+        }
+      }
+
+      if (isPlainObject(conditions.min_unique)) {
+        for (const [key, min] of Object.entries(conditions.min_unique)) {
+          const v = game.state.unique[key];
+          if (typeof v !== "number" || v < min) return false;
+        }
+      }
+
+      if (isPlainObject(conditions.max_unique)) {
+        for (const [key, max] of Object.entries(conditions.max_unique)) {
+          const v = game.state.unique[key];
+          if (typeof v !== "number" || v > max) return false;
+        }
+      }
+
+      return true;
+    }
+
+    function applyEffects(effects) {
+      if (!isPlainObject(effects)) return;
+      ensureStateCollections();
+
+      if (isPlainObject(effects.add)) {
+        Object.entries(effects.add).forEach(([path, delta]) => {
+          if (typeof delta === "number") addNestedNumber(game.state, path, delta);
+        });
+      }
+
+      if (isPlainObject(effects.set)) {
+        Object.entries(effects.set).forEach(([path, value]) => {
+          setNestedValue(game.state, path, value);
+        });
+      }
+
+      if (Array.isArray(effects.set_flags)) {
+        effects.set_flags.forEach((flag) => {
+          if (!game.state.flags.includes(flag)) game.state.flags.push(flag);
+        });
+      }
+
+      if (Array.isArray(effects.remove_flags)) {
+        game.state.flags = game.state.flags.filter((flag) => !effects.remove_flags.includes(flag));
+      }
+
+      if (isPlainObject(effects.add_unique)) {
+        Object.entries(effects.add_unique).forEach(([key, delta]) => {
+          if (typeof delta === "number") {
+            game.state.unique[key] = (typeof game.state.unique[key] === "number" ? game.state.unique[key] : 0) + delta;
+          }
+        });
+      }
+
+      if (Array.isArray(effects.add_items)) {
+        effects.add_items.forEach((entry) => {
+          if (typeof entry === "string") addItemToInventory(entry, 1);
+          else if (isPlainObject(entry) && typeof entry.item_id === "string") addItemToInventory(entry.item_id, entry.quantity);
+        });
+      }
+
+      if (Array.isArray(effects.remove_items)) {
+        effects.remove_items.forEach((entry) => {
+          if (typeof entry === "string") removeItemFromInventory(entry, 1);
+          else if (isPlainObject(entry) && typeof entry.item_id === "string") removeItemFromInventory(entry.item_id, entry.quantity);
+        });
+      }
+
+      if (Array.isArray(effects.remove_spot_items)) {
+        effects.remove_spot_items.forEach((entry) => {
+          const spotId = isPlainObject(entry) && typeof entry.spot_id === "string" ? entry.spot_id : game.state.current_spot_id;
+          const itemId = typeof entry === "string" ? entry : (isPlainObject(entry) ? entry.item_id : null);
+          let q = isPlainObject(entry) && typeof entry.quantity === "number" && entry.quantity > 0 ? entry.quantity : 1;
+
+          if (!spotId || !itemId) return;
+          if (!isPlainObject(game.state.spot_states[spotId])) game.state.spot_states[spotId] = { items: [] };
+          const items = Array.isArray(game.state.spot_states[spotId].items) ? game.state.spot_states[spotId].items : [];
+
+          for (let i = items.length - 1; i >= 0 && q > 0; i -= 1) {
+            const si = items[i];
+            if (!isPlainObject(si) || si.item_id !== itemId) continue;
+            const cur = typeof si.quantity === "number" ? si.quantity : 1;
+            if (cur <= q) {
+              q -= cur;
+              items.splice(i, 1);
+            } else {
+              si.quantity = cur - q;
+              q = 0;
+            }
+          }
+
+          game.state.spot_states[spotId].items = items;
+        });
+      }
+
+      if (isPlainObject(effects.add_time) && isPlainObject(game.state.time)) {
+        const minutes = typeof effects.add_time.minutes === "number" ? effects.add_time.minutes : 0;
+        addMinutesToTime(game.state.time, minutes);
+      }
+    }
+
+    function getVisibleEventTextLines(eventDef) {
+      const lines = [];
+      toArrayText(eventDef.text).forEach((line) => lines.push(line));
+      if (Array.isArray(eventDef.conditional_texts)) {
+        eventDef.conditional_texts.forEach((entry) => {
+          if (!isPlainObject(entry) || !checkConditions(entry.conditions)) return;
+          toArrayText(entry.text).forEach((line) => lines.push(line));
+        });
+      }
+      return lines;
+    }
+
+    function renderTerminalOptions(mode) {
+      ui.event.choiceList.innerHTML = "";
+
+      const restartBtn = document.createElement("button");
+      restartBtn.type = "button";
+      restartBtn.className = "choice-button";
+      restartBtn.textContent = "最初からやり直す";
+      restartBtn.addEventListener("click", () => {
+        if (!game.loadedSource) {
+          setGlobalStatus("warn", "まだ読み込まれた台本がありません。");
+          return;
+        }
+        startScript(game.loadedSource);
+        setGlobalStatus("ok", "最初からやり直しました。");
+      });
+
+      const continuationBtn = document.createElement("button");
+      continuationBtn.type = "button";
+      continuationBtn.className = "choice-button";
+      continuationBtn.textContent = "続篇用プロンプトをコピー";
+      continuationBtn.addEventListener("click", async () => {
+        try {
+          await copyTextToClipboard(buildContinuationPrompt());
+          setGlobalStatus("ok", "続篇用プロンプトをコピーしました。");
+        } catch (error) {
+          setGlobalStatus("fail", "続篇プロンプトコピー失敗: " + (error instanceof Error ? error.message : String(error)));
+        }
+      });
+
+      ui.event.choiceList.appendChild(restartBtn);
+      ui.event.choiceList.appendChild(continuationBtn);
+
+      if (mode === "game_over") {
+        setGlobalStatus("fail", "ゲームオーバーです。最初からやり直すか、続篇用プロンプトをコピーできます。");
+      } else {
+        setGlobalStatus("ok", "エンディングに到達しました。最初からやり直すか、続篇用プロンプトをコピーできます。");
+      }
+    }
+
+    function tryHandleGameOverTransition() {
+      const hp = getHealthValue();
+      if (hp === null || hp > 0) return false;
+
+      const currentEvent = getCurrentEvent();
+      if (currentEvent && currentEvent.event_type === "game_over") {
+        return false;
+      }
+
+      const gameOverEventId = typeof game.runtime?.scenario?.game_over_event_id === "string" ? game.runtime.scenario.game_over_event_id.trim() : "";
+      if (gameOverEventId && getActiveEventById(gameOverEventId)) {
+        enterEvent(gameOverEventId);
+        setGlobalStatus("fail", "体力が0以下になったため、ゲームオーバーへ遷移しました。");
+        return true;
+      }
+
+      appendMessageLine("体力が尽きました。");
+      renderMessageWindow();
+      renderTerminalOptions("game_over");
+      return true;
+    }
+
+    function renderOptionButton(option, kind, index) {
+      const met = checkConditions(option.conditions);
+      if (!met && option.hidden_when_disabled === true) return null;
+
+      const visibleLabel = met
+        ? option.text
+        : (typeof option.disabled_text === "string" && option.disabled_text.trim() ? option.disabled_text : option.text);
+
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "choice-button";
+      btn.textContent = `${index}. ${visibleLabel}`;
+
+      if (met) {
+        btn.addEventListener("click", () => executeOption(option, kind));
+      } else if (typeof option.failure_message === "string" && option.failure_message.trim()) {
+        btn.addEventListener("click", () => {
+          appendMessageLine("▶ " + option.text);
+          appendMessageLine(option.failure_message);
+          addLogEntry(`Blocked ${kind}: ${option.text} -> ${option.failure_message}`);
+          renderScreen();
+          setGlobalStatus("warn", option.failure_message);
+        });
+      } else {
+        btn.disabled = true;
+      }
+
+      return btn;
+    }
+
+    function executeOption(option, kind) {
+      game.stepCount += 1;
+      addLogEntry([`Step ${game.stepCount}`, `Event: ${game.currentEventId || "-"}`, `${kind}: ${option.text}`].join("\n"));
+      appendMessageLine("▶ " + option.text);
+
+      if (!checkConditions(option.conditions)) {
+        const message = typeof option.failure_message === "string" && option.failure_message.trim()
+          ? option.failure_message
+          : "条件を満たしていません。";
+        appendMessageLine(message);
+        renderScreen();
+        setGlobalStatus("warn", message);
+        return;
+      }
+
+      const currentEvent = getCurrentEvent();
+      const isGameOverRestart =
+        currentEvent &&
+        currentEvent.event_type === "game_over" &&
+        option.next_event_id === null &&
+        typeof option.text === "string" &&
+        option.text.includes("最初から");
+
+      if (isGameOverRestart) {
+        if (!game.loadedSource) {
+          setGlobalStatus("warn", "まだ読み込まれた台本がありません。");
+          return;
+        }
+        startScript(game.loadedSource);
+        setGlobalStatus("ok", "最初からやり直しました。");
+        return;
+      }
+
+      applyEffects(option.effects);
+
+      if (typeof option.success_message === "string" && option.success_message.trim()) {
+        appendMessageLine(option.success_message);
+        addLogEntry("Result: " + option.success_message);
+      }
+
+      if (tryHandleGameOverTransition()) return;
+
+      if (option.next_event_id === null) {
+        appendMessageLine("この話はこれで終わりです。");
+        renderMessageWindow();
+        renderTerminalOptions(currentEvent && currentEvent.event_type === "game_over" ? "game_over" : "ending");
+        return;
+      }
+
+      if (typeof option.next_event_id === "string" && option.next_event_id.trim()) {
+        const nextEventId = option.next_event_id.trim();
+        if (!getActiveEventById(nextEventId)) {
+          const message = "遷移先イベントが存在しません: " + nextEventId;
+          appendMessageLine(message);
+          addLogEntry("Blocked " + kind + ": " + option.text + " -> " + message);
+          renderScreen();
+          setGlobalStatus("fail", message);
+          return;
+        }
+        enterEvent(nextEventId);
+        return;
+      }
+
+      renderScreen();
+    }
+
+    function renderOptions(eventDef) {
+      ui.event.choiceList.innerHTML = "";
+      const ordered = [];
+
+      (Array.isArray(eventDef.actions) ? eventDef.actions : []).forEach((action) => {
+        if (isPlainObject(action) && typeof action.text === "string") {
+          ordered.push({ kind: "Action", option: action });
+        }
+      });
+
+      (Array.isArray(eventDef.choices) ? eventDef.choices : []).forEach((choice) => {
+        if (isPlainObject(choice) && typeof choice.text === "string") {
+          ordered.push({ kind: "Choice", option: choice });
+        }
+      });
+
+      let index = 1;
+      ordered.forEach(({ kind, option }) => {
+        const btn = renderOptionButton(option, kind, index);
+        if (!btn) return;
+        ui.event.choiceList.appendChild(btn);
+        index += 1;
+      });
+
+      if (!ui.event.choiceList.children.length) {
+        setGlobalStatus("fail", "利用可能な選択肢/操作がありません。");
+      } else {
+        setGlobalStatus("ok", "選択肢または操作を選んで進めてください。");
+      }
+    }
+
+    function renderScreen() {
+      renderHeaderPanel();
+      renderStatePanel();
+
+      if (!game.runtime || !game.currentEventId) {
+        ui.event.eventTitle.textContent = "-";
+        ui.event.speakerLine.textContent = "";
+        ui.event.textArea.innerHTML = "";
+        ui.event.choiceList.innerHTML = "";
+        return;
+      }
+
+      const eventDef = getCurrentEvent();
+      if (!eventDef) {
+        setGlobalStatus("fail", "event が見つかりません: " + game.currentEventId);
+        return;
+      }
+
+      ui.event.eventTitle.textContent = eventDef.title || game.currentEventId;
+      ui.event.speakerLine.textContent = typeof eventDef.speaker === "string" ? eventDef.speaker : "";
+      renderMessageWindow();
+      renderOptions(eventDef);
+    }
+
+    function enterEvent(eventId) {
+      game.currentEventId = eventId;
+      game.state.current_event_id = eventId;
+
+      const eventDef = getCurrentEvent();
+      if (!eventDef) {
+        renderScreen();
+        return;
+      }
+
+      if (typeof eventDef.spot_id === "string" && eventDef.spot_id.trim()) {
+        game.state.current_spot_id = eventDef.spot_id;
+        const pcId = getPlayerCharacterId();
+        if (pcId && isPlainObject(game.state.characters[pcId])) {
+          game.state.characters[pcId].spot_id = eventDef.spot_id;
+        }
+      }
+
+      getVisibleEventTextLines(eventDef).forEach(appendMessageLine);
+      renderScreen();
+    }
+
+    function validateScript(data) {
+      const errors = [];
+      if (!isPlainObject(data)) return ["JSON全体はオブジェクトである必要があります。"];
+
+      if (typeof data.title !== "string" || !data.title.trim()) errors.push("title は空でない文字列である必要があります。");
+      if (!isPlainObject(data.definitions)) errors.push("definitions はオブジェクトである必要があります。");
+      if (!isPlainObject(data.world)) errors.push("world はオブジェクトである必要があります。");
+      if (!isPlainObject(data.scenario)) errors.push("scenario はオブジェクトである必要があります。");
+      if (!isPlainObject(data.initial_state)) errors.push("initial_state はオブジェクトである必要があります。");
+
+      if (!isPlainObject(data.world?.areas)) errors.push("world.areas はオブジェクトである必要があります。");
+      if (!isPlainObject(data.world?.dungeons)) errors.push("world.dungeons はオブジェクトである必要があります。");
+      if (!isPlainObject(data.world?.spots)) errors.push("world.spots はオブジェクトである必要があります。");
+      if (!isPlainObject(data.scenario?.quests)) errors.push("scenario.quests はオブジェクトである必要があります。");
+
+      if (!isPlainObject(data.scenario?.events) || Object.keys(data.scenario.events).length === 0) {
+        errors.push("scenario.events は1件以上のオブジェクトである必要があります。");
+      }
+
+      if (!isPlainObject(data.initial_state?.characters)) errors.push("initial_state.characters はオブジェクトである必要があります。");
+      if (!isPlainObject(data.initial_state?.spot_states)) errors.push("initial_state.spot_states はオブジェクトである必要があります。");
+      if (!isPlainObject(data.initial_state?.time)) errors.push("initial_state.time はオブジェクトである必要があります。");
+
+      const startEventId =
+        typeof data.initial_state?.current_event_id === "string" && data.initial_state.current_event_id.trim()
+          ? data.initial_state.current_event_id.trim()
+          : (typeof data.scenario?.start_event_id === "string" ? data.scenario.start_event_id.trim() : "");
+
+      if (!startEventId) errors.push("initial_state.current_event_id または scenario.start_event_id が必要です。");
+
+      if (typeof data.initial_state?.player_character_id !== "string" || !data.initial_state.player_character_id.trim()) {
+        errors.push("initial_state.player_character_id は空でない文字列である必要があります。");
+      }
+
+      if (
+        typeof data.initial_state?.player_character_id === "string" &&
+        !isPlainObject(data.initial_state?.characters?.[data.initial_state.player_character_id])
+      ) {
+        errors.push("initial_state.player_character_id に対応する characters エントリが存在しません。");
+      }
+
+      if (isPlainObject(data.scenario?.events)) {
+        Object.entries(data.scenario.events).forEach(([eventId, eventDef]) => {
+          const label = `scenario.events.${eventId}`;
+          if (!isMeaningfulId(eventId)) errors.push(label + " のIDは意味ベース英小文字IDにしてください。");
+          if (!isPlainObject(eventDef)) {
+            errors.push(label + " はオブジェクトである必要があります。");
+            return;
+          }
+          if (typeof eventDef.title !== "string") errors.push(label + ".title は文字列である必要があります。");
+          const text = eventDef.text;
+          if (!(typeof text === "string" || (Array.isArray(text) && text.every((line) => typeof line === "string")))) {
+            errors.push(label + ".text は文字列または文字列配列である必要があります。");
+          }
+
+          if (eventDef.spot_id !== undefined && typeof eventDef.spot_id !== "string") {
+            errors.push(label + ".spot_id は文字列である必要があります。");
+          }
+
+          if (typeof eventDef.spot_id === "string" && eventDef.spot_id.trim() && !data.world?.spots?.[eventDef.spot_id]) {
+            errors.push(label + ".spot_id が world.spots に存在しません: " + eventDef.spot_id);
+          }
+
+          const optionLists = [
+            Array.isArray(eventDef.actions) ? eventDef.actions : [],
+            Array.isArray(eventDef.choices) ? eventDef.choices : []
+          ];
+
+          if (optionLists[0].length === 0 && optionLists[1].length === 0) {
+            errors.push(label + " は actions または choices のいずれか1件以上が必要です。");
+          }
+
+          optionLists.forEach((list, idx) => {
+            const kind = idx === 0 ? "actions" : "choices";
+            list.forEach((opt, index) => {
+              const oLabel = `${label}.${kind}[${index}]`;
+              if (!isPlainObject(opt)) {
+                errors.push(oLabel + " はオブジェクトである必要があります。");
+                return;
+              }
+              if (typeof opt.text !== "string" || !opt.text.trim()) {
+                errors.push(oLabel + ".text は空でない文字列である必要があります。");
+              }
+              if (opt.next_event_id !== undefined && opt.next_event_id !== null && typeof opt.next_event_id !== "string") {
+                errors.push(oLabel + ".next_event_id は文字列または null である必要があります。");
+              }
+              if (typeof opt.next_event_id === "string" && !data.scenario.events[opt.next_event_id]) {
+                errors.push(oLabel + ".next_event_id が存在しません: " + opt.next_event_id);
+              }
+              if (opt.conditions !== undefined && !isPlainObject(opt.conditions)) {
+                errors.push(oLabel + ".conditions はオブジェクトである必要があります。");
+              }
+              if (opt.effects !== undefined && !isPlainObject(opt.effects)) {
+                errors.push(oLabel + ".effects はオブジェクトである必要があります。");
+              }
+            });
+          });
+        });
+      }
+
+      if (startEventId && !data.scenario?.events?.[startEventId]) {
+        errors.push("開始イベントが scenario.events に存在しません。");
+      }
+
+      if (
+        typeof data.scenario?.game_over_event_id === "string" &&
+        data.scenario.game_over_event_id.trim() &&
+        !data.scenario.events?.[data.scenario.game_over_event_id]
+      ) {
+        errors.push("scenario.game_over_event_id が scenario.events に存在しません。");
+      }
+
+      return errors;
+    }
+
+    function buildContinuationPrompt() {
+      const payload = {
+        title: game.runtime?.title || null,
+        current_event_id: game.currentEventId || null,
+        current_spot_id: game.state?.current_spot_id || null,
+        time: game.state?.time || null,
+        step: game.stepCount,
+        state: game.state,
+        log: game.logEntries
+      };
+
+      return [
+        "以下の引き継ぎ情報を使って、続篇となる新しいJSON台本を1つ作成してください。",
+        "既存JSONへの追記ではなく、新しい別JSONとして作成してください。",
+        "新仕様専用です。top-level は definitions / world / scenario / initial_state を使ってください。",
+        "進行は scenario.events と current_event_id / next_event_id で行ってください。",
+        "inventory は initial_state.characters[character_id].inventory を使ってください。",
+        "spot 上アイテムは initial_state.spot_states を使ってください。",
+        "時刻は initial_state.time を使ってください。",
+        "",
+        "【引き継ぎ情報(JSON)】",
+        JSON.stringify(payload, null, 2),
+        "",
+        "【出力形式】",
+        "- コードブロックは1つのみ",
+        "- コードブロックの中身は純粋なJSONのみ",
+        "- JSON以外の説明文・前置き・注釈は禁止"
+      ].join("\n");
+    }
+
+    function startScript(source) {
+      game.loadedSource = cloneJson(source);
+      game.runtime = cloneJson(source);
+      game.state = cloneJson(source.initial_state || {});
+      ensureStateCollections();
+
+      game.stepCount = 0;
+      game.logEntries = [];
+      game.messageHistory = [];
+      addLogEntry("開始: " + (source.title || "Untitled"));
+
+      const startEventId =
+        typeof game.state.current_event_id === "string" && game.state.current_event_id.trim()
+          ? game.state.current_event_id.trim()
+          : (typeof game.runtime.scenario?.start_event_id === "string" ? game.runtime.scenario.start_event_id.trim() : "");
+
+      game.currentEventId = startEventId;
+
+      if (!startEventId) {
+        renderScreen();
+        setGlobalStatus("fail", "開始イベントが設定されていません。");
+        return;
+      }
+
+      if (tryHandleGameOverTransition()) return;
+      enterEvent(startEventId);
+    }
+
+    async function copyCurrentState() {
+      const payload = {
+        title: game.runtime?.title || null,
+        current_event_id: game.currentEventId || null,
+        current_spot_id: game.state?.current_spot_id || null,
+        time: game.state?.time || null,
+        step: game.stepCount,
+        state: game.state,
+        log: game.logEntries
+      };
+      await copyTextToClipboard(JSON.stringify(payload, null, 2));
+    }
+
+    function loadExampleIntoTextarea() {
+      ui.setup.scriptInput.value = JSON.stringify(SAMPLE_SCENARIO, null, 2);
+      setGlobalStatus("ok", "新仕様サンプルJSONを読み込みました。");
+    }
+
+    async function handleCopyPrompt() {
+      try {
+        const prompt = ui.setup.promptModeSelect.value === "shindo" ? SHINDO_PROMPT : GENERIC_PROMPT;
+        await copyTextToClipboard(prompt);
+        setGlobalStatus("ok", "AI用プロンプトをコピーしました。");
+      } catch (error) {
+        setGlobalStatus("fail", "コピー失敗: " + (error instanceof Error ? error.message : String(error)));
+      }
+    }
+
+    async function handlePasteScript() {
+      try {
+        ui.setup.scriptInput.value = "";
+        ui.setup.scriptInput.value = await readTextFromClipboard();
+        setGlobalStatus("ok", "JSON入力欄を全削除し、クリップボードの内容を貼り付けました。");
+      } catch (error) {
+        setGlobalStatus("fail", "貼り付け失敗: " + (error instanceof Error ? error.message : String(error)));
+      }
+    }
+
+    function loadScriptFromTextarea() {
+      const parsed = parseJsonSafely(ui.setup.scriptInput.value.trim());
+      if (!parsed.ok) {
+        setGlobalStatus("fail", "JSON解析失敗:\n" + parsed.error);
+        return;
+      }
+      const errors = validateScript(parsed.data);
+      if (errors.length) {
+        setGlobalStatus("fail", "台本エラー:\n" + errors.join("\n"));
+        return;
+      }
+      startScript(parsed.data);
+      setGlobalStatus("ok", "台本を読み込みました。");
+    }
+
+    function restartLoaded() {
+      if (!game.loadedSource) {
+        setGlobalStatus("warn", "まだ読み込まれた台本がありません。");
+        return;
+      }
+      startScript(game.loadedSource);
+      setGlobalStatus("ok", "最初からやり直しました。");
+    }
+
+    function bindUiEvents() {
+      ui.setup.loadExampleButton.addEventListener("click", loadExampleIntoTextarea);
+      ui.setup.copyPromptButton.addEventListener("click", handleCopyPrompt);
+      ui.setup.pasteScriptButton.addEventListener("click", handlePasteScript);
+      ui.setup.loadScriptButton.addEventListener("click", loadScriptFromTextarea);
+      ui.setup.restartButton.addEventListener("click", restartLoaded);
+
+      ui.setup.copyStatusButton.addEventListener("click", async () => {
+        try {
+          await copyTextToClipboard(ui.status.globalStatus.textContent || "");
+          setGlobalStatus("ok", "通知欄の内容をコピーしました。");
+        } catch (error) {
+          setGlobalStatus("fail", "通知コピー失敗: " + (error instanceof Error ? error.message : String(error)));
+        }
+      });
+
+      ui.setup.copyStateButton.addEventListener("click", async () => {
+        try {
+          await copyCurrentState();
+          setGlobalStatus("ok", "現在状態をコピーしました。");
+        } catch (error) {
+          setGlobalStatus("fail", "状態コピー失敗: " + (error instanceof Error ? error.message : String(error)));
+        }
+      });
+
+      ui.setup.copyContinuationButton.addEventListener("click", async () => {
+        try {
+          await copyTextToClipboard(buildContinuationPrompt());
+          setGlobalStatus("ok", "続篇用プロンプトをコピーしました。");
+        } catch (error) {
+          setGlobalStatus("fail", "続篇プロンプトコピー失敗: " + (error instanceof Error ? error.message : String(error)));
+        }
+      });
+
+      ui.stateTools.toggleRawStateButton.addEventListener("click", () => {
+        game.isRawStateVisible = !game.isRawStateVisible;
+        renderStatePanel();
+      });
+    }
+
+    function initialize() {
+      renderHeaderPanel();
+      renderStatePanel();
+      renderLogPanel();
+      bindUiEvents();
+      loadExampleIntoTextarea();
+    }
+
+    initialize();
+  })();
+  </script>
+</body>
+</html>

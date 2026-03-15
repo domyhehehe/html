@@ -2949,8 +2949,8 @@
     }
 
     function validateScenarioEvents(data, errors) {
-      if (!isPlainObject(data.scenario?.quests)) {
-        errors.push("scenario.quests はオブジェクトである必要があります。");
+      if (data.scenario?.quests !== undefined && !isPlainObject(data.scenario.quests)) {
+        errors.push("scenario.quests は省略可能ですが、存在する場合はオブジェクトである必要があります。");
       }
 
       if (!isPlainObject(data.scenario?.events) || Object.keys(data.scenario.events).length === 0) {

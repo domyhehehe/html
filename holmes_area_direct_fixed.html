@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- sound-novel-json-runner-world-scenario-only-final-complete-fixed-newlines -->
+<!-- sound-novel-json-runner-world-scenario-only-refactored -->
 <html lang="ja">
 <head>
   <meta charset="utf-8" />
@@ -253,7 +253,6 @@
         新仕様専用: <code class="inline">definitions / world / scenario / initial_state</code>。
         進行は <code class="inline">scenario.events</code> と <code class="inline">current_event_id / next_event_id</code>。
         NPC位置は <code class="inline">characters[character_id].spot_id</code> を正式採用し、<code class="inline">required_character_spots</code> / <code class="inline">forbidden_character_spots</code> に対応。
-        スポットは <code class="inline">area_id</code> 直下でも <code class="inline">dungeon_id</code> 配下でも定義可能で、<code class="inline">dungeon_id</code> は任意です。
       </p>
 
       <div class="row">
@@ -310,12 +309,16 @@
   (() => {
     "use strict";
 
-    function isPlainObject(v) {
-      return v !== null && typeof v === "object" && !Array.isArray(v);
+    // =========================================================
+    // 1. 汎用ユーティリティ
+    // =========================================================
+
+    function isPlainObject(value) {
+      return value !== null && typeof value === "object" && !Array.isArray(value);
     }
 
-    function cloneJson(v) {
-      return JSON.parse(JSON.stringify(v));
+    function cloneJson(value) {
+      return JSON.parse(JSON.stringify(value));
     }
 
     function parseJsonSafely(text) {
@@ -333,21 +336,112 @@
       return /^[a-z][a-z0-9_-]*$/.test(id);
     }
 
+    function toArrayText(text) {
+      if (typeof text === "string") return [text];
+      if (Array.isArray(text)) return text.filter((line) => typeof line === "string");
+      return [];
+    }
+
+    function getNestedValue(target, path) {
+      const parts = path.split(".");
+      let current = target;
+
+      for (const part of parts) {
+        if (current === null || current === undefined || typeof current !== "object" || !(part in current)) {
+          return undefined;
+        }
+        current = current[part];
+      }
+
+      return current;
+    }
+
+    function ensureNestedParent(target, path) {
+      const parts = path.split(".");
+      let current = target;
+
+      for (let i = 0; i < parts.length - 1; i += 1) {
+        const part = parts[i];
+        if (
+          current[part] === null ||
+          current[part] === undefined ||
+          typeof current[part] !== "object" ||
+          Array.isArray(current[part])
+        ) {
+          current[part] = {};
+        }
+        current = current[part];
+      }
+
+      return {
+        parent: current,
+        key: parts[parts.length - 1]
+      };
+    }
+
+    function setNestedValue(target, path, value) {
+      const ref = ensureNestedParent(target, path);
+      ref.parent[ref.key] = value;
+    }
+
+    function addNestedNumber(target, path, delta) {
+      const current = getNestedValue(target, path);
+      const base = typeof current === "number" ? current : 0;
+      setNestedValue(target, path, base + delta);
+    }
+
+    function addMinutesToTime(timeObj, minutes) {
+      if (!isPlainObject(timeObj) || typeof minutes !== "number") return;
+
+      const date = new Date(
+        typeof timeObj.year === "number" ? timeObj.year : 2000,
+        typeof timeObj.month === "number" ? timeObj.month - 1 : 0,
+        typeof timeObj.day === "number" ? timeObj.day : 1,
+        typeof timeObj.hour === "number" ? timeObj.hour : 0,
+        typeof timeObj.minute === "number" ? timeObj.minute : 0
+      );
+
+      date.setMinutes(date.getMinutes() + minutes);
+
+      timeObj.year = date.getFullYear();
+      timeObj.month = date.getMonth() + 1;
+      timeObj.day = date.getDate();
+      timeObj.hour = date.getHours();
+      timeObj.minute = date.getMinutes();
+      timeObj.turn = typeof timeObj.turn === "number" ? timeObj.turn + 1 : 1;
+    }
+
+    function formatTime(timeObj) {
+      if (!isPlainObject(timeObj)) return "-";
+
+      const pad = (n) => String(n).padStart(2, "0");
+      const hasFullDate =
+        ["year", "month", "day", "hour", "minute"].every((key) => typeof timeObj[key] === "number");
+
+      if (!hasFullDate) return "-";
+
+      return `${timeObj.year}/${pad(timeObj.month)}/${pad(timeObj.day)} ${pad(timeObj.hour)}:${pad(timeObj.minute)} (T${typeof timeObj.turn === "number" ? timeObj.turn : 0})`;
+    }
+
     async function copyTextToClipboard(text) {
       if (navigator.clipboard && window.isSecureContext) {
         await navigator.clipboard.writeText(text);
         return;
       }
-      const t = document.createElement("textarea");
-      t.value = text;
-      t.setAttribute("readonly", "");
-      t.style.position = "fixed";
-      t.style.left = "-9999px";
-      document.body.appendChild(t);
-      t.focus();
-      t.select();
+
+      const textarea = document.createElement("textarea");
+      textarea.value = text;
+      textarea.setAttribute("readonly", "");
+      textarea.style.position = "fixed";
+      textarea.style.left = "-9999px";
+
+      document.body.appendChild(textarea);
+      textarea.focus();
+      textarea.select();
+
       const ok = document.execCommand("copy");
-      document.body.removeChild(t);
+      document.body.removeChild(textarea);
+
       if (!ok) {
         throw new Error("この環境ではクリップボードへのコピーが許可されていません。");
       }
@@ -360,74 +454,11 @@
       throw new Error("この環境ではクリップボードの読み取りが許可されていません。");
     }
 
-    function toArrayText(text) {
-      if (typeof text === "string") return [text];
-      if (Array.isArray(text)) return text.filter((line) => typeof line === "string");
-      return [];
-    }
+    // =========================================================
+    // 2. 定数・UI参照・静的データ
+    // =========================================================
 
-    function getNestedValue(target, path) {
-      const parts = path.split(".");
-      let current = target;
-      for (const part of parts) {
-        if (current === null || current === undefined || typeof current !== "object" || !(part in current)) {
-          return undefined;
-        }
-        current = current[part];
-      }
-      return current;
-    }
-
-    function ensureNestedParent(target, path) {
-      const parts = path.split(".");
-      let current = target;
-      for (let i = 0; i < parts.length - 1; i += 1) {
-        const part = parts[i];
-        if (current[part] === null || current[part] === undefined || typeof current[part] !== "object" || Array.isArray(current[part])) {
-          current[part] = {};
-        }
-        current = current[part];
-      }
-      return { parent: current, key: parts[parts.length - 1] };
-    }
-
-    function setNestedValue(target, path, value) {
-      const ref = ensureNestedParent(target, path);
-      ref.parent[ref.key] = value;
-    }
-
-    function addNestedNumber(target, path, delta) {
-      const now = getNestedValue(target, path);
-      const base = typeof now === "number" ? now : 0;
-      setNestedValue(target, path, base + delta);
-    }
-
-    function addMinutesToTime(timeObj, minutes) {
-      if (!isPlainObject(timeObj) || typeof minutes !== "number") return;
-      const date = new Date(
-        typeof timeObj.year === "number" ? timeObj.year : 2000,
-        typeof timeObj.month === "number" ? timeObj.month - 1 : 0,
-        typeof timeObj.day === "number" ? timeObj.day : 1,
-        typeof timeObj.hour === "number" ? timeObj.hour : 0,
-        typeof timeObj.minute === "number" ? timeObj.minute : 0
-      );
-      date.setMinutes(date.getMinutes() + minutes);
-      timeObj.year = date.getFullYear();
-      timeObj.month = date.getMonth() + 1;
-      timeObj.day = date.getDate();
-      timeObj.hour = date.getHours();
-      timeObj.minute = date.getMinutes();
-      timeObj.turn = typeof timeObj.turn === "number" ? timeObj.turn + 1 : 1;
-    }
-
-    function formatTime(timeObj) {
-      if (!isPlainObject(timeObj)) return "-";
-      const pad = (n) => String(n).padStart(2, "0");
-      if (["year", "month", "day", "hour", "minute"].every((k) => typeof timeObj[k] === "number")) {
-        return `// : (T 0)`;
-      }
-      return "-";
-    }
+    const MESSAGE_WINDOW_LIMIT = 3;
 
     const ui = {
       setup: {
@@ -473,8 +504,6 @@
         logList: document.getElementById("logList")
       }
     };
-
-    const MESSAGE_WINDOW_LIMIT = 3;
 
     const game = {
       loadedSource: null,
@@ -1641,6 +1670,10 @@
       "```"
     ].join("\n");
 
+    // =========================================================
+    // 3. ゲーム状態の読み取り
+    // =========================================================
+
     function ensureStateCollections() {
       if (!isPlainObject(game.state)) game.state = {};
       if (!Array.isArray(game.state.flags)) game.state.flags = [];
@@ -1654,12 +1687,16 @@
     }
 
     function getPlayerCharacter() {
-      const id = getPlayerCharacterId();
-      return id && isPlainObject(game.state?.characters?.[id]) ? game.state.characters[id] : null;
+      const playerCharacterId = getPlayerCharacterId();
+      if (!playerCharacterId) return null;
+      if (!isPlainObject(game.state?.characters?.[playerCharacterId])) return null;
+      return game.state.characters[playerCharacterId];
     }
 
     function getCharacterById(characterId) {
-      return typeof characterId === "string" && isPlainObject(game.state?.characters?.[characterId]) ? game.state.characters[characterId] : null;
+      if (typeof characterId !== "string") return null;
+      if (!isPlainObject(game.state?.characters?.[characterId])) return null;
+      return game.state.characters[characterId];
     }
 
     function getCharacterSpotId(characterId) {
@@ -1668,78 +1705,55 @@
     }
 
     function getPlayerInventory() {
-      const ch = getPlayerCharacter();
-      if (!ch) return [];
-      if (!Array.isArray(ch.inventory)) ch.inventory = [];
-      return ch.inventory;
+      const playerCharacter = getPlayerCharacter();
+      if (!playerCharacter) return [];
+
+      if (!Array.isArray(playerCharacter.inventory)) {
+        playerCharacter.inventory = [];
+      }
+      return playerCharacter.inventory;
     }
 
     function getInventoryQuantity(itemId) {
       if (typeof itemId !== "string" || !itemId.trim()) return 0;
+
       let total = 0;
       getPlayerInventory().forEach((entry) => {
         if (typeof entry === "string") {
           if (entry === itemId) total += 1;
           return;
         }
+
         if (isPlainObject(entry) && entry.item_id === itemId) {
           total += typeof entry.quantity === "number" ? entry.quantity : 1;
         }
       });
+
       return total;
     }
 
     function inventoryHasItem(itemId, quantity) {
-      const need = typeof quantity === "number" && quantity > 0 ? quantity : 1;
-      return getInventoryQuantity(itemId) >= need;
-    }
-
-    function addItemToInventory(itemId, quantity) {
-      const inv = getPlayerInventory();
-      const q = typeof quantity === "number" && quantity > 0 ? quantity : 1;
-      const found = inv.find((entry) => isPlainObject(entry) && entry.item_id === itemId);
-      if (found) {
-        found.quantity = (typeof found.quantity === "number" ? found.quantity : 1) + q;
-      } else {
-        inv.push({ item_id: itemId, quantity: q });
-      }
-    }
-
-    function removeItemFromInventory(itemId, quantity) {
-      const inv = getPlayerInventory();
-      let q = typeof quantity === "number" && quantity > 0 ? quantity : 1;
-      for (let i = inv.length - 1; i >= 0 && q > 0; i -= 1) {
-        const entry = inv[i];
-        if (typeof entry === "string" && entry === itemId) {
-          inv.splice(i, 1);
-          q -= 1;
-          continue;
-        }
-        if (isPlainObject(entry) && entry.item_id === itemId) {
-          const cur = typeof entry.quantity === "number" ? entry.quantity : 1;
-          if (cur <= q) {
-            q -= cur;
-            inv.splice(i, 1);
-          } else {
-            entry.quantity = cur - q;
-            q = 0;
-          }
-        }
-      }
+      const requiredQuantity = typeof quantity === "number" && quantity > 0 ? quantity : 1;
+      return getInventoryQuantity(itemId) >= requiredQuantity;
     }
 
     function getHealthValue() {
-      const ch = getPlayerCharacter();
-      const stats = isPlainObject(ch?.current_stats) ? ch.current_stats : null;
-      if (!stats) return null;
+      const playerCharacter = getPlayerCharacter();
+      const currentStats = isPlainObject(playerCharacter?.current_stats) ? playerCharacter.current_stats : null;
+      if (!currentStats) return null;
+
       for (const key of ["体力", "hp", "health"]) {
-        if (typeof stats[key] === "number") return stats[key];
+        if (typeof currentStats[key] === "number") {
+          return currentStats[key];
+        }
       }
+
       return null;
     }
 
     function getActiveEventById(eventId) {
-      return isPlainObject(game.runtime?.scenario?.events) ? game.runtime.scenario.events[eventId] || null : null;
+      if (!isPlainObject(game.runtime?.scenario?.events)) return null;
+      return game.runtime.scenario.events[eventId] || null;
     }
 
     function getCurrentEvent() {
@@ -1747,7 +1761,8 @@
     }
 
     function getSpotById(spotId) {
-      return isPlainObject(game.runtime?.world?.spots) ? game.runtime.world.spots[spotId] || null : null;
+      if (!isPlainObject(game.runtime?.world?.spots)) return null;
+      return game.runtime.world.spots[spotId] || null;
     }
 
     function getDisplaySpotName(spotId) {
@@ -1756,44 +1771,64 @@
     }
 
     function getDisplayItemNames() {
-      const defs = game.runtime?.definitions?.items;
+      const itemDefinitions = game.runtime?.definitions?.items;
       const names = [];
+
       getPlayerInventory().forEach((entry) => {
         const itemId = typeof entry === "string" ? entry : (isPlainObject(entry) ? entry.item_id : null);
-        const quantity = typeof entry === "string" ? 1 : (isPlainObject(entry) && typeof entry.quantity === "number" ? entry.quantity : 1);
+        const quantity = typeof entry === "string"
+          ? 1
+          : (isPlainObject(entry) && typeof entry.quantity === "number" ? entry.quantity : 1);
+
         if (!itemId) return;
-        const label = isPlainObject(defs?.[itemId]) && typeof defs[itemId].name === "string" ? defs[itemId].name : itemId;
+
+        const label = isPlainObject(itemDefinitions?.[itemId]) && typeof itemDefinitions[itemId].name === "string"
+          ? itemDefinitions[itemId].name
+          : itemId;
+
         names.push(`${label} x${quantity}`);
       });
+
       return names;
     }
 
     function getCurrentSpotItemsText() {
       const currentSpotId = typeof game.state?.current_spot_id === "string" ? game.state.current_spot_id : "";
-      const spotState = isPlainObject(game.state?.spot_states?.[currentSpotId]) ? game.state.spot_states[currentSpotId] : null;
-      if (!spotState || !Array.isArray(spotState.items) || spotState.items.length === 0) {
+      const currentSpotState = isPlainObject(game.state?.spot_states?.[currentSpotId])
+        ? game.state.spot_states[currentSpotId]
+        : null;
+
+      if (!currentSpotState || !Array.isArray(currentSpotState.items) || currentSpotState.items.length === 0) {
         return "なし";
       }
-      const defs = game.runtime?.definitions?.items;
-      return spotState.items.map((entry) => {
+
+      const itemDefinitions = game.runtime?.definitions?.items;
+
+      return currentSpotState.items.map((entry) => {
         const itemId = entry.item_id;
         const quantity = typeof entry.quantity === "number" ? entry.quantity : 1;
-        const label = isPlainObject(defs?.[itemId]) && typeof defs[itemId].name === "string" ? defs[itemId].name : itemId;
+        const label = isPlainObject(itemDefinitions?.[itemId]) && typeof itemDefinitions[itemId].name === "string"
+          ? itemDefinitions[itemId].name
+          : itemId;
         return `${label} x${quantity}`;
       }).join(" / ");
     }
 
     function buildNpcSummaryLines() {
       const lines = [];
-      const defs = game.runtime?.definitions?.characters;
-      const playerId = getPlayerCharacterId();
+      const characterDefinitions = game.runtime?.definitions?.characters;
+      const playerCharacterId = getPlayerCharacterId();
+
       Object.entries(game.state?.characters || {}).forEach(([characterId, character]) => {
-        if (characterId === playerId || !isPlainObject(character)) return;
-        const name = defs?.[characterId]?.name || characterId;
+        if (characterId === playerCharacterId || !isPlainObject(character)) return;
+
+        const name = characterDefinitions?.[characterId]?.name || characterId;
         const spotId = typeof character.spot_id === "string" ? character.spot_id : "";
         const status = typeof character.status === "string" ? character.status : "-";
+
         lines.push(`${name}: ${getDisplaySpotName(spotId)} / ${status}`);
       });
+
       return lines;
     }
 
@@ -1803,44 +1838,46 @@
       }
 
       const lines = [];
-      const playerId = getPlayerCharacterId();
-      const player = getPlayerCharacter();
-      const questId = typeof game.state.current_quest_id === "string" ? game.state.current_quest_id : "";
-      const quest = isPlainObject(game.runtime?.scenario?.quests?.[questId]) ? game.runtime.scenario.quests[questId] : null;
-      const spotId = typeof game.state.current_spot_id === "string" ? game.state.current_spot_id : "";
-      const eventId = typeof game.state.current_event_id === "string" ? game.state.current_event_id : "";
+      const playerCharacterId = getPlayerCharacterId();
+      const playerCharacter = getPlayerCharacter();
+      const currentQuestId = typeof game.state.current_quest_id === "string" ? game.state.current_quest_id : "";
+      const currentQuest = isPlainObject(game.runtime?.scenario?.quests?.[currentQuestId])
+        ? game.runtime.scenario.quests[currentQuestId]
+        : null;
+      const currentSpotId = typeof game.state.current_spot_id === "string" ? game.state.current_spot_id : "";
+      const currentEventId = typeof game.state.current_event_id === "string" ? game.state.current_event_id : "";
 
-      if (playerId) {
-        const playerName = game.runtime?.definitions?.characters?.[playerId]?.name || playerId;
+      if (playerCharacterId) {
+        const playerName = game.runtime?.definitions?.characters?.[playerCharacterId]?.name || playerCharacterId;
         lines.push(`プレイヤー: ${playerName}`);
       }
 
-      if (quest) {
-        lines.push(`クエスト: ${quest.title}`);
-      } else if (questId) {
-        lines.push(`クエストID: ${questId}`);
+      if (currentQuest) {
+        lines.push(`クエスト: ${currentQuest.title}`);
+      } else if (currentQuestId) {
+        lines.push(`クエストID: ${currentQuestId}`);
       }
 
-      if (spotId) {
-        lines.push(`現在地: ${getDisplaySpotName(spotId)}`);
+      if (currentSpotId) {
+        lines.push(`現在地: ${getDisplaySpotName(currentSpotId)}`);
       }
 
-      if (eventId) {
-        lines.push(`現在イベントID: ${eventId}`);
+      if (currentEventId) {
+        lines.push(`現在イベントID: ${currentEventId}`);
       }
 
-      if (player && isPlainObject(player.current_stats)) {
-        const statEntries = Object.entries(player.current_stats)
+      if (playerCharacter && isPlainObject(playerCharacter.current_stats)) {
+        const statEntries = Object.entries(playerCharacter.current_stats)
           .filter(([, value]) => typeof value === "number")
           .map(([key, value]) => `${key}: ${value}`);
+
         if (statEntries.length > 0) {
           lines.push(`ステータス: ${statEntries.join(" / ")}`);
         }
       }
 
       if (isPlainObject(game.state.unique) && Object.keys(game.state.unique).length > 0) {
-        const uniqueEntries = Object.entries(game.state.unique)
-          .map(([key, value]) => `${key}: ${value}`);
+        const uniqueEntries = Object.entries(game.state.unique).map(([key, value]) => `${key}: ${value}`);
         lines.push(`固有値: ${uniqueEntries.join(" / ")}`);
       }
 
@@ -1850,10 +1887,10 @@
         lines.push("フラグ: なし");
       }
 
-      const npcLines = buildNpcSummaryLines();
-      if (npcLines.length > 0) {
+      const npcSummaryLines = buildNpcSummaryLines();
+      if (npcSummaryLines.length > 0) {
         lines.push("NPC位置:");
-        npcLines.forEach((line) => lines.push(`- ${line}`));
+        npcSummaryLines.forEach((line) => lines.push(`- ${line}`));
       }
 
       lines.push(`この場所の残アイテム: ${getCurrentSpotItemsText()}`);
@@ -1861,8 +1898,27 @@
       return lines.join("\n");
     }
 
+    function getVisibleEventTextLines(eventDef) {
+      const lines = [];
+      toArrayText(eventDef.text).forEach((line) => lines.push(line));
+
+      if (Array.isArray(eventDef.conditional_texts)) {
+        eventDef.conditional_texts.forEach((entry) => {
+          if (!isPlainObject(entry)) return;
+          if (!checkConditions(entry.conditions)) return;
+          toArrayText(entry.text).forEach((line) => lines.push(line));
+        });
+      }
+
+      return lines;
+    }
+
+    // =========================================================
+    // 4. ゲーム状態の更新
+    // =========================================================
+
     function setGlobalStatus(type, message) {
-      ui.status.globalStatus.className = "status " + type;
+      ui.status.globalStatus.className = `status ${type}`;
       ui.status.globalStatus.textContent = message;
     }
 
@@ -1874,16 +1930,578 @@
     function appendMessageLine(line) {
       if (typeof line !== "string") return;
       const trimmed = line.trim();
-      if (trimmed) game.messageHistory.push(trimmed);
+      if (!trimmed) return;
+      game.messageHistory.push(trimmed);
     }
+
+    function setCurrentEventId(eventId) {
+      game.currentEventId = eventId;
+      if (isPlainObject(game.state)) {
+        game.state.current_event_id = eventId;
+      }
+    }
+
+    function setCurrentSpot(spotId) {
+      if (!isPlainObject(game.state)) return;
+      game.state.current_spot_id = spotId;
+    }
+
+    function moveCharacterToSpot(characterId, spotId) {
+      const character = getCharacterById(characterId);
+      if (!character) return;
+      character.spot_id = spotId;
+    }
+
+    function syncPlayerSpotToCurrentSpot() {
+      const playerCharacterId = getPlayerCharacterId();
+      const currentSpotId = typeof game.state?.current_spot_id === "string" ? game.state.current_spot_id : "";
+      if (!playerCharacterId || !currentSpotId) return;
+      moveCharacterToSpot(playerCharacterId, currentSpotId);
+    }
+
+    function addFlag(flag) {
+      if (typeof flag !== "string" || !flag.trim()) return;
+      ensureStateCollections();
+      if (!game.state.flags.includes(flag)) {
+        game.state.flags.push(flag);
+      }
+    }
+
+    function removeFlags(flags) {
+      if (!Array.isArray(flags) || flags.length === 0) return;
+      ensureStateCollections();
+      game.state.flags = game.state.flags.filter((flag) => !flags.includes(flag));
+    }
+
+    function addUniqueValue(key, delta) {
+      if (typeof key !== "string" || typeof delta !== "number") return;
+      ensureStateCollections();
+      game.state.unique[key] = (typeof game.state.unique[key] === "number" ? game.state.unique[key] : 0) + delta;
+    }
+
+    function advanceGameTime(minutes) {
+      if (!isPlainObject(game.state?.time)) return;
+      if (typeof minutes !== "number") return;
+      addMinutesToTime(game.state.time, minutes);
+    }
+
+    function addItemToInventory(itemId, quantity) {
+      const inventory = getPlayerInventory();
+      const amount = typeof quantity === "number" && quantity > 0 ? quantity : 1;
+      const existingEntry = inventory.find((entry) => isPlainObject(entry) && entry.item_id === itemId);
+
+      if (existingEntry) {
+        existingEntry.quantity = (typeof existingEntry.quantity === "number" ? existingEntry.quantity : 1) + amount;
+        return;
+      }
+
+      inventory.push({ item_id: itemId, quantity: amount });
+    }
+
+    function removeItemFromInventory(itemId, quantity) {
+      const inventory = getPlayerInventory();
+      let remaining = typeof quantity === "number" && quantity > 0 ? quantity : 1;
+
+      for (let i = inventory.length - 1; i >= 0 && remaining > 0; i -= 1) {
+        const entry = inventory[i];
+
+        if (typeof entry === "string" && entry === itemId) {
+          inventory.splice(i, 1);
+          remaining -= 1;
+          continue;
+        }
+
+        if (isPlainObject(entry) && entry.item_id === itemId) {
+          const currentQuantity = typeof entry.quantity === "number" ? entry.quantity : 1;
+          if (currentQuantity <= remaining) {
+            remaining -= currentQuantity;
+            inventory.splice(i, 1);
+          } else {
+            entry.quantity = currentQuantity - remaining;
+            remaining = 0;
+          }
+        }
+      }
+    }
+
+    function getOrCreateSpotState(spotId) {
+      ensureStateCollections();
+      if (!isPlainObject(game.state.spot_states[spotId])) {
+        game.state.spot_states[spotId] = { items: [] };
+      }
+      if (!Array.isArray(game.state.spot_states[spotId].items)) {
+        game.state.spot_states[spotId].items = [];
+      }
+      return game.state.spot_states[spotId];
+    }
+
+    function removeItemFromSpotState(spotId, itemId, quantity) {
+      if (!spotId || !itemId) return;
+
+      const spotState = getOrCreateSpotState(spotId);
+      const items = spotState.items;
+      let remaining = typeof quantity === "number" && quantity > 0 ? quantity : 1;
+
+      for (let i = items.length - 1; i >= 0 && remaining > 0; i -= 1) {
+        const entry = items[i];
+        if (!isPlainObject(entry) || entry.item_id !== itemId) continue;
+
+        const currentQuantity = typeof entry.quantity === "number" ? entry.quantity : 1;
+        if (currentQuantity <= remaining) {
+          remaining -= currentQuantity;
+          items.splice(i, 1);
+        } else {
+          entry.quantity = currentQuantity - remaining;
+          remaining = 0;
+        }
+      }
+    }
+
+    // =========================================================
+    // 5. 条件判定
+    // =========================================================
+
+    function characterSpotConditionMet(characterSpotMap, mode) {
+      if (!isPlainObject(characterSpotMap)) return true;
+
+      for (const [characterId, allowedSpotIds] of Object.entries(characterSpotMap)) {
+        const currentSpotId = getCharacterSpotId(characterId);
+        const normalizedSpotIds = Array.isArray(allowedSpotIds)
+          ? allowedSpotIds.filter((spotId) => typeof spotId === "string")
+          : [];
+
+        if (normalizedSpotIds.length === 0) return false;
+
+        const matched = normalizedSpotIds.includes(currentSpotId);
+
+        if (mode === "required" && !matched) return false;
+        if (mode === "forbidden" && matched) return false;
+      }
+
+      return true;
+    }
+
+    function checkFlagConditions(conditions) {
+      if (Array.isArray(conditions.required_flags) && conditions.required_flags.some((flag) => !game.state.flags.includes(flag))) {
+        return false;
+      }
+
+      if (Array.isArray(conditions.forbidden_flags) && conditions.forbidden_flags.some((flag) => game.state.flags.includes(flag))) {
+        return false;
+      }
+
+      return true;
+    }
+
+    function checkCharacterSpotConditions(conditions) {
+      if (!characterSpotConditionMet(conditions.required_character_spots, "required")) {
+        return false;
+      }
+
+      if (!characterSpotConditionMet(conditions.forbidden_character_spots, "forbidden")) {
+        return false;
+      }
+
+      return true;
+    }
+
+    function checkInventoryConditions(conditions) {
+      if (!Array.isArray(conditions.required_items)) return true;
+
+      for (const item of conditions.required_items) {
+        if (typeof item === "string") {
+          if (!inventoryHasItem(item, 1)) return false;
+          continue;
+        }
+
+        if (isPlainObject(item) && typeof item.item_id === "string") {
+          if (!inventoryHasItem(item.item_id, item.quantity)) return false;
+          continue;
+        }
+
+        return false;
+      }
+
+      return true;
+    }
+
+    function checkStateNumberConditions(conditions) {
+      if (isPlainObject(conditions.min)) {
+        for (const [path, min] of Object.entries(conditions.min)) {
+          const value = getNestedValue(game.state, path);
+          if (typeof value !== "number" || value < min) return false;
+        }
+      }
+
+      if (isPlainObject(conditions.max)) {
+        for (const [path, max] of Object.entries(conditions.max)) {
+          const value = getNestedValue(game.state, path);
+          if (typeof value !== "number" || value > max) return false;
+        }
+      }
+
+      return true;
+    }
+
+    function checkUniqueValueConditions(conditions) {
+      if (isPlainObject(conditions.min_unique)) {
+        for (const [key, min] of Object.entries(conditions.min_unique)) {
+          const value = game.state.unique[key];
+          if (typeof value !== "number" || value < min) return false;
+        }
+      }
+
+      if (isPlainObject(conditions.max_unique)) {
+        for (const [key, max] of Object.entries(conditions.max_unique)) {
+          const value = game.state.unique[key];
+          if (typeof value !== "number" || value > max) return false;
+        }
+      }
+
+      return true;
+    }
+
+    function checkConditions(conditions) {
+      if (!isPlainObject(conditions)) return true;
+      ensureStateCollections();
+
+      // 1. フラグ条件
+      if (!checkFlagConditions(conditions)) return false;
+
+      // 2. NPC位置条件
+      if (!checkCharacterSpotConditions(conditions)) return false;
+
+      // 3. 所持アイテム条件
+      if (!checkInventoryConditions(conditions)) return false;
+
+      // 4. state 数値条件
+      if (!checkStateNumberConditions(conditions)) return false;
+
+      // 5. unique 数値条件
+      if (!checkUniqueValueConditions(conditions)) return false;
+
+      return true;
+    }
+
+    // =========================================================
+    // 6. effects 適用
+    // =========================================================
+
+    function applyNumericAddEffects(effects) {
+      if (!isPlainObject(effects.add)) return;
+
+      Object.entries(effects.add).forEach(([path, delta]) => {
+        if (typeof delta !== "number") return;
+        addNestedNumber(game.state, path, delta);
+      });
+    }
+
+    function applySetEffects(effects) {
+      if (!isPlainObject(effects.set)) return;
+
+      Object.entries(effects.set).forEach(([path, value]) => {
+        setNestedValue(game.state, path, value);
+      });
+    }
+
+    function applyFlagEffects(effects) {
+      if (Array.isArray(effects.set_flags)) {
+        effects.set_flags.forEach((flag) => addFlag(flag));
+      }
+
+      if (Array.isArray(effects.remove_flags)) {
+        removeFlags(effects.remove_flags);
+      }
+    }
+
+    function applyUniqueValueEffects(effects) {
+      if (!isPlainObject(effects.add_unique)) return;
+
+      Object.entries(effects.add_unique).forEach(([key, delta]) => {
+        if (typeof delta !== "number") return;
+        addUniqueValue(key, delta);
+      });
+    }
+
+    function applyInventoryEffects(effects) {
+      if (Array.isArray(effects.add_items)) {
+        effects.add_items.forEach((entry) => {
+          if (typeof entry === "string") {
+            addItemToInventory(entry, 1);
+            return;
+          }
+          if (isPlainObject(entry) && typeof entry.item_id === "string") {
+            addItemToInventory(entry.item_id, entry.quantity);
+          }
+        });
+      }
+
+      if (Array.isArray(effects.remove_items)) {
+        effects.remove_items.forEach((entry) => {
+          if (typeof entry === "string") {
+            removeItemFromInventory(entry, 1);
+            return;
+          }
+          if (isPlainObject(entry) && typeof entry.item_id === "string") {
+            removeItemFromInventory(entry.item_id, entry.quantity);
+          }
+        });
+      }
+    }
+
+    function applySpotItemEffects(effects) {
+      if (!Array.isArray(effects.remove_spot_items)) return;
+
+      effects.remove_spot_items.forEach((entry) => {
+        const spotId = isPlainObject(entry) && typeof entry.spot_id === "string"
+          ? entry.spot_id
+          : game.state.current_spot_id;
+        const itemId = typeof entry === "string"
+          ? entry
+          : (isPlainObject(entry) ? entry.item_id : null);
+        const quantity = isPlainObject(entry) && typeof entry.quantity === "number" && entry.quantity > 0
+          ? entry.quantity
+          : 1;
+
+        removeItemFromSpotState(spotId, itemId, quantity);
+      });
+    }
+
+    function applyTimeEffects(effects) {
+      if (!isPlainObject(effects.add_time)) return;
+      const minutes = typeof effects.add_time.minutes === "number" ? effects.add_time.minutes : 0;
+      advanceGameTime(minutes);
+    }
+
+    function applyEffects(effects) {
+      if (!isPlainObject(effects)) return;
+      ensureStateCollections();
+
+      // 1. 数値加算系
+      applyNumericAddEffects(effects);
+
+      // 2. 値設定系
+      applySetEffects(effects);
+
+      // 3. フラグ操作
+      applyFlagEffects(effects);
+
+      // 4. 固有値操作
+      applyUniqueValueEffects(effects);
+
+      // 5. 所持品操作
+      applyInventoryEffects(effects);
+
+      // 6. スポット上アイテム操作
+      applySpotItemEffects(effects);
+
+      // 7. 時間経過
+      applyTimeEffects(effects);
+    }
+
+    // =========================================================
+    // 7. イベント進行
+    // =========================================================
+
+    function renderEndingOrGameOverOptions(mode) {
+      ui.event.choiceList.innerHTML = "";
+
+      const restartButton = document.createElement("button");
+      restartButton.type = "button";
+      restartButton.className = "choice-button";
+      restartButton.textContent = "最初からやり直す";
+      restartButton.addEventListener("click", () => {
+        if (!game.loadedSource) {
+          setGlobalStatus("warn", "まだ読み込まれた台本がありません。");
+          return;
+        }
+        startScript(game.loadedSource);
+        setGlobalStatus("ok", "最初からやり直しました。");
+      });
+
+      const continuationButton = document.createElement("button");
+      continuationButton.type = "button";
+      continuationButton.className = "choice-button";
+      continuationButton.textContent = "続篇用プロンプトをコピー";
+      continuationButton.addEventListener("click", async () => {
+        try {
+          await copyTextToClipboard(buildContinuationPrompt());
+          setGlobalStatus("ok", "続篇用プロンプトをコピーしました。");
+        } catch (error) {
+          setGlobalStatus("fail", "続篇プロンプトコピー失敗: " + (error instanceof Error ? error.message : String(error)));
+        }
+      });
+
+      ui.event.choiceList.appendChild(restartButton);
+      ui.event.choiceList.appendChild(continuationButton);
+
+      if (mode === "game_over") {
+        setGlobalStatus("fail", "ゲームオーバーです。最初からやり直すか、続篇用プロンプトをコピーできます。");
+      } else {
+        setGlobalStatus("ok", "エンディングに到達しました。最初からやり直すか、続篇用プロンプトをコピーできます。");
+      }
+    }
+
+    function enterEvent(eventId) {
+      setCurrentEventId(eventId);
+
+      const eventDef = getCurrentEvent();
+      if (!eventDef) {
+        renderScreen();
+        return;
+      }
+
+      if (typeof eventDef.spot_id === "string" && eventDef.spot_id.trim()) {
+        setCurrentSpot(eventDef.spot_id);
+        syncPlayerSpotToCurrentSpot();
+      }
+
+      getVisibleEventTextLines(eventDef).forEach(appendMessageLine);
+      renderScreen();
+    }
+
+    function redirectToGameOverIfNeeded() {
+      const healthValue = getHealthValue();
+      if (healthValue === null || healthValue > 0) return false;
+
+      const currentEvent = getCurrentEvent();
+      if (currentEvent && currentEvent.event_type === "game_over") {
+        return false;
+      }
+
+      const gameOverEventId = typeof game.runtime?.scenario?.game_over_event_id === "string"
+        ? game.runtime.scenario.game_over_event_id.trim()
+        : "";
+
+      if (gameOverEventId && getActiveEventById(gameOverEventId)) {
+        enterEvent(gameOverEventId);
+        setGlobalStatus("fail", "体力が0以下になったため、ゲームオーバーへ遷移しました。");
+        return true;
+      }
+
+      appendMessageLine("体力が尽きました。");
+      renderMessageWindow();
+      renderEndingOrGameOverOptions("game_over");
+      return true;
+    }
+
+    function isRestartChoiceOnGameOver(option) {
+      const currentEvent = getCurrentEvent();
+      return Boolean(
+        currentEvent &&
+        currentEvent.event_type === "game_over" &&
+        option.next_event_id === null &&
+        typeof option.text === "string" &&
+        option.text.includes("最初から")
+      );
+    }
+
+    function handleBlockedOption(option, kind) {
+      const message = typeof option.failure_message === "string" && option.failure_message.trim()
+        ? option.failure_message
+        : "条件を満たしていません。";
+
+      appendMessageLine("▶ " + option.text);
+      appendMessageLine(message);
+      addLogEntry(`Blocked ${kind}: ${option.text} -> ${message}`);
+      renderScreen();
+      setGlobalStatus("warn", message);
+    }
+
+    function applyOptionSuccess(option, kind) {
+      game.stepCount += 1;
+
+      addLogEntry([
+        `Step ${game.stepCount}`,
+        `Event: ${game.currentEventId || "-"}`,
+        `${kind}: ${option.text}`
+      ].join("\n"));
+
+      appendMessageLine("▶ " + option.text);
+      applyEffects(option.effects);
+
+      if (typeof option.success_message === "string" && option.success_message.trim()) {
+        appendMessageLine(option.success_message);
+        addLogEntry("Result: " + option.success_message);
+      }
+    }
+
+    function finishStoryIfTerminalOption() {
+      const currentEvent = getCurrentEvent();
+      appendMessageLine("この話はこれで終わりです。");
+      renderMessageWindow();
+
+      if (currentEvent && currentEvent.event_type === "game_over") {
+        renderEndingOrGameOverOptions("game_over");
+      } else {
+        renderEndingOrGameOverOptions("ending");
+      }
+    }
+
+    function transitionToNextEvent(nextEventId, kind, optionText) {
+      if (typeof nextEventId !== "string" || !nextEventId.trim()) {
+        renderScreen();
+        return;
+      }
+
+      const normalizedNextEventId = nextEventId.trim();
+
+      if (!getActiveEventById(normalizedNextEventId)) {
+        const message = "遷移先イベントが存在しません: " + normalizedNextEventId;
+        appendMessageLine(message);
+        addLogEntry(`Blocked ${kind}: ${optionText} -> ${message}`);
+        renderScreen();
+        setGlobalStatus("fail", message);
+        return;
+      }
+
+      enterEvent(normalizedNextEventId);
+    }
+
+    function executeActionOrChoice(option, kind) {
+      if (!checkConditions(option.conditions)) {
+        handleBlockedOption(option, kind);
+        return;
+      }
+
+      if (isRestartChoiceOnGameOver(option)) {
+        if (!game.loadedSource) {
+          setGlobalStatus("warn", "まだ読み込まれた台本がありません。");
+          return;
+        }
+        startScript(game.loadedSource);
+        setGlobalStatus("ok", "最初からやり直しました。");
+        return;
+      }
+
+      applyOptionSuccess(option, kind);
+
+      if (redirectToGameOverIfNeeded()) {
+        return;
+      }
+
+      if (option.next_event_id === null) {
+        finishStoryIfTerminalOption();
+        return;
+      }
+
+      transitionToNextEvent(option.next_event_id, kind, option.text);
+    }
+
+    // =========================================================
+    // 8. 描画
+    // =========================================================
 
     function renderHeaderPanel() {
       ui.header.gameTitle.textContent = game.runtime ? game.runtime.title : "-";
       ui.header.currentEventIdText.textContent = game.currentEventId || "-";
-      ui.header.currentSpotIdText.textContent = getDisplaySpotName(typeof game.state?.current_spot_id === "string" ? game.state.current_spot_id : "");
+      ui.header.currentSpotIdText.textContent = getDisplaySpotName(
+        typeof game.state?.current_spot_id === "string" ? game.state.current_spot_id : ""
+      );
       ui.header.currentTimeText.textContent = formatTime(game.state?.time);
-      const hp = getHealthValue();
-      ui.header.healthText.textContent = hp === null ? "-" : String(hp);
+
+      const healthValue = getHealthValue();
+      ui.header.healthText.textContent = healthValue === null ? "-" : String(healthValue);
       ui.header.stepText.textContent = String(game.stepCount);
     }
 
@@ -1911,6 +2529,7 @@
 
     function renderLogPanel() {
       ui.log.logList.innerHTML = "";
+
       game.logEntries.slice().reverse().forEach((line) => {
         const item = document.createElement("div");
         item.className = "log-item";
@@ -1921,363 +2540,89 @@
 
     function renderMessageWindow() {
       ui.event.textArea.innerHTML = "";
-      const recent = game.messageHistory.slice(-MESSAGE_WINDOW_LIMIT);
-      const padded = Array(Math.max(0, MESSAGE_WINDOW_LIMIT - recent.length)).fill("").concat(recent);
-      const box = document.createElement("div");
-      box.className = "message-window";
-      box.textContent = padded.join("\n");
-      ui.event.textArea.appendChild(box);
+
+      const recentLines = game.messageHistory.slice(-MESSAGE_WINDOW_LIMIT);
+      const paddedLines = Array(Math.max(0, MESSAGE_WINDOW_LIMIT - recentLines.length)).fill("").concat(recentLines);
+
+      const messageWindow = document.createElement("div");
+      messageWindow.className = "message-window";
+      messageWindow.textContent = paddedLines.join("\n");
+
+      ui.event.textArea.appendChild(messageWindow);
     }
 
-    function characterSpotConditionMet(map, mode) {
-      if (!isPlainObject(map)) return true;
-      for (const [characterId, spotIds] of Object.entries(map)) {
-        const currentSpotId = getCharacterSpotId(characterId);
-        const allowed = Array.isArray(spotIds) ? spotIds.filter((v) => typeof v === "string") : [];
-        if (allowed.length === 0) return false;
-        const matched = allowed.includes(currentSpotId);
-        if (mode === "required" && !matched) return false;
-        if (mode === "forbidden" && matched) return false;
-      }
-      return true;
-    }
-
-    function checkConditions(conditions) {
-      if (!isPlainObject(conditions)) return true;
-      ensureStateCollections();
-
-      if (Array.isArray(conditions.required_flags) && conditions.required_flags.some((flag) => !game.state.flags.includes(flag))) {
-        return false;
-      }
-
-      if (Array.isArray(conditions.forbidden_flags) && conditions.forbidden_flags.some((flag) => game.state.flags.includes(flag))) {
-        return false;
-      }
-
-      if (!characterSpotConditionMet(conditions.required_character_spots, "required")) {
-        return false;
-      }
-
-      if (!characterSpotConditionMet(conditions.forbidden_character_spots, "forbidden")) {
-        return false;
-      }
-
-      if (Array.isArray(conditions.required_items)) {
-        for (const item of conditions.required_items) {
-          if (typeof item === "string") {
-            if (!inventoryHasItem(item, 1)) return false;
-            continue;
-          }
-          if (isPlainObject(item) && typeof item.item_id === "string") {
-            if (!inventoryHasItem(item.item_id, item.quantity)) return false;
-            continue;
-          }
-          return false;
-        }
-      }
-
-      if (isPlainObject(conditions.min)) {
-        for (const [path, min] of Object.entries(conditions.min)) {
-          const v = getNestedValue(game.state, path);
-          if (typeof v !== "number" || v < min) return false;
-        }
-      }
-
-      if (isPlainObject(conditions.max)) {
-        for (const [path, max] of Object.entries(conditions.max)) {
-          const v = getNestedValue(game.state, path);
-          if (typeof v !== "number" || v > max) return false;
-        }
-      }
-
-      if (isPlainObject(conditions.min_unique)) {
-        for (const [key, min] of Object.entries(conditions.min_unique)) {
-          const v = game.state.unique[key];
-          if (typeof v !== "number" || v < min) return false;
-        }
-      }
-
-      if (isPlainObject(conditions.max_unique)) {
-        for (const [key, max] of Object.entries(conditions.max_unique)) {
-          const v = game.state.unique[key];
-          if (typeof v !== "number" || v > max) return false;
-        }
-      }
-
-      return true;
-    }
-
-    function applyEffects(effects) {
-      if (!isPlainObject(effects)) return;
-      ensureStateCollections();
-
-      if (isPlainObject(effects.add)) {
-        Object.entries(effects.add).forEach(([path, delta]) => {
-          if (typeof delta === "number") addNestedNumber(game.state, path, delta);
-        });
-      }
-
-      if (isPlainObject(effects.set)) {
-        Object.entries(effects.set).forEach(([path, value]) => {
-          setNestedValue(game.state, path, value);
-        });
-      }
-
-      if (Array.isArray(effects.set_flags)) {
-        effects.set_flags.forEach((flag) => {
-          if (!game.state.flags.includes(flag)) game.state.flags.push(flag);
-        });
-      }
-
-      if (Array.isArray(effects.remove_flags)) {
-        game.state.flags = game.state.flags.filter((flag) => !effects.remove_flags.includes(flag));
-      }
-
-      if (isPlainObject(effects.add_unique)) {
-        Object.entries(effects.add_unique).forEach(([key, delta]) => {
-          if (typeof delta === "number") {
-            game.state.unique[key] = (typeof game.state.unique[key] === "number" ? game.state.unique[key] : 0) + delta;
-          }
-        });
-      }
-
-      if (Array.isArray(effects.add_items)) {
-        effects.add_items.forEach((entry) => {
-          if (typeof entry === "string") addItemToInventory(entry, 1);
-          else if (isPlainObject(entry) && typeof entry.item_id === "string") addItemToInventory(entry.item_id, entry.quantity);
-        });
-      }
-
-      if (Array.isArray(effects.remove_items)) {
-        effects.remove_items.forEach((entry) => {
-          if (typeof entry === "string") removeItemFromInventory(entry, 1);
-          else if (isPlainObject(entry) && typeof entry.item_id === "string") removeItemFromInventory(entry.item_id, entry.quantity);
-        });
-      }
-
-      if (Array.isArray(effects.remove_spot_items)) {
-        effects.remove_spot_items.forEach((entry) => {
-          const spotId = isPlainObject(entry) && typeof entry.spot_id === "string" ? entry.spot_id : game.state.current_spot_id;
-          const itemId = typeof entry === "string" ? entry : (isPlainObject(entry) ? entry.item_id : null);
-          let q = isPlainObject(entry) && typeof entry.quantity === "number" && entry.quantity > 0 ? entry.quantity : 1;
-
-          if (!spotId || !itemId) return;
-          if (!isPlainObject(game.state.spot_states[spotId])) game.state.spot_states[spotId] = { items: [] };
-          const items = Array.isArray(game.state.spot_states[spotId].items) ? game.state.spot_states[spotId].items : [];
-
-          for (let i = items.length - 1; i >= 0 && q > 0; i -= 1) {
-            const si = items[i];
-            if (!isPlainObject(si) || si.item_id !== itemId) continue;
-            const cur = typeof si.quantity === "number" ? si.quantity : 1;
-            if (cur <= q) {
-              q -= cur;
-              items.splice(i, 1);
-            } else {
-              si.quantity = cur - q;
-              q = 0;
-            }
-          }
-
-          game.state.spot_states[spotId].items = items;
-        });
-      }
-
-      if (isPlainObject(effects.add_time) && isPlainObject(game.state.time)) {
-        const minutes = typeof effects.add_time.minutes === "number" ? effects.add_time.minutes : 0;
-        addMinutesToTime(game.state.time, minutes);
-      }
-    }
-
-    function getVisibleEventTextLines(eventDef) {
-      const lines = [];
-      toArrayText(eventDef.text).forEach((line) => lines.push(line));
-      if (Array.isArray(eventDef.conditional_texts)) {
-        eventDef.conditional_texts.forEach((entry) => {
-          if (!isPlainObject(entry) || !checkConditions(entry.conditions)) return;
-          toArrayText(entry.text).forEach((line) => lines.push(line));
-        });
-      }
-      return lines;
-    }
-
-    function renderTerminalOptions(mode) {
-      ui.event.choiceList.innerHTML = "";
-
-      const restartBtn = document.createElement("button");
-      restartBtn.type = "button";
-      restartBtn.className = "choice-button";
-      restartBtn.textContent = "最初からやり直す";
-      restartBtn.addEventListener("click", () => {
-        if (!game.loadedSource) {
-          setGlobalStatus("warn", "まだ読み込まれた台本がありません。");
-          return;
-        }
-        startScript(game.loadedSource);
-        setGlobalStatus("ok", "最初からやり直しました。");
+    function bindEnabledOptionHandler(button, option, kind) {
+      button.addEventListener("click", () => {
+        executeActionOrChoice(option, kind);
       });
-
-      const continuationBtn = document.createElement("button");
-      continuationBtn.type = "button";
-      continuationBtn.className = "choice-button";
-      continuationBtn.textContent = "続篇用プロンプトをコピー";
-      continuationBtn.addEventListener("click", async () => {
-        try {
-          await copyTextToClipboard(buildContinuationPrompt());
-          setGlobalStatus("ok", "続篇用プロンプトをコピーしました。");
-        } catch (error) {
-          setGlobalStatus("fail", "続篇プロンプトコピー失敗: " + (error instanceof Error ? error.message : String(error)));
-        }
-      });
-
-      ui.event.choiceList.appendChild(restartBtn);
-      ui.event.choiceList.appendChild(continuationBtn);
-
-      if (mode === "game_over") {
-        setGlobalStatus("fail", "ゲームオーバーです。最初からやり直すか、続篇用プロンプトをコピーできます。");
-      } else {
-        setGlobalStatus("ok", "エンディングに到達しました。最初からやり直すか、続篇用プロンプトをコピーできます。");
-      }
     }
 
-    function tryHandleGameOverTransition() {
-      const hp = getHealthValue();
-      if (hp === null || hp > 0) return false;
-
-      const currentEvent = getCurrentEvent();
-      if (currentEvent && currentEvent.event_type === "game_over") {
-        return false;
-      }
-
-      const gameOverEventId = typeof game.runtime?.scenario?.game_over_event_id === "string" ? game.runtime.scenario.game_over_event_id.trim() : "";
-      if (gameOverEventId && getActiveEventById(gameOverEventId)) {
-        enterEvent(gameOverEventId);
-        setGlobalStatus("fail", "体力が0以下になったため、ゲームオーバーへ遷移しました。");
-        return true;
-      }
-
-      appendMessageLine("体力が尽きました。");
-      renderMessageWindow();
-      renderTerminalOptions("game_over");
-      return true;
-    }
-
-    function renderOptionButton(option, kind, index) {
-      const met = checkConditions(option.conditions);
-      if (!met && option.hidden_when_disabled === true) return null;
-
-      const visibleLabel = met
-        ? option.text
-        : (typeof option.disabled_text === "string" && option.disabled_text.trim() ? option.disabled_text : option.text);
-
-      const btn = document.createElement("button");
-      btn.type = "button";
-      btn.className = "choice-button";
-      btn.textContent = `${index}. ${visibleLabel}`;
-
-      if (met) {
-        btn.addEventListener("click", () => executeOption(option, kind));
-      } else if (typeof option.failure_message === "string" && option.failure_message.trim()) {
-        btn.addEventListener("click", () => {
-          appendMessageLine("▶ " + option.text);
-          appendMessageLine(option.failure_message);
-          addLogEntry(`Blocked ${kind}: ${option.text} -> ${option.failure_message}`);
-          renderScreen();
-          setGlobalStatus("warn", option.failure_message);
-        });
-      } else {
-        btn.disabled = true;
-      }
-
-      return btn;
-    }
-
-    function executeOption(option, kind) {
-      game.stepCount += 1;
-      addLogEntry([`Step ${game.stepCount}`, `Event: ${game.currentEventId || "-"}`, `${kind}: ${option.text}`].join("\n"));
-      appendMessageLine("▶ " + option.text);
-
-      if (!checkConditions(option.conditions)) {
-        const message = typeof option.failure_message === "string" && option.failure_message.trim()
-          ? option.failure_message
-          : "条件を満たしていません。";
-        appendMessageLine(message);
+    function bindBlockedOptionHandler(button, option, kind) {
+      button.addEventListener("click", () => {
+        appendMessageLine("▶ " + option.text);
+        appendMessageLine(option.failure_message);
+        addLogEntry(`Blocked ${kind}: ${option.text} -> ${option.failure_message}`);
         renderScreen();
-        setGlobalStatus("warn", message);
-        return;
+        setGlobalStatus("warn", option.failure_message);
+      });
+    }
+
+    function buildOptionButton(option, kind, index) {
+      const isConditionMet = checkConditions(option.conditions);
+      if (!isConditionMet && option.hidden_when_disabled === true) {
+        return null;
       }
 
-      const currentEvent = getCurrentEvent();
-      const isGameOverRestart =
-        currentEvent &&
-        currentEvent.event_type === "game_over" &&
-        option.next_event_id === null &&
-        typeof option.text === "string" &&
-        option.text.includes("最初から");
+      const visibleLabel = isConditionMet
+        ? option.text
+        : (
+          typeof option.disabled_text === "string" && option.disabled_text.trim()
+            ? option.disabled_text
+            : option.text
+        );
 
-      if (isGameOverRestart) {
-        if (!game.loadedSource) {
-          setGlobalStatus("warn", "まだ読み込まれた台本がありません。");
-          return;
-        }
-        startScript(game.loadedSource);
-        setGlobalStatus("ok", "最初からやり直しました。");
-        return;
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "choice-button";
+      button.textContent = `${index}. ${visibleLabel}`;
+
+      if (isConditionMet) {
+        bindEnabledOptionHandler(button, option, kind);
+        return button;
       }
 
-      applyEffects(option.effects);
-
-      if (typeof option.success_message === "string" && option.success_message.trim()) {
-        appendMessageLine(option.success_message);
-        addLogEntry("Result: " + option.success_message);
+      if (typeof option.failure_message === "string" && option.failure_message.trim()) {
+        bindBlockedOptionHandler(button, option, kind);
+        return button;
       }
 
-      if (tryHandleGameOverTransition()) return;
-
-      if (option.next_event_id === null) {
-        appendMessageLine("この話はこれで終わりです。");
-        renderMessageWindow();
-        renderTerminalOptions(currentEvent && currentEvent.event_type === "game_over" ? "game_over" : "ending");
-        return;
-      }
-
-      if (typeof option.next_event_id === "string" && option.next_event_id.trim()) {
-        const nextEventId = option.next_event_id.trim();
-        if (!getActiveEventById(nextEventId)) {
-          const message = "遷移先イベントが存在しません: " + nextEventId;
-          appendMessageLine(message);
-          addLogEntry("Blocked " + kind + ": " + option.text + " -> " + message);
-          renderScreen();
-          setGlobalStatus("fail", message);
-          return;
-        }
-        enterEvent(nextEventId);
-        return;
-      }
-
-      renderScreen();
+      button.disabled = true;
+      return button;
     }
 
     function renderOptions(eventDef) {
       ui.event.choiceList.innerHTML = "";
-      const ordered = [];
+
+      const orderedOptions = [];
 
       (Array.isArray(eventDef.actions) ? eventDef.actions : []).forEach((action) => {
         if (isPlainObject(action) && typeof action.text === "string") {
-          ordered.push({ kind: "Action", option: action });
+          orderedOptions.push({ kind: "Action", option: action });
         }
       });
 
       (Array.isArray(eventDef.choices) ? eventDef.choices : []).forEach((choice) => {
         if (isPlainObject(choice) && typeof choice.text === "string") {
-          ordered.push({ kind: "Choice", option: choice });
+          orderedOptions.push({ kind: "Choice", option: choice });
         }
       });
 
       let index = 1;
-      ordered.forEach(({ kind, option }) => {
-        const btn = renderOptionButton(option, kind, index);
-        if (!btn) return;
-        ui.event.choiceList.appendChild(btn);
+      orderedOptions.forEach(({ kind, option }) => {
+        const button = buildOptionButton(option, kind, index);
+        if (!button) return;
+
+        ui.event.choiceList.appendChild(button);
         index += 1;
       });
 
@@ -2312,43 +2657,28 @@
       renderOptions(eventDef);
     }
 
-    function enterEvent(eventId) {
-      game.currentEventId = eventId;
-      game.state.current_event_id = eventId;
+    // =========================================================
+    // 9. バリデーション
+    // =========================================================
 
-      const eventDef = getCurrentEvent();
-      if (!eventDef) {
-        renderScreen();
-        return;
-      }
-
-      if (typeof eventDef.spot_id === "string" && eventDef.spot_id.trim()) {
-        game.state.current_spot_id = eventDef.spot_id;
-        const pcId = getPlayerCharacterId();
-        if (pcId && isPlainObject(game.state.characters[pcId])) {
-          game.state.characters[pcId].spot_id = eventDef.spot_id;
-        }
-      }
-
-      getVisibleEventTextLines(eventDef).forEach(appendMessageLine);
-      renderScreen();
-    }
-
-    function validateCharacterSpotMap(map, label, errors, data) {
-      if (!isPlainObject(map)) {
+    function validateCharacterSpotMap(characterSpotMap, label, errors, data) {
+      if (!isPlainObject(characterSpotMap)) {
         errors.push(label + " はオブジェクトである必要があります。");
         return;
       }
-      Object.entries(map).forEach(([characterId, spots]) => {
+
+      Object.entries(characterSpotMap).forEach(([characterId, spotIds]) => {
         if (!data.initial_state?.characters?.[characterId]) {
           errors.push(`${label}.${characterId} のキャラが initial_state.characters に存在しません: ${characterId}`);
           return;
         }
-        if (!Array.isArray(spots) || spots.length === 0 || spots.some((spotId) => typeof spotId !== "string")) {
+
+        if (!Array.isArray(spotIds) || spotIds.length === 0 || spotIds.some((spotId) => typeof spotId !== "string")) {
           errors.push(`${label}.${characterId} は1件以上のスポットID文字列配列である必要があります。`);
           return;
         }
-        spots.forEach((spotId) => {
+
+        spotIds.forEach((spotId) => {
           if (!data.world?.spots?.[spotId]) {
             errors.push(`${label}.${characterId} の spot_id が world.spots に存在しません: ${spotId}`);
           }
@@ -2393,17 +2723,50 @@
           if (typeof item === "string") return;
           if (!isPlainObject(item) || typeof item.item_id !== "string") {
             errors.push(`${label}.add_items[${index}] は item_id を持つオブジェクトまたは文字列である必要があります。`);
+            return;
+          }
+          if (!data.definitions?.items?.[item.item_id]) {
+            errors.push(`${label}.add_items[${index}].item_id が definitions.items に存在しません: ${item.item_id}`);
+          }
+        });
+      }
+
+      if (Array.isArray(effects.remove_items)) {
+        effects.remove_items.forEach((item, index) => {
+          if (typeof item === "string") {
+            if (!data.definitions?.items?.[item]) {
+              errors.push(`${label}.remove_items[${index}] の item_id が definitions.items に存在しません: ${item}`);
+            }
+            return;
+          }
+          if (!isPlainObject(item) || typeof item.item_id !== "string") {
+            errors.push(`${label}.remove_items[${index}] は item_id を持つオブジェクトまたは文字列である必要があります。`);
+            return;
+          }
+          if (!data.definitions?.items?.[item.item_id]) {
+            errors.push(`${label}.remove_items[${index}].item_id が definitions.items に存在しません: ${item.item_id}`);
           }
         });
       }
 
       if (Array.isArray(effects.remove_spot_items)) {
         effects.remove_spot_items.forEach((item, index) => {
-          if (typeof item === "string") return;
+          if (typeof item === "string") {
+            if (!data.definitions?.items?.[item]) {
+              errors.push(`${label}.remove_spot_items[${index}] の item_id が definitions.items に存在しません: ${item}`);
+            }
+            return;
+          }
+
           if (!isPlainObject(item) || typeof item.item_id !== "string") {
             errors.push(`${label}.remove_spot_items[${index}] は item_id を持つオブジェクトまたは文字列である必要があります。`);
             return;
           }
+
+          if (!data.definitions?.items?.[item.item_id]) {
+            errors.push(`${label}.remove_spot_items[${index}].item_id が definitions.items に存在しません: ${item.item_id}`);
+          }
+
           if (typeof item.spot_id === "string" && !data.world?.spots?.[item.spot_id]) {
             errors.push(`${label}.remove_spot_items[${index}].spot_id が world.spots に存在しません: ${item.spot_id}`);
           }
@@ -2411,35 +2774,98 @@
       }
     }
 
-    function validateScript(data) {
-      const errors = [];
-      if (!isPlainObject(data)) return ["JSON全体はオブジェクトである必要があります。"];
-
-      if (typeof data.title !== "string" || !data.title.trim()) errors.push("title は空でない文字列である必要があります。");
-      if (!isPlainObject(data.definitions)) errors.push("definitions はオブジェクトである必要があります。");
-      if (!isPlainObject(data.world)) errors.push("world はオブジェクトである必要があります。");
-      if (!isPlainObject(data.scenario)) errors.push("scenario はオブジェクトである必要があります。");
-      if (!isPlainObject(data.initial_state)) errors.push("initial_state はオブジェクトである必要があります。");
-
-      if (!isPlainObject(data.world?.areas)) errors.push("world.areas はオブジェクトである必要があります。");
-      if (data.world?.dungeons !== undefined && !isPlainObject(data.world?.dungeons)) errors.push("world.dungeons は省略可能ですが、存在する場合はオブジェクトである必要があります。");
-      if (!isPlainObject(data.world?.spots)) errors.push("world.spots はオブジェクトである必要があります。");
-      if (!isPlainObject(data.scenario?.quests)) errors.push("scenario.quests はオブジェクトである必要があります。");
-
-      if (!isPlainObject(data.scenario?.events) || Object.keys(data.scenario.events).length === 0) {
-        errors.push("scenario.events は1件以上のオブジェクトである必要があります。");
+    function validateTopLevelStructure(data, errors) {
+      if (!isPlainObject(data)) {
+        errors.push("JSON全体はオブジェクトである必要があります。");
+        return;
       }
 
-      if (!isPlainObject(data.initial_state?.characters)) errors.push("initial_state.characters はオブジェクトである必要があります。");
-      if (!isPlainObject(data.initial_state?.spot_states)) errors.push("initial_state.spot_states はオブジェクトである必要があります。");
-      if (!isPlainObject(data.initial_state?.time)) errors.push("initial_state.time はオブジェクトである必要があります。");
+      if (typeof data.title !== "string" || !data.title.trim()) {
+        errors.push("title は空でない文字列である必要があります。");
+      }
 
-      const startEventId =
-        typeof data.initial_state?.current_event_id === "string" && data.initial_state.current_event_id.trim()
-          ? data.initial_state.current_event_id.trim()
-          : (typeof data.scenario?.start_event_id === "string" ? data.scenario.start_event_id.trim() : "");
+      if (!isPlainObject(data.definitions)) {
+        errors.push("definitions はオブジェクトである必要があります。");
+      }
 
-      if (!startEventId) errors.push("initial_state.current_event_id または scenario.start_event_id が必要です。");
+      if (!isPlainObject(data.world)) {
+        errors.push("world はオブジェクトである必要があります。");
+      }
+
+      if (!isPlainObject(data.scenario)) {
+        errors.push("scenario はオブジェクトである必要があります。");
+      }
+
+      if (!isPlainObject(data.initial_state)) {
+        errors.push("initial_state はオブジェクトである必要があります。");
+      }
+    }
+
+    function validateWorldStructure(data, errors) {
+      if (!isPlainObject(data.world?.areas)) {
+        errors.push("world.areas はオブジェクトである必要があります。");
+      }
+
+      if (data.world?.dungeons !== undefined && !isPlainObject(data.world?.dungeons)) {
+        errors.push("world.dungeons は省略可能ですが、存在する場合はオブジェクトである必要があります。");
+      }
+
+      if (!isPlainObject(data.world?.spots)) {
+        errors.push("world.spots はオブジェクトである必要があります。");
+        return;
+      }
+
+      Object.entries(data.world.spots).forEach(([spotId, spot]) => {
+        const label = `world.spots.${spotId}`;
+
+        if (!isPlainObject(spot)) {
+          errors.push(`${label} はオブジェクトである必要があります。`);
+          return;
+        }
+
+        if (typeof spot.area_id !== "string" || !spot.area_id.trim()) {
+          errors.push(`${label}.area_id は必須の文字列です。`);
+        } else if (!data.world?.areas?.[spot.area_id]) {
+          errors.push(`${label}.area_id が world.areas に存在しません: ${spot.area_id}`);
+        }
+
+        if (spot.dungeon_id !== undefined) {
+          if (typeof spot.dungeon_id !== "string" || !spot.dungeon_id.trim()) {
+            errors.push(`${label}.dungeon_id は省略可能ですが、存在する場合は文字列である必要があります。`);
+          } else if (!data.world?.dungeons?.[spot.dungeon_id]) {
+            errors.push(`${label}.dungeon_id が world.dungeons に存在しません: ${spot.dungeon_id}`);
+          } else {
+            const dungeon = data.world.dungeons[spot.dungeon_id];
+            if (typeof dungeon.area_id === "string" && typeof spot.area_id === "string" && dungeon.area_id !== spot.area_id) {
+              errors.push(`${label} の area_id (${spot.area_id}) と dungeon.area_id (${dungeon.area_id}) が一致しません。`);
+            }
+          }
+        }
+
+        if (Array.isArray(spot.connections)) {
+          spot.connections.forEach((connectedSpotId, index) => {
+            if (typeof connectedSpotId !== "string") {
+              errors.push(`${label}.connections[${index}] は文字列である必要があります。`);
+            } else if (!data.world?.spots?.[connectedSpotId]) {
+              errors.push(`${label}.connections[${index}] が world.spots に存在しません: ${connectedSpotId}`);
+            }
+          });
+        }
+      });
+    }
+
+    function validateInitialState(data, errors) {
+      if (!isPlainObject(data.initial_state?.characters)) {
+        errors.push("initial_state.characters はオブジェクトである必要があります。");
+      }
+
+      if (!isPlainObject(data.initial_state?.spot_states)) {
+        errors.push("initial_state.spot_states はオブジェクトである必要があります。");
+      }
+
+      if (!isPlainObject(data.initial_state?.time)) {
+        errors.push("initial_state.time はオブジェクトである必要があります。");
+      }
 
       if (typeof data.initial_state?.player_character_id !== "string" || !data.initial_state.player_character_id.trim()) {
         errors.push("initial_state.player_character_id は空でない文字列である必要があります。");
@@ -2452,138 +2878,164 @@
         errors.push("initial_state.player_character_id に対応する characters エントリが存在しません。");
       }
 
-      if (isPlainObject(data.world?.spots)) {
-        Object.entries(data.world.spots).forEach(([spotId, spot]) => {
-          if (!isPlainObject(spot)) {
-            errors.push(`world.spots.${spotId} はオブジェクトである必要があります。`);
-            return;
-          }
-          if (typeof spot.area_id !== "string" || !spot.area_id.trim()) {
-            errors.push(`world.spots.${spotId}.area_id は空でない文字列である必要があります。`);
-          } else if (!data.world?.areas?.[spot.area_id]) {
-            errors.push(`world.spots.${spotId}.area_id が world.areas に存在しません: ${spot.area_id}`);
-          }
-          if (spot.dungeon_id !== undefined && spot.dungeon_id !== null && spot.dungeon_id !== "") {
-            if (typeof spot.dungeon_id !== "string") {
-              errors.push(`world.spots.${spotId}.dungeon_id は文字列である必要があります。`);
-            } else if (!data.world?.dungeons?.[spot.dungeon_id]) {
-              errors.push(`world.spots.${spotId}.dungeon_id が world.dungeons に存在しません: ${spot.dungeon_id}`);
-            } else {
-              const dungeon = data.world.dungeons[spot.dungeon_id];
-              if (isPlainObject(dungeon) && typeof dungeon.area_id === "string" && typeof spot.area_id === "string" && dungeon.area_id !== spot.area_id) {
-                errors.push(`world.spots.${spotId} の area_id と dungeon_id の所属 area_id が一致しません。`);
-              }
-            }
-          }
-          if (Array.isArray(spot.connections)) {
-            spot.connections.forEach((toSpotId, index) => {
-              if (typeof toSpotId !== "string") {
-                errors.push(`world.spots.${spotId}.connections[${index}] は文字列である必要があります。`);
-              } else if (!data.world?.spots?.[toSpotId]) {
-                errors.push(`world.spots.${spotId}.connections[${index}] が world.spots に存在しません: ${toSpotId}`);
-              }
-            });
-          }
-        });
-      }
-
       if (isPlainObject(data.initial_state?.characters)) {
         Object.entries(data.initial_state.characters).forEach(([characterId, character]) => {
           if (!isPlainObject(character)) {
             errors.push(`initial_state.characters.${characterId} はオブジェクトである必要があります。`);
             return;
           }
+
           if (typeof character.spot_id === "string" && character.spot_id.trim() && !data.world?.spots?.[character.spot_id]) {
             errors.push(`initial_state.characters.${characterId}.spot_id が world.spots に存在しません: ${character.spot_id}`);
           }
         });
       }
 
-      if (isPlainObject(data.scenario?.events)) {
-        Object.entries(data.scenario.events).forEach(([eventId, eventDef]) => {
-          const label = `scenario.events.${eventId}`;
-          if (!isMeaningfulId(eventId)) errors.push(label + " のIDは意味ベース英小文字IDにしてください。");
-          if (!isPlainObject(eventDef)) {
-            errors.push(label + " はオブジェクトである必要があります。");
+      if (isPlainObject(data.initial_state?.spot_states)) {
+        Object.entries(data.initial_state.spot_states).forEach(([spotId, spotState]) => {
+          if (!data.world?.spots?.[spotId]) {
+            errors.push(`initial_state.spot_states.${spotId} は対応する world.spots が存在しません。`);
             return;
           }
-          if (typeof eventDef.title !== "string") errors.push(label + ".title は文字列である必要があります。");
-          const text = eventDef.text;
-          if (!(typeof text === "string" || (Array.isArray(text) && text.every((line) => typeof line === "string")))) {
-            errors.push(label + ".text は文字列または文字列配列である必要があります。");
+
+          if (!isPlainObject(spotState)) {
+            errors.push(`initial_state.spot_states.${spotId} はオブジェクトである必要があります。`);
+            return;
           }
 
-          if (eventDef.spot_id !== undefined && typeof eventDef.spot_id !== "string") {
-            errors.push(label + ".spot_id は文字列である必要があります。");
-          }
-
-          if (typeof eventDef.spot_id === "string" && eventDef.spot_id.trim() && !data.world?.spots?.[eventDef.spot_id]) {
-            errors.push(label + ".spot_id が world.spots に存在しません: " + eventDef.spot_id);
-          }
-
-          if (Array.isArray(eventDef.participants)) {
-            eventDef.participants.forEach((characterId, index) => {
-              if (typeof characterId !== "string") {
-                errors.push(`${label}.participants[${index}] は文字列である必要があります。`);
-              } else if (!data.initial_state?.characters?.[characterId]) {
-                errors.push(`${label}.participants[${index}] のキャラが initial_state.characters に存在しません: ${characterId}`);
-              }
-            });
-          }
-
-          if (Array.isArray(eventDef.conditional_texts)) {
-            eventDef.conditional_texts.forEach((entry, index) => {
-              if (!isPlainObject(entry)) {
-                errors.push(`${label}.conditional_texts[${index}] はオブジェクトである必要があります。`);
+          if (Array.isArray(spotState.items)) {
+            spotState.items.forEach((item, index) => {
+              if (!isPlainObject(item) || typeof item.item_id !== "string") {
+                errors.push(`initial_state.spot_states.${spotId}.items[${index}] は item_id を持つオブジェクトである必要があります。`);
                 return;
               }
-              validateConditionsObject(entry.conditions, `${label}.conditional_texts[${index}].conditions`, data, errors);
-              if (!(typeof entry.text === "string" || (Array.isArray(entry.text) && entry.text.every((line) => typeof line === "string")))) {
-                errors.push(`${label}.conditional_texts[${index}].text は文字列または文字列配列である必要があります。`);
+              if (!data.definitions?.items?.[item.item_id]) {
+                errors.push(`initial_state.spot_states.${spotId}.items[${index}].item_id が definitions.items に存在しません: ${item.item_id}`);
               }
             });
           }
-
-          const optionLists = [
-            Array.isArray(eventDef.actions) ? eventDef.actions : [],
-            Array.isArray(eventDef.choices) ? eventDef.choices : []
-          ];
-
-          if (optionLists[0].length === 0 && optionLists[1].length === 0) {
-            errors.push(label + " は actions または choices のいずれか1件以上が必要です。");
-          }
-
-          optionLists.forEach((list, idx) => {
-            const kind = idx === 0 ? "actions" : "choices";
-            list.forEach((opt, index) => {
-              const oLabel = `${label}.${kind}[${index}]`;
-              if (!isPlainObject(opt)) {
-                errors.push(oLabel + " はオブジェクトである必要があります。");
-                return;
-              }
-              if (typeof opt.text !== "string" || !opt.text.trim()) {
-                errors.push(oLabel + ".text は空でない文字列である必要があります。");
-              }
-              if (opt.next_event_id !== undefined && opt.next_event_id !== null && typeof opt.next_event_id !== "string") {
-                errors.push(oLabel + ".next_event_id は文字列または null である必要があります。");
-              }
-              if (typeof opt.next_event_id === "string" && !data.scenario.events[opt.next_event_id]) {
-                errors.push(oLabel + ".next_event_id が存在しません: " + opt.next_event_id);
-              }
-              if (opt.conditions !== undefined && !isPlainObject(opt.conditions)) {
-                errors.push(oLabel + ".conditions はオブジェクトである必要があります。");
-              }
-              if (opt.effects !== undefined && !isPlainObject(opt.effects)) {
-                errors.push(oLabel + ".effects はオブジェクトである必要があります。");
-              }
-              validateConditionsObject(opt.conditions, `${oLabel}.conditions`, data, errors);
-              validateEffectsObject(opt.effects, `${oLabel}.effects`, data, errors);
-            });
-          });
         });
       }
+    }
 
-      if (startEventId && !data.scenario?.events?.[startEventId]) {
+    function validateOptionDefinition(option, label, data, errors) {
+      if (!isPlainObject(option)) {
+        errors.push(label + " はオブジェクトである必要があります。");
+        return;
+      }
+
+      if (typeof option.text !== "string" || !option.text.trim()) {
+        errors.push(label + ".text は空でない文字列である必要があります。");
+      }
+
+      if (option.next_event_id !== undefined && option.next_event_id !== null && typeof option.next_event_id !== "string") {
+        errors.push(label + ".next_event_id は文字列または null である必要があります。");
+      }
+
+      if (typeof option.next_event_id === "string" && !data.scenario?.events?.[option.next_event_id]) {
+        errors.push(label + ".next_event_id が存在しません: " + option.next_event_id);
+      }
+
+      if (option.conditions !== undefined && !isPlainObject(option.conditions)) {
+        errors.push(label + ".conditions はオブジェクトである必要があります。");
+      }
+
+      if (option.effects !== undefined && !isPlainObject(option.effects)) {
+        errors.push(label + ".effects はオブジェクトである必要があります。");
+      }
+
+      validateConditionsObject(option.conditions, `${label}.conditions`, data, errors);
+      validateEffectsObject(option.effects, `${label}.effects`, data, errors);
+    }
+
+    function validateScenarioEvents(data, errors) {
+      if (!isPlainObject(data.scenario?.quests)) {
+        errors.push("scenario.quests はオブジェクトである必要があります。");
+      }
+
+      if (!isPlainObject(data.scenario?.events) || Object.keys(data.scenario.events).length === 0) {
+        errors.push("scenario.events は1件以上のオブジェクトである必要があります。");
+        return;
+      }
+
+      Object.entries(data.scenario.events).forEach(([eventId, eventDef]) => {
+        const label = `scenario.events.${eventId}`;
+
+        if (!isMeaningfulId(eventId)) {
+          errors.push(label + " のIDは意味ベース英小文字IDにしてください。");
+        }
+
+        if (!isPlainObject(eventDef)) {
+          errors.push(label + " はオブジェクトである必要があります。");
+          return;
+        }
+
+        if (typeof eventDef.title !== "string") {
+          errors.push(label + ".title は文字列である必要があります。");
+        }
+
+        const text = eventDef.text;
+        if (!(typeof text === "string" || (Array.isArray(text) && text.every((line) => typeof line === "string")))) {
+          errors.push(label + ".text は文字列または文字列配列である必要があります。");
+        }
+
+        if (eventDef.spot_id !== undefined && typeof eventDef.spot_id !== "string") {
+          errors.push(label + ".spot_id は文字列である必要があります。");
+        }
+
+        if (typeof eventDef.spot_id === "string" && eventDef.spot_id.trim() && !data.world?.spots?.[eventDef.spot_id]) {
+          errors.push(label + ".spot_id が world.spots に存在しません: " + eventDef.spot_id);
+        }
+
+        if (Array.isArray(eventDef.participants)) {
+          eventDef.participants.forEach((characterId, index) => {
+            if (typeof characterId !== "string") {
+              errors.push(`${label}.participants[${index}] は文字列である必要があります。`);
+            } else if (!data.initial_state?.characters?.[characterId]) {
+              errors.push(`${label}.participants[${index}] のキャラが initial_state.characters に存在しません: ${characterId}`);
+            }
+          });
+        }
+
+        if (Array.isArray(eventDef.conditional_texts)) {
+          eventDef.conditional_texts.forEach((entry, index) => {
+            if (!isPlainObject(entry)) {
+              errors.push(`${label}.conditional_texts[${index}] はオブジェクトである必要があります。`);
+              return;
+            }
+
+            validateConditionsObject(entry.conditions, `${label}.conditional_texts[${index}].conditions`, data, errors);
+
+            if (!(typeof entry.text === "string" || (Array.isArray(entry.text) && entry.text.every((line) => typeof line === "string")))) {
+              errors.push(`${label}.conditional_texts[${index}].text は文字列または文字列配列である必要があります。`);
+            }
+          });
+        }
+
+        const actions = Array.isArray(eventDef.actions) ? eventDef.actions : [];
+        const choices = Array.isArray(eventDef.choices) ? eventDef.choices : [];
+
+        if (actions.length === 0 && choices.length === 0) {
+          errors.push(label + " は actions または choices のいずれか1件以上が必要です。");
+        }
+
+        actions.forEach((action, index) => {
+          validateOptionDefinition(action, `${label}.actions[${index}]`, data, errors);
+        });
+
+        choices.forEach((choice, index) => {
+          validateOptionDefinition(choice, `${label}.choices[${index}]`, data, errors);
+        });
+      });
+
+      const startEventId =
+        typeof data.initial_state?.current_event_id === "string" && data.initial_state.current_event_id.trim()
+          ? data.initial_state.current_event_id.trim()
+          : (typeof data.scenario?.start_event_id === "string" ? data.scenario.start_event_id.trim() : "");
+
+      if (!startEventId) {
+        errors.push("initial_state.current_event_id または scenario.start_event_id が必要です。");
+      } else if (!data.scenario.events[startEventId]) {
         errors.push("開始イベントが scenario.events に存在しません。");
       }
 
@@ -2594,9 +3046,26 @@
       ) {
         errors.push("scenario.game_over_event_id が scenario.events に存在しません。");
       }
+    }
+
+    function validateScript(data) {
+      const errors = [];
+
+      validateTopLevelStructure(data, errors);
+      if (errors.length > 0 && !isPlainObject(data)) {
+        return errors;
+      }
+
+      validateWorldStructure(data, errors);
+      validateInitialState(data, errors);
+      validateScenarioEvents(data, errors);
 
       return errors;
     }
+
+    // =========================================================
+    // 10. 入出力
+    // =========================================================
 
     function buildContinuationPrompt() {
       const payload = {
@@ -2630,34 +3099,6 @@
       ].join("\n");
     }
 
-    function startScript(source) {
-      game.loadedSource = cloneJson(source);
-      game.runtime = cloneJson(source);
-      game.state = cloneJson(source.initial_state || {});
-      ensureStateCollections();
-
-      game.stepCount = 0;
-      game.logEntries = [];
-      game.messageHistory = [];
-      addLogEntry("開始: " + (source.title || "Untitled"));
-
-      const startEventId =
-        typeof game.state.current_event_id === "string" && game.state.current_event_id.trim()
-          ? game.state.current_event_id.trim()
-          : (typeof game.runtime.scenario?.start_event_id === "string" ? game.runtime.scenario.start_event_id.trim() : "");
-
-      game.currentEventId = startEventId;
-
-      if (!startEventId) {
-        renderScreen();
-        setGlobalStatus("fail", "開始イベントが設定されていません。");
-        return;
-      }
-
-      if (tryHandleGameOverTransition()) return;
-      enterEvent(startEventId);
-    }
-
     async function copyCurrentState() {
       const payload = {
         title: game.runtime?.title || null,
@@ -2668,6 +3109,7 @@
         state: game.state,
         log: game.logEntries
       };
+
       await copyTextToClipboard(JSON.stringify(payload, null, 2));
     }
 
@@ -2711,17 +3153,49 @@
       }
     }
 
+    function startScript(source) {
+      game.loadedSource = cloneJson(source);
+      game.runtime = cloneJson(source);
+      game.state = cloneJson(source.initial_state || {});
+      ensureStateCollections();
+
+      game.stepCount = 0;
+      game.logEntries = [];
+      game.messageHistory = [];
+
+      addLogEntry("開始: " + (source.title || "Untitled"));
+
+      const startEventId =
+        typeof game.state.current_event_id === "string" && game.state.current_event_id.trim()
+          ? game.state.current_event_id.trim()
+          : (typeof game.runtime.scenario?.start_event_id === "string" ? game.runtime.scenario.start_event_id.trim() : "");
+
+      setCurrentEventId(startEventId);
+
+      if (!startEventId) {
+        renderScreen();
+        setGlobalStatus("fail", "開始イベントが設定されていません。");
+        return;
+      }
+
+      if (redirectToGameOverIfNeeded()) return;
+      enterEvent(startEventId);
+    }
+
     function loadScriptFromTextarea() {
       const parsed = parseJsonSafely(ui.setup.scriptInput.value.trim());
+
       if (!parsed.ok) {
         setGlobalStatus("fail", "JSON解析失敗:\n" + parsed.error);
         return;
       }
+
       const errors = validateScript(parsed.data);
-      if (errors.length) {
+      if (errors.length > 0) {
         setGlobalStatus("fail", "台本エラー:\n" + errors.join("\n"));
         return;
       }
+
       startScript(parsed.data);
       setGlobalStatus("ok", "台本を読み込みました。");
     }
@@ -2731,15 +3205,22 @@
         setGlobalStatus("warn", "まだ読み込まれた台本がありません。");
         return;
       }
+
       startScript(game.loadedSource);
       setGlobalStatus("ok", "最初からやり直しました。");
     }
 
+    // =========================================================
+    // 11. UIイベント登録
+    // =========================================================
+
     function bindUiEvents() {
       ui.setup.loadExampleButton.addEventListener("click", loadExampleIntoTextarea);
+
       ui.setup.openFileButton.addEventListener("click", () => {
         ui.setup.jsonFileInput.click();
       });
+
       ui.setup.jsonFileInput.addEventListener("change", handleJsonFileSelected);
       ui.setup.copyPromptButton.addEventListener("click", handleCopyPrompt);
       ui.setup.pasteScriptButton.addEventListener("click", handlePasteScript);
@@ -2778,6 +3259,10 @@
         renderStatePanel();
       });
     }
+
+    // =========================================================
+    // 12. 初期化
+    // =========================================================
 
     function initialize() {
       renderHeaderPanel();

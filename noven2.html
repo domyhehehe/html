@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- sound-novel-json-runner-world-scenario-only-final-holmes-complete -->
+<!-- sound-novel-json-runner-world-scenario-only-final-complete-fixed-newlines -->
 <html lang="ja">
 <head>
   <meta charset="utf-8" />
@@ -231,7 +231,7 @@
 
     <div class="card">
       <h2>通知</h2>
-      <div id="globalStatus" class="status warn">サンプルを読むか、AI用プロンプトをコピーしてJSONを作ってください。</div>
+      <div id="globalStatus" class="status warn">サンプルを読むか、JSONを読み込んで開始してください。</div>
       <div class="row" style="margin-top:10px;">
         <button id="copyStatusButton" class="button secondary" type="button">通知をコピー</button>
       </div>
@@ -252,6 +252,7 @@
       <p class="note">
         新仕様専用: <code class="inline">definitions / world / scenario / initial_state</code>。
         進行は <code class="inline">scenario.events</code> と <code class="inline">current_event_id / next_event_id</code>。
+        NPC位置は <code class="inline">characters[character_id].spot_id</code> を正式採用し、<code class="inline">required_character_spots</code> / <code class="inline">forbidden_character_spots</code> に対応。
       </p>
 
       <div class="row">
@@ -726,12 +727,8 @@
                   "forbidden_flags": ["clock_examined"]
                 },
                 "effects": {
-                  "add_items": [
-                    {"item_id": "brass_key", "quantity": 1}
-                  ],
-                  "remove_spot_items": [
-                    {"spot_id": "entrance_hall", "item_id": "brass_key", "quantity": 1}
-                  ],
+                  "add_items": [{"item_id": "brass_key", "quantity": 1}],
+                  "remove_spot_items": [{"spot_id": "entrance_hall", "item_id": "brass_key", "quantity": 1}],
                   "set_flags": ["clock_examined", "brass_key_found"],
                   "add_time": {"minutes": 5}
                 },
@@ -884,12 +881,8 @@
                   "forbidden_flags": ["cipher_note_found"]
                 },
                 "effects": {
-                  "add_items": [
-                    {"item_id": "cipher_note", "quantity": 1}
-                  ],
-                  "remove_spot_items": [
-                    {"spot_id": "study", "item_id": "cipher_note", "quantity": 1}
-                  ],
+                  "add_items": [{"item_id": "cipher_note", "quantity": 1}],
+                  "remove_spot_items": [{"spot_id": "study", "item_id": "cipher_note", "quantity": 1}],
                   "set_flags": ["cipher_note_found"],
                   "add_time": {"minutes": 5}
                 },
@@ -900,9 +893,7 @@
                 "id": "decode_cipher",
                 "text": "暗号メモを解読する",
                 "conditions": {
-                  "required_items": [
-                    {"item_id": "cipher_note", "quantity": 1}
-                  ],
+                  "required_items": [{"item_id": "cipher_note", "quantity": 1}],
                   "min_unique": {"推理力": 7},
                   "forbidden_flags": ["cipher_decoded"]
                 },
@@ -1005,9 +996,7 @@
                 "id": "unlock_basement",
                 "text": "真鍮の鍵で鉄扉を開ける",
                 "conditions": {
-                  "required_items": [
-                    {"item_id": "brass_key", "quantity": 1}
-                  ],
+                  "required_items": [{"item_id": "brass_key", "quantity": 1}],
                   "forbidden_flags": ["basement_unlocked"]
                 },
                 "effects": {
@@ -1285,12 +1274,8 @@
                   "forbidden_flags": ["iron_bar_found"]
                 },
                 "effects": {
-                  "add_items": [
-                    {"item_id": "iron_bar", "quantity": 1}
-                  ],
-                  "remove_spot_items": [
-                    {"spot_id": "greenhouse", "item_id": "iron_bar", "quantity": 1}
-                  ],
+                  "add_items": [{"item_id": "iron_bar", "quantity": 1}],
+                  "remove_spot_items": [{"spot_id": "greenhouse", "item_id": "iron_bar", "quantity": 1}],
                   "set_flags": ["iron_bar_found"],
                   "add_time": {"minutes": 2}
                 },
@@ -1301,9 +1286,7 @@
                 "id": "force_back_door",
                 "text": "鉄の棒で裏口の板をこじ開ける",
                 "conditions": {
-                  "required_items": [
-                    {"item_id": "iron_bar", "quantity": 1}
-                  ],
+                  "required_items": [{"item_id": "iron_bar", "quantity": 1}],
                   "forbidden_flags": ["back_door_forced"]
                 },
                 "effects": {
@@ -1443,7 +1426,9 @@
             },
             "inventory": [],
             "relationships": {
-              "watson": {"trust": 5}
+              "watson": {
+                "trust": 5
+              }
             }
           },
           "watson": {
@@ -1455,7 +1440,9 @@
             },
             "inventory": [],
             "relationships": {
-              "holmes": {"trust": 5}
+              "holmes": {
+                "trust": 5
+              }
             }
           }
         },
@@ -1496,10 +1483,15 @@
     const GENERIC_PROMPT = [
       "以下を厳守して、新仕様(world/scenario/initial_state)のJSON台本を1つ作成してください。",
       "",
-      "【必須】",
-      "- top-level は title/version/definitions/world/scenario/initial_state 構造",
+      "【目的】",
+      "- 「短い見本JSON」ではなく、実際に遊べるボリュームのある中編シナリオを作ること",
+      "- 脱出・調査・分岐・再訪・NPC連携が成立する、探索型サウンドノベルJSONを作ること",
+      "- 出力は構造の正しさだけでなく、十分な物量と遊びごたえを重視すること",
+      "",
+      "【必須構造】",
+      "- top-level は title / version / definitions / world / scenario / initial_state",
       "- 進行は scenario.events を主系として current_event_id / next_event_id で行う",
-      "- scenes/start_scene_id/next_scene_id は使わない",
+      "- scenes / start_scene_id / next_scene_id は使わない",
       "- 主人公体力は initial_state.characters[player_character_id].current_stats に置く",
       "- inventory は initial_state.characters[character_id].inventory を使う",
       "- spot 上アイテムは initial_state.spot_states を使う",
@@ -1507,16 +1499,142 @@
       "- 条件では required_character_spots / forbidden_character_spots を使ってよい",
       "- effects.add_time / required_items / add_items / remove_spot_items / set を使える形にする",
       "",
+      "【最重要：シナリオの物量下限】",
+      "- world.spots は最低10個、推奨12〜16個",
+      "- scenario.events は最低16個、推奨18〜26個",
+      "- ending は最低2種類、推奨3種類以上",
+      "- game_over は最低2種類",
+      "- actions は全イベント合計で最低18個",
+      "- choices は全イベント合計で最低25個",
+      "- flags は最低14個",
+      "- spot_states に配置される取得可能アイテムは最低6種類",
+      "- NPCは主人公以外に最低2人",
+      "- NPCの spot_id 移動を最低4回以上使うこと",
+      "- 再訪で本文が変化する conditional_texts を最低8件以上入れること",
+      "",
+      "【最重要：ゲーム構造の下限】",
+      "- 一本道は禁止",
+      "- 最低でも「序盤探索」「中盤の解錠・推理」「終盤の脱出判断」の3段階構造にすること",
+      "- 脱出までに最低3つの独立した中間目標を必要にすること",
+      "- そのうち1つはアイテム、1つは情報、1つはNPC協力で解決すること",
+      "- 1回の探索で全部片付く構造は禁止。複数スポットの往復が必要な構造にすること",
+      "- 間違った順番でも一部進められるが、最終的に不足が露呈する設計にすること",
+      "- 少なくとも1つは「見つけてもすぐ使えないアイテム」を置くこと",
+      "- 少なくとも1つは「情報を得てから意味がわかる場所」を置くこと",
+      "- 少なくとも1つは「NPCが別の場所にいないと成立しない行動」を置くこと",
+      "- 少なくとも1つは「再訪時に新しい本文・行動が解放される場所」を作ること",
+      "",
+      "【文章量の下限】",
+      "- 各 event.text は2〜4文ではなく、最低3行、重要イベントは4〜6行にすること",
+      "- conditional_texts の各本文も1行だけで済ませず、情景・変化・示唆を含めること",
+      "- ending / game_over は最低3行以上",
+      "- 全体として「短いJSON見本」ではなく「中編1話」として読める密度にすること",
+      "",
+      "【内容設計ルール】",
+      "- 露骨な水増しは禁止",
+      "- 同じ意味の行動やフラグを重複させないこと",
+      "- 未使用のフラグ、未使用アイテム、未使用スポットは禁止",
+      "- すべての主要スポットに存在理由を持たせること",
+      "- すべての主要アイテムに入手→使用→結果の流れを作ること",
+      "- すべての主要フラグは物語進行か条件分岐に必ず使うこと",
+      "- choice と action は明確に分けること",
+      "- action は「その場処理」、choice は「遷移」に徹すること",
+      "- hidden_when_disabled を適切に使い、一度きりの行動は再実行しにくくすること",
+      "- 可能なら任意の寄り道報酬や、完全解決ルート用の追加証拠も入れること",
+      "",
+      "【推奨する構成】",
+      "- 導入スポット",
+      "- 情報収集スポット2〜3",
+      "- 鍵や道具を取るスポット2〜3",
+      "- 解錠・仕掛け操作スポット2〜3",
+      "- NPCが別行動するスポット",
+      "- 危険スポットまたは体力消耗スポット",
+      "- 終盤の脱出直前スポット",
+      "- 通常脱出 / 完全解決脱出 / 失敗系エンド",
+      "",
+      "【モデルへの注意】",
+      "- 下記のJSONは「構造見本」であって、目標ボリュームではない",
+      "- 下記見本より明確に大きく、長く、複雑にすること",
+      "- 見本を縮小再生産しないこと",
+      "- とくに events 数、actions 数、choices 数、flags 数は見本を大きく上回ること",
+      "",
+      "【最低達成チェック】",
+      "- 出力前に自分で必ず確認し、下限未達なら書き足してから出力すること",
+      "- spots 10以上",
+      "- events 16以上",
+      "- endings 2以上",
+      "- game_over 2以上",
+      "- actions 合計18以上",
+      "- choices 合計25以上",
+      "- flags 14以上",
+      "- items 6種類以上",
+      "- NPC 2人以上",
+      "- NPC移動 4回以上",
+      "- conditional_texts 8件以上",
+      "",
       "【出力形式】",
+      "- コードブロックは1つのみ",
+      "- コードブロックの中身は純粋なJSONのみ",
+      "- JSON以外の説明文・前置き・注釈は禁止",
+      "",
+      "【見本JSON】",
       "```json",
       PROMPT_SAMPLE_JSON,
       "```"
     ].join("\n");
 
     const SHINDO_PROMPT = [
-      "新堂誠・学校ホラー向けで、world/scenario/initial_state 新仕様JSONを1つ作ってください。",
-      "進行は scenario.events + current_event_id / next_event_id のみを使うこと。",
-      "NPC位置は characters.<id>.spot_id で管理してよいです。",
+      "以下を厳守して、新堂誠・学校であった怖い話向けの新仕様(world/scenario/initial_state)JSON台本を1つ作成してください。",
+      "",
+      "【目的】",
+      "- 短い見本JSONではなく、実際に遊べるボリュームのある中編ホラーシナリオを作ること",
+      "- 調査・分岐・再訪・NPC連携・不穏な演出が成立する探索型サウンドノベルJSONを作ること",
+      "",
+      "【必須構造】",
+      "- top-level は title / version / definitions / world / scenario / initial_state",
+      "- 進行は scenario.events を主系として current_event_id / next_event_id で行う",
+      "- scenes / start_scene_id / next_scene_id は使わない",
+      "- 主人公体力は initial_state.characters[player_character_id].current_stats に置く",
+      "- inventory は initial_state.characters[character_id].inventory を使う",
+      "- spot 上アイテムは initial_state.spot_states を使う",
+      "- NPCの位置参照は characters.<id>.spot_id を基本にする",
+      "- 条件では required_character_spots / forbidden_character_spots を使ってよい",
+      "- effects.add_time / required_items / add_items / remove_spot_items / set を使える形にする",
+      "",
+      "【物量下限】",
+      "- world.spots 10個以上",
+      "- scenario.events 16個以上",
+      "- ending 2種類以上",
+      "- game_over 2種類以上",
+      "- actions 合計18個以上",
+      "- choices 合計25個以上",
+      "- flags 14個以上",
+      "- NPCは主人公以外に2人以上",
+      "- NPC移動4回以上",
+      "- conditional_texts 8件以上",
+      "",
+      "【ゲーム構造】",
+      "- 一本道は禁止",
+      "- 序盤探索 / 中盤の手がかり回収と解錠 / 終盤の脱出または真相分岐 の3段階構造にすること",
+      "- 間違った順番でも一部進行するが、後で不足が露呈する構造にすること",
+      "- 再訪時に本文や行動が変わる場所を必ず作ること",
+      "- NPCが別の場所にいるかどうかで会話や行動の成否が変わる構造を入れること",
+      "",
+      "【文章量】",
+      "- 各 event.text は最低3行、重要イベントは4〜6行",
+      "- ending / game_over は最低3行",
+      "- 全体として中編1話として読める密度にすること",
+      "",
+      "【モデルへの注意】",
+      "- 見本は構造見本であり、分量見本ではない",
+      "- 必ず見本より大きく、長く、複雑にすること",
+      "",
+      "【出力形式】",
+      "- コードブロックは1つのみ",
+      "- コードブロックの中身は純粋なJSONのみ",
+      "- JSON以外の説明文・前置き・注釈は禁止",
+      "",
+      "【見本JSON】",
       "```json",
       PROMPT_SAMPLE_JSON,
       "```"
@@ -2215,14 +2333,14 @@
       renderScreen();
     }
 
-    function validateCharacterSpotMap(map, label, data, errors) {
+    function validateCharacterSpotMap(map, label, errors, data) {
       if (!isPlainObject(map)) {
         errors.push(label + " はオブジェクトである必要があります。");
         return;
       }
       Object.entries(map).forEach(([characterId, spots]) => {
         if (!data.initial_state?.characters?.[characterId]) {
-          errors.push(`${label}.${characterId} のキャラが initial_state.characters に存在しません。`);
+          errors.push(`${label}.${characterId} のキャラが initial_state.characters に存在しません: ${characterId}`);
           return;
         }
         if (!Array.isArray(spots) || spots.length === 0 || spots.some((spotId) => typeof spotId !== "string")) {
@@ -2231,7 +2349,7 @@
         }
         spots.forEach((spotId) => {
           if (!data.world?.spots?.[spotId]) {
-            errors.push(`${label}.${characterId} のスポットIDが world.spots に存在しません: ${spotId}`);
+            errors.push(`${label}.${characterId} の spot_id が world.spots に存在しません: ${spotId}`);
           }
         });
       });
@@ -2241,11 +2359,11 @@
       if (!isPlainObject(conditions)) return;
 
       if (conditions.required_character_spots !== undefined) {
-        validateCharacterSpotMap(conditions.required_character_spots, `${label}.required_character_spots`, data, errors);
+        validateCharacterSpotMap(conditions.required_character_spots, `${label}.required_character_spots`, errors, data);
       }
 
       if (conditions.forbidden_character_spots !== undefined) {
-        validateCharacterSpotMap(conditions.forbidden_character_spots, `${label}.forbidden_character_spots`, data, errors);
+        validateCharacterSpotMap(conditions.forbidden_character_spots, `${label}.forbidden_character_spots`, errors, data);
       }
 
       if (Array.isArray(conditions.required_items)) {
@@ -2265,15 +2383,6 @@
         Object.entries(effects.set).forEach(([path, value]) => {
           if (path.endsWith(".spot_id") && typeof value === "string" && !data.world?.spots?.[value]) {
             errors.push(`${label}.set.${path} のスポットIDが world.spots に存在しません: ${value}`);
-          }
-          if (path.startsWith("characters.")) {
-            const parts = path.split(".");
-            if (parts.length >= 2) {
-              const characterId = parts[1];
-              if (!data.initial_state?.characters?.[characterId]) {
-                errors.push(`${label}.set.${path} のキャラが initial_state.characters に存在しません: ${characterId}`);
-              }
-            }
           }
         });
       }
@@ -2392,10 +2501,10 @@
                 errors.push(`${label}.conditional_texts[${index}] はオブジェクトである必要があります。`);
                 return;
               }
+              validateConditionsObject(entry.conditions, `${label}.conditional_texts[${index}].conditions`, data, errors);
               if (!(typeof entry.text === "string" || (Array.isArray(entry.text) && entry.text.every((line) => typeof line === "string")))) {
                 errors.push(`${label}.conditional_texts[${index}].text は文字列または文字列配列である必要があります。`);
               }
-              validateConditionsObject(entry.conditions, `${label}.conditional_texts[${index}].conditions`, data, errors);
             });
           }
 

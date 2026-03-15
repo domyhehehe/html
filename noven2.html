@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- sound-novel-json-runner-world-scenario-only-final-holmes -->
+<!-- sound-novel-json-runner-world-scenario-only-final-holmes-complete -->
 <html lang="ja">
 <head>
   <meta charset="utf-8" />
@@ -1326,7 +1326,8 @@
                   "set_flags": ["escaped_normal"],
                   "set": {
                     "current_spot_id": "back_exit",
-                    "characters.holmes.spot_id": "back_exit"
+                    "characters.holmes.spot_id": "back_exit",
+                    "characters.watson.spot_id": "back_exit"
                   },
                   "add_time": {"minutes": 3}
                 },
@@ -2214,15 +2215,25 @@
       renderScreen();
     }
 
-    function validateCharacterSpotMap(map, label, errors) {
+    function validateCharacterSpotMap(map, label, data, errors) {
       if (!isPlainObject(map)) {
         errors.push(label + " はオブジェクトである必要があります。");
         return;
       }
       Object.entries(map).forEach(([characterId, spots]) => {
+        if (!data.initial_state?.characters?.[characterId]) {
+          errors.push(`${label}.${characterId} のキャラが initial_state.characters に存在しません。`);
+          return;
+        }
         if (!Array.isArray(spots) || spots.length === 0 || spots.some((spotId) => typeof spotId !== "string")) {
           errors.push(`${label}.${characterId} は1件以上のスポットID文字列配列である必要があります。`);
+          return;
         }
+        spots.forEach((spotId) => {
+          if (!data.world?.spots?.[spotId]) {
+            errors.push(`${label}.${characterId} のスポットIDが world.spots に存在しません: ${spotId}`);
+          }
+        });
       });
     }
 
@@ -2230,11 +2241,11 @@
       if (!isPlainObject(conditions)) return;
 
       if (conditions.required_character_spots !== undefined) {
-        validateCharacterSpotMap(conditions.required_character_spots, `${label}.required_character_spots`, errors);
+        validateCharacterSpotMap(conditions.required_character_spots, `${label}.required_character_spots`, data, errors);
       }
 
       if (conditions.forbidden_character_spots !== undefined) {
-        validateCharacterSpotMap(conditions.forbidden_character_spots, `${label}.forbidden_character_spots`, errors);
+        validateCharacterSpotMap(conditions.forbidden_character_spots, `${label}.forbidden_character_spots`, data, errors);
       }
 
       if (Array.isArray(conditions.required_items)) {
@@ -2254,6 +2265,15 @@
         Object.entries(effects.set).forEach(([path, value]) => {
           if (path.endsWith(".spot_id") && typeof value === "string" && !data.world?.spots?.[value]) {
             errors.push(`${label}.set.${path} のスポットIDが world.spots に存在しません: ${value}`);
+          }
+          if (path.startsWith("characters.")) {
+            const parts = path.split(".");
+            if (parts.length >= 2) {
+              const characterId = parts[1];
+              if (!data.initial_state?.characters?.[characterId]) {
+                errors.push(`${label}.set.${path} のキャラが initial_state.characters に存在しません: ${characterId}`);
+              }
+            }
           }
         });
       }
@@ -2371,6 +2391,9 @@
               if (!isPlainObject(entry)) {
                 errors.push(`${label}.conditional_texts[${index}] はオブジェクトである必要があります。`);
                 return;
+              }
+              if (!(typeof entry.text === "string" || (Array.isArray(entry.text) && entry.text.every((line) => typeof line === "string")))) {
+                errors.push(`${label}.conditional_texts[${index}].text は文字列または文字列配列である必要があります。`);
               }
               validateConditionsObject(entry.conditions, `${label}.conditional_texts[${index}].conditions`, data, errors);
             });

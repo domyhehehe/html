@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- sound-novel-json-runner-world-scenario-only-final -->
+<!-- sound-novel-json-runner-world-scenario-only-final-complete-fixed-newlines -->
 <html lang="ja">
 <head>
   <meta charset="utf-8" />
@@ -231,7 +231,7 @@
 
     <div class="card">
       <h2>通知</h2>
-      <div id="globalStatus" class="status warn">サンプルを読むか、AI用プロンプトをコピーしてJSONを作ってください。</div>
+      <div id="globalStatus" class="status warn">サンプルを読むか、JSONを読み込んで開始してください。</div>
       <div class="row" style="margin-top:10px;">
         <button id="copyStatusButton" class="button secondary" type="button">通知をコピー</button>
       </div>
@@ -247,14 +247,17 @@
 
       <label class="label" for="scriptInput" style="margin-top:12px;">台本JSON</label>
       <textarea id="scriptInput" spellcheck="false"></textarea>
+      <input id="jsonFileInput" type="file" accept=".json,application/json" class="hidden" />
 
       <p class="note">
         新仕様専用: <code class="inline">definitions / world / scenario / initial_state</code>。
         進行は <code class="inline">scenario.events</code> と <code class="inline">current_event_id / next_event_id</code>。
+        NPC位置は <code class="inline">characters[character_id].spot_id</code> を正式採用し、<code class="inline">required_character_spots</code> / <code class="inline">forbidden_character_spots</code> に対応。
       </p>
 
       <div class="row">
         <button id="loadExampleButton" class="button secondary" type="button">サンプル読込</button>
+        <button id="openFileButton" class="button secondary" type="button">JSONファイルを選択</button>
         <button id="copyPromptButton" class="button secondary" type="button">AI用プロンプトをコピー</button>
         <button id="pasteScriptButton" class="button secondary" type="button">全削除してクリップボード貼り付け</button>
         <button id="loadScriptButton" class="button ok" type="button">このJSONで開始</button>
@@ -366,7 +369,9 @@
       const parts = path.split(".");
       let current = target;
       for (const part of parts) {
-        if (!isPlainObject(current) || !(part in current)) return undefined;
+        if (current === null || current === undefined || typeof current !== "object" || !(part in current)) {
+          return undefined;
+        }
         current = current[part];
       }
       return current;
@@ -377,7 +382,9 @@
       let current = target;
       for (let i = 0; i < parts.length - 1; i += 1) {
         const part = parts[i];
-        if (!isPlainObject(current[part])) current[part] = {};
+        if (current[part] === null || current[part] === undefined || typeof current[part] !== "object" || Array.isArray(current[part])) {
+          current[part] = {};
+        }
         current = current[part];
       }
       return { parent: current, key: parts[parts.length - 1] };
@@ -425,6 +432,8 @@
       setup: {
         promptModeSelect: document.getElementById("promptModeSelect"),
         scriptInput: document.getElementById("scriptInput"),
+        jsonFileInput: document.getElementById("jsonFileInput"),
+        openFileButton: document.getElementById("openFileButton"),
         loadExampleButton: document.getElementById("loadExampleButton"),
         copyPromptButton: document.getElementById("copyPromptButton"),
         pasteScriptButton: document.getElementById("pasteScriptButton"),
@@ -478,465 +487,990 @@
     };
 
     const SAMPLE_SCENARIO = {
-      "title": "呪われた山岳神殿からの脱出",
-      "version": "2.0",
+      "title": "ベイカー街の密室からの脱出",
+      "version": "2.1",
       "definitions": {
         "characters": {
-          "adventurer": {
-            "name": "冒険者",
-            "tags": ["player", "human", "explorer"],
+          "holmes": {
+            "name": "シャーロック・ホームズ",
+            "tags": ["player", "human", "detective"],
             "base_stats": {
-              "体力": 70,
-              "筋力": 5
+              "体力": 60,
+              "推理力": 8
             },
-            "description": "崩落しかけた古代神殿に足を踏み入れた単独の探索者。"
+            "description": "封鎖された邸宅に閉じ込められた名探偵。冷静な観察眼で脱出路を探す。"
+          },
+          "watson": {
+            "name": "ワトスン",
+            "tags": ["npc", "ally", "doctor"],
+            "base_stats": {
+              "体力": 55,
+              "医学知識": 6
+            },
+            "description": "ホームズの相棒。邸宅内を独立して調査し、ヒントをもたらす。"
           }
         },
         "items": {
-          "old_key": {
-            "name": "古い鍵",
+          "brass_key": {
+            "name": "真鍮の鍵",
             "item_type": "key",
             "tags": ["quest", "unlock"],
-            "description": "神殿入口の封印門に対応する古びた鍵。",
+            "description": "地下室への扉に対応する古い真鍮製の鍵。",
             "stackable": false,
             "consumable": false
+          },
+          "cipher_note": {
+            "name": "暗号メモ",
+            "item_type": "document",
+            "tags": ["clue", "cipher"],
+            "description": "書斎で発見された暗号文。解読すれば隠し通路の仕掛けがわかる。",
+            "stackable": false,
+            "consumable": false
+          },
+          "iron_bar": {
+            "name": "鉄の棒",
+            "item_type": "tool",
+            "tags": ["force", "pry"],
+            "description": "温室の棚から外れた鉄製の支柱。こじ開けに使えそうだ。",
+            "stackable": false,
+            "consumable": true
           }
         }
       },
       "world": {
         "settings": {
-          "genre": "fantasy_escape",
+          "genre": "mystery_escape",
           "default_language": "ja"
         },
         "time_system": {
           "calendar_type": "gregorian",
-          "default_timezone": "Asia/Tokyo",
+          "default_timezone": "Europe/London",
           "turn_unit": "minute",
           "minutes_per_turn": 5
         },
         "areas": {
-          "sealed_mountain_region": {
-            "name": "封印された山岳地帯",
-            "description": "雷鳴に包まれた山中に、古代神殿が眠っている。"
+          "sealed_manor": {
+            "name": "封鎖されたモラン邸",
+            "description": "ロンドン郊外、霧に包まれた屋敷。内側から完全に封鎖されている。"
           }
         },
         "dungeons": {
-          "cursed_mountain_temple": {
-            "name": "呪われた山岳神殿",
-            "area_id": "sealed_mountain_region",
-            "type": "temple",
-            "description": "崩落寸前の古代祭祀神殿。"
+          "moran_manor": {
+            "name": "モラン邸",
+            "area_id": "sealed_manor",
+            "type": "manor",
+            "description": "三階建ての石造り邸宅。犯罪組織の拠点として使われていた疑惑がある。"
           }
         },
         "spots": {
-          "temple_entrance": {
-            "name": "神殿入口",
-            "area_id": "sealed_mountain_region",
-            "dungeon_id": "cursed_mountain_temple",
+          "entrance_hall": {
+            "name": "玄関ホール",
+            "area_id": "sealed_manor",
+            "dungeon_id": "moran_manor",
             "spot_type": "entrance",
-            "connections": ["collapsed_corridor", "ritual_hall", "hidden_chamber"]
+            "connections": ["study", "basement_stairs", "greenhouse"]
           },
-          "collapsed_corridor": {
-            "name": "崩れた回廊",
-            "area_id": "sealed_mountain_region",
-            "dungeon_id": "cursed_mountain_temple",
+          "study": {
+            "name": "書斎",
+            "area_id": "sealed_manor",
+            "dungeon_id": "moran_manor",
+            "spot_type": "room",
+            "connections": ["entrance_hall", "hidden_passage"]
+          },
+          "basement_stairs": {
+            "name": "地下への階段",
+            "area_id": "sealed_manor",
+            "dungeon_id": "moran_manor",
             "spot_type": "corridor",
-            "connections": ["temple_entrance", "ritual_hall"]
+            "connections": ["entrance_hall", "basement_vault"]
           },
-          "ritual_hall": {
-            "name": "祭祀の間",
-            "area_id": "sealed_mountain_region",
-            "dungeon_id": "cursed_mountain_temple",
-            "spot_type": "hall",
-            "connections": ["temple_entrance"]
+          "basement_vault": {
+            "name": "地下金庫室",
+            "area_id": "sealed_manor",
+            "dungeon_id": "moran_manor",
+            "spot_type": "vault",
+            "connections": ["basement_stairs", "hidden_passage"]
           },
-          "hidden_chamber": {
-            "name": "隠し部屋",
-            "area_id": "sealed_mountain_region",
-            "dungeon_id": "cursed_mountain_temple",
+          "hidden_passage": {
+            "name": "隠し通路",
+            "area_id": "sealed_manor",
+            "dungeon_id": "moran_manor",
             "spot_type": "secret_room",
-            "connections": ["temple_entrance", "outer_wall_exit"]
+            "connections": ["study", "basement_vault", "greenhouse"]
           },
-          "outer_wall_exit": {
-            "name": "外壁の裂け目",
-            "area_id": "sealed_mountain_region",
-            "dungeon_id": "cursed_mountain_temple",
+          "greenhouse": {
+            "name": "温室",
+            "area_id": "sealed_manor",
+            "dungeon_id": "moran_manor",
+            "spot_type": "room",
+            "connections": ["entrance_hall", "hidden_passage", "back_exit"]
+          },
+          "back_exit": {
+            "name": "裏口",
+            "area_id": "sealed_manor",
+            "dungeon_id": "moran_manor",
             "spot_type": "exit",
-            "connections": []
+            "connections": ["greenhouse"]
           }
         }
       },
       "scenario": {
-        "start_event_id": "temple_entrance_event",
-        "game_over_event_id": "collapse_game_over_event",
+        "start_event_id": "entrance_hall_event",
+        "game_over_event_id": "trapped_game_over_event",
         "quests": {
-          "escape_temple": {
-            "title": "神殿から脱出する",
-            "description": "崩落する神殿から生還する。",
+          "escape_manor": {
+            "title": "モラン邸から脱出する",
+            "description": "封鎖された邸宅から生還し、可能なら事件の全貌を解明する。",
             "restrictions": {
-              "allowed_area_ids": ["sealed_mountain_region"],
-              "allowed_dungeon_ids": ["cursed_mountain_temple"],
-              "allowed_character_ids": ["adventurer"],
+              "allowed_area_ids": ["sealed_manor"],
+              "allowed_dungeon_ids": ["moran_manor"],
+              "allowed_character_ids": ["holmes", "watson"],
               "allowed_event_ids": [
-                "temple_entrance_event",
-                "collapsed_corridor_event",
-                "ritual_hall_event",
-                "hidden_chamber_event",
+                "entrance_hall_event",
+                "study_event",
+                "basement_stairs_event",
+                "basement_vault_event",
+                "hidden_passage_event",
+                "greenhouse_event",
                 "normal_escape_end_event",
-                "power_escape_end_event",
-                "collapse_game_over_event"
+                "deduction_escape_end_event",
+                "trapped_game_over_event"
               ]
             },
             "completion": {
-              "required_any_flags": ["escaped_normal", "escaped_power"]
+              "required_any_flags": ["escaped_normal", "escaped_deduction"]
             }
           }
         },
         "events": {
-          "temple_entrance_event": {
-            "title": "神殿入口",
+          "entrance_hall_event": {
+            "title": "玄関ホール",
             "event_type": "spot_event",
-            "spot_id": "temple_entrance",
-            "participants": ["adventurer"],
+            "spot_id": "entrance_hall",
+            "participants": ["holmes", "watson"],
             "text": [
-              "山岳神殿の封印門が、雷鳴に合わせて鈍く震えている。",
-              "このままでは崩落に巻き込まれる。脱出路を見つけなければならない。"
+              "モラン邸の玄関ホール。重厚な扉は外側から施錠され、脱出路が塞がれている。",
+              "霧の中、遠くで警鐘の音がかすかに聞こえる。時間は多くない。"
             ],
             "conditional_texts": [
               {
-                "conditions": { "required_flags": ["inscription_read"] },
-                "text": ["碑文の内容を思い出す。罠を避けるには『静かに、重心を低く』だ。"]
+                "conditions": {
+                  "required_character_spots": {"watson": ["entrance_hall"]},
+                  "forbidden_flags": ["watson_spoke_entrance"]
+                },
+                "text": [
+                  "ワトスンが何かに気づいた様子で辺りを見回している。話しかければ手がかりを教えてくれるかもしれない。"
+                ]
               },
               {
-                "conditions": { "required_flags": ["gate_unlocked"] },
-                "text": ["封印門はすでに解かれている。今なら奥へ進める。"]
+                "conditions": {
+                  "required_character_spots": {"watson": ["entrance_hall"]},
+                  "required_flags": ["watson_spoke_entrance"]
+                },
+                "text": [
+                  "ワトスンが柱時計を調べている。『ホームズ、この時計……針が止まっています。何か意味があるのでは？』"
+                ]
               },
               {
-                "conditions": { "required_flags": ["crate_opened"] },
-                "text": ["入口脇の木箱は開いたままで、中は空になっている。"]
+                "conditions": {
+                  "required_character_spots": {"watson": ["study"]}
+                },
+                "text": [
+                  "ワトスンは書斎に移動している。足跡が廊下に続いている。"
+                ]
               },
               {
-                "conditions": { "required_flags": ["strength_training_done"] },
-                "text": ["崩れた石柱はすでに持ち上げた。腕には鈍い疲労が残っている。"]
+                "conditions": {
+                  "required_flags": ["clock_examined"]
+                },
+                "text": [
+                  "柱時計の針は午後11時47分で止まっている。事件発生時刻の手がかりだ。"
+                ]
               },
               {
-                "conditions": { "min_unique": { "筋力": 6 }, "forbidden_flags": ["force_gate_used"] },
-                "text": ["脇の石扉は重いが、今の筋力ならこじ開けられそうだ。"]
+                "conditions": {
+                  "required_flags": ["brass_key_found"]
+                },
+                "text": [
+                  "真鍮の鍵を持っている。地下室への扉が開けられるはずだ。"
+                ]
+              },
+              {
+                "conditions": {
+                  "required_flags": ["cipher_decoded"]
+                },
+                "text": [
+                  "暗号の解読が済んでいる。隠し通路の仕掛けは『暖炉の左の燭台を引く』だ。"
+                ]
               }
             ],
             "actions": [
               {
-                "id": "read_inscription",
-                "text": "壁面の碑文を読む",
-                "conditions": { "forbidden_flags": ["inscription_read"] },
-                "effects": { "set_flags": ["inscription_read"], "add_time": { "minutes": 5 } },
-                "success_message": "罠回避の手順を理解した。",
-                "failure_message": "碑文はもう読み終えている。",
+                "id": "talk_to_watson_at_entrance",
+                "text": "ワトスンに話しかける",
+                "conditions": {
+                  "required_character_spots": {"watson": ["entrance_hall"]},
+                  "forbidden_flags": ["watson_spoke_entrance"]
+                },
+                "effects": {
+                  "set_flags": ["watson_spoke_entrance"],
+                  "add_time": {"minutes": 2}
+                },
+                "success_message": "『ホームズ、この時計……針が止まっています。それと書斎の机にも妙なものがありそうです』ワトスンの指摘が手がかりを開いた。",
                 "hidden_when_disabled": true
               },
               {
-                "id": "open_crate",
-                "text": "入口脇の木箱を開ける",
-                "conditions": { "forbidden_flags": ["crate_opened"] },
-                "effects": {
-                  "add_items": [{ "item_id": "old_key", "quantity": 1 }],
-                  "remove_spot_items": [{ "spot_id": "temple_entrance", "item_id": "old_key", "quantity": 1 }],
-                  "set_flags": ["crate_opened"],
-                  "add_time": { "minutes": 1 }
+                "id": "examine_clock",
+                "text": "柱時計を調べる",
+                "conditions": {
+                  "required_flags": ["watson_spoke_entrance"],
+                  "forbidden_flags": ["clock_examined"]
                 },
-                "success_message": "木箱の中から古い鍵を見つけた。",
-                "failure_message": "もう鍵は入っていない。木箱の中は空だ。",
-                "disabled_text": "入口脇の木箱を確認する"
-              },
-              {
-                "id": "train_strength",
-                "text": "崩れた石柱を持ち上げて身体を慣らす",
-                "conditions": { "forbidden_flags": ["strength_training_done"] },
                 "effects": {
-                  "add_unique": { "筋力": 1 },
-                  "add": { "characters.adventurer.current_stats.体力": -5 },
-                  "set_flags": ["strength_training_done"],
-                  "add_time": { "minutes": 15 }
+                  "add_items": [{"item_id": "brass_key", "quantity": 1}],
+                  "remove_spot_items": [{"spot_id": "entrance_hall", "item_id": "brass_key", "quantity": 1}],
+                  "set_flags": ["clock_examined", "brass_key_found"],
+                  "add_time": {"minutes": 5}
                 },
-                "success_message": "重い石柱を持ち上げ、筋力が1上がった。代わりに体力を5消耗した。",
-                "failure_message": "これ以上ここで鍛える余裕はない。",
+                "success_message": "時計の文字盤裏に真鍮の鍵が隠されていた。ワトスンの観察眼は侮れない。",
                 "hidden_when_disabled": true
               },
               {
-                "id": "unlock_gate",
-                "text": "古い鍵で封印門を解錠する",
-                "conditions": { "required_items": [{ "item_id": "old_key", "quantity": 1 }], "forbidden_flags": ["gate_unlocked"] },
-                "effects": { "set_flags": ["gate_unlocked"], "add_time": { "minutes": 2 } },
-                "success_message": "鈍い音を立てて封印門が開いた。",
-                "failure_message": "対応する鍵が必要だ。",
+                "id": "send_watson_to_study",
+                "text": "ワトスンに書斎を先に調べてもらう",
+                "conditions": {
+                  "required_character_spots": {"watson": ["entrance_hall"]}
+                },
+                "effects": {
+                  "set": {"characters.watson.spot_id": "study"},
+                  "add_time": {"minutes": 3}
+                },
+                "success_message": "ワトスンは書斎へ向かった。彼の医学的観察眼が何かを見つけるかもしれない。",
                 "hidden_when_disabled": true
-              }
-            ],
-            "choices": [
-              {
-                "text": "封印門の奥へ進む",
-                "conditions": { "required_flags": ["gate_unlocked"] },
-                "disabled_text": "封印門は閉ざされている",
-                "failure_message": "古い鍵で封印を解かなければ進めない。",
-                "effects": {
-                  "set": {
-                    "current_spot_id": "ritual_hall",
-                    "characters.adventurer.spot_id": "ritual_hall"
-                  },
-                  "add_time": { "minutes": 3 }
-                },
-                "next_event_id": "ritual_hall_event"
               },
               {
-                "text": "崩れた回廊を進む",
-                "effects": {
-                  "set": {
-                    "current_spot_id": "collapsed_corridor",
-                    "characters.adventurer.spot_id": "collapsed_corridor"
-                  },
-                  "add_time": { "minutes": 3 }
+                "id": "deduce_at_hall",
+                "text": "ホール全体を推理する",
+                "conditions": {
+                  "required_flags": ["clock_examined"],
+                  "forbidden_flags": ["hall_deduced"]
                 },
-                "next_event_id": "collapsed_corridor_event"
-              },
-              {
-                "text": "石扉を力づくでこじ開ける",
-                "conditions": { "min_unique": { "筋力": 6 }, "forbidden_flags": ["force_gate_used"] },
-                "effects": {
-                  "set_flags": ["force_gate_used"],
-                  "set": {
-                    "current_spot_id": "hidden_chamber",
-                    "characters.adventurer.spot_id": "hidden_chamber"
-                  },
-                  "add_time": { "minutes": 4 }
-                },
-                "failure_message": "石扉はびくともしない。筋力が足りない。",
                 "hidden_when_disabled": true,
-                "next_event_id": "hidden_chamber_event"
-              }
-            ]
-          },
-          "collapsed_corridor_event": {
-            "title": "崩れた回廊",
-            "event_type": "spot_event",
-            "spot_id": "collapsed_corridor",
-            "participants": ["adventurer"],
-            "text": ["足場は崩れかけ、天井から砂塵が降り続けている。"],
-            "conditional_texts": [
-              {
-                "conditions": { "required_flags": ["inscription_read"] },
-                "text": ["碑文の助言が頭に残っている。ここは静かに進めば突破できそうだ。"]
+                "effects": {
+                  "set_flags": ["hall_deduced"],
+                  "add": {"characters.holmes.current_stats.体力": -5},
+                  "add_time": {"minutes": 10}
+                },
+                "success_message": "『針の止まった時計、乱れた敷物、扉の鍵穴の傷……この邸宅には確かに何者かが仕掛けを施した』ホームズは確信した。"
               }
             ],
             "choices": [
               {
-                "text": "慎重に進む",
-                "conditions": { "required_flags": ["inscription_read"] },
-                "disabled_text": "慎重に進む（碑文の知識がないと危険）",
-                "failure_message": "足場の読み方がわからない。このままでは慎重に進めない。",
+                "text": "書斎へ向かう",
                 "effects": {
                   "set": {
-                    "current_spot_id": "ritual_hall",
-                    "characters.adventurer.spot_id": "ritual_hall"
+                    "current_spot_id": "study",
+                    "characters.holmes.spot_id": "study"
                   },
-                  "add_time": { "minutes": 10 }
+                  "add_time": {"minutes": 3}
                 },
-                "next_event_id": "ritual_hall_event"
+                "next_event_id": "study_event"
               },
               {
-                "text": "急いで駆け抜ける",
-                "effects": {
-                  "add": { "characters.adventurer.current_stats.体力": -80 },
-                  "add_time": { "minutes": 2 }
-                },
-                "failure_message": "落石が直撃した。",
-                "next_event_id": "collapsed_corridor_event"
-              },
-              {
-                "text": "入口へ戻る",
+                "text": "地下への階段へ向かう",
                 "effects": {
                   "set": {
-                    "current_spot_id": "temple_entrance",
-                    "characters.adventurer.spot_id": "temple_entrance"
+                    "current_spot_id": "basement_stairs",
+                    "characters.holmes.spot_id": "basement_stairs"
                   },
-                  "add_time": { "minutes": 3 }
+                  "add_time": {"minutes": 3}
                 },
-                "next_event_id": "temple_entrance_event"
+                "next_event_id": "basement_stairs_event"
+              },
+              {
+                "text": "温室へ向かう",
+                "conditions": {
+                  "required_flags": ["brass_key_found"]
+                },
+                "disabled_text": "温室への経路がまだわからない",
+                "failure_message": "まず邸宅内を調べて手がかりを掴む必要がある。",
+                "effects": {
+                  "set": {
+                    "current_spot_id": "greenhouse",
+                    "characters.holmes.spot_id": "greenhouse"
+                  },
+                  "add_time": {"minutes": 4}
+                },
+                "next_event_id": "greenhouse_event"
               }
             ]
           },
-          "ritual_hall_event": {
-            "title": "祭祀の間",
+          "study_event": {
+            "title": "書斎",
             "event_type": "spot_event",
-            "spot_id": "ritual_hall",
-            "participants": ["adventurer"],
+            "spot_id": "study",
+            "participants": ["holmes", "watson"],
             "text": [
-              "中央に古い祭壇、奥に重い脱出扉が見える。",
-              "扉にはまだ封印の力が残っているようだ。"
+              "本棚に囲まれた書斎。机の上には無数の書類が散乱している。",
+              "暖炉の火は消えており、灰の中に何かが燃やされた跡がある。"
             ],
             "conditional_texts": [
               {
-                "conditions": { "required_flags": ["lever_used"] },
-                "text": ["祭壇横の機構はすでに作動済みだ。脱出扉の封印は緩んでいる。"]
+                "conditions": {
+                  "required_character_spots": {"watson": ["study"]},
+                  "forbidden_flags": ["watson_spoke_study"]
+                },
+                "text": [
+                  "ワトスンが灰のそばで何かに気づいた様子だ。話しかければ手がかりを教えてくれるかもしれない。"
+                ]
+              },
+              {
+                "conditions": {
+                  "required_character_spots": {"watson": ["study"]},
+                  "required_flags": ["watson_spoke_study"]
+                },
+                "text": [
+                  "ワトスンが灰を調べている。『ホームズ、これは最近燃やされたものです。まだ温かい』"
+                ]
+              },
+              {
+                "conditions": {
+                  "required_flags": ["cipher_note_found"]
+                },
+                "text": [
+                  "暗号メモはすでに入手済みだ。"
+                ]
+              },
+              {
+                "conditions": {
+                  "required_flags": ["cipher_decoded"]
+                },
+                "text": [
+                  "暗号は解読済み。暖炉左の燭台を引けば隠し通路が開く。"
+                ]
+              },
+              {
+                "conditions": {
+                  "required_flags": ["hidden_passage_open"]
+                },
+                "text": [
+                  "暖炉脇の壁が開いており、隠し通路への入口が露出している。"
+                ]
               }
             ],
             "actions": [
               {
-                "id": "pull_lever",
-                "text": "祭壇横のレバーを引く",
-                "conditions": { "forbidden_flags": ["lever_used"] },
-                "effects": {
-                  "set_flags": ["lever_used"],
-                  "add": { "characters.adventurer.current_stats.体力": -10 },
-                  "add_time": { "minutes": 5 }
+                "id": "talk_to_watson_at_study",
+                "text": "ワトスンに話しかける",
+                "conditions": {
+                  "required_character_spots": {"watson": ["study"]},
+                  "forbidden_flags": ["watson_spoke_study"]
                 },
-                "success_message": "歯車音と共に脱出扉の封印が緩んだ。",
-                "failure_message": "レバーはすでに固定されている。",
+                "effects": {
+                  "set_flags": ["watson_spoke_study"],
+                  "add_time": {"minutes": 2}
+                },
+                "success_message": "『ホームズ、灰はまだ温かい。そして机の書類の束……何かが隠されている気がします』ワトスンの指摘が手がかりを開いた。",
+                "hidden_when_disabled": true
+              },
+              {
+                "id": "search_desk",
+                "text": "机の書類を調べる",
+                "conditions": {
+                  "required_flags": ["watson_spoke_study"],
+                  "forbidden_flags": ["cipher_note_found"]
+                },
+                "effects": {
+                  "add_items": [{"item_id": "cipher_note", "quantity": 1}],
+                  "remove_spot_items": [{"spot_id": "study", "item_id": "cipher_note", "quantity": 1}],
+                  "set_flags": ["cipher_note_found"],
+                  "add_time": {"minutes": 5}
+                },
+                "success_message": "書類の束の奥に、折り畳まれた暗号メモを発見した。",
+                "hidden_when_disabled": true
+              },
+              {
+                "id": "decode_cipher",
+                "text": "暗号メモを解読する",
+                "conditions": {
+                  "required_items": [{"item_id": "cipher_note", "quantity": 1}],
+                  "min_unique": {"推理力": 7},
+                  "forbidden_flags": ["cipher_decoded"]
+                },
+                "effects": {
+                  "set_flags": ["cipher_decoded"],
+                  "add": {"characters.holmes.current_stats.体力": -5},
+                  "add_time": {"minutes": 10}
+                },
+                "success_message": "『なるほど……換字式暗号か。単純だが効果的だ』仕掛けの場所を特定した。",
+                "failure_message": "暗号解読には高い推理力が必要だ。",
+                "hidden_when_disabled": true
+              },
+              {
+                "id": "pull_candlestick",
+                "text": "暖炉左の燭台を引く",
+                "conditions": {
+                  "required_flags": ["cipher_decoded"],
+                  "forbidden_flags": ["hidden_passage_open"]
+                },
+                "effects": {
+                  "set_flags": ["hidden_passage_open"],
+                  "add_time": {"minutes": 2}
+                },
+                "success_message": "ギィという音と共に壁が動き、隠し通路への入口が現れた。",
+                "hidden_when_disabled": true
+              },
+              {
+                "id": "recall_watson_to_entrance",
+                "text": "ワトスンを玄関ホールへ戻す",
+                "conditions": {
+                  "required_character_spots": {"watson": ["study"]}
+                },
+                "effects": {
+                  "set": {"characters.watson.spot_id": "entrance_hall"},
+                  "add_time": {"minutes": 2}
+                },
+                "success_message": "ワトスンは玄関ホールへ戻った。",
                 "hidden_when_disabled": true
               }
             ],
             "choices": [
               {
-                "text": "脱出扉を開ける",
-                "conditions": { "required_flags": ["lever_used"] },
-                "disabled_text": "封印が強すぎて開かない",
-                "failure_message": "祭壇の機構を動かさなければ、この扉は開かない。",
+                "text": "隠し通路へ進む",
+                "conditions": {
+                  "required_flags": ["hidden_passage_open"]
+                },
+                "disabled_text": "壁に隠された通路がありそうだが……",
+                "failure_message": "仕掛けの解き方がわからない。暗号メモに手がかりがあるかもしれない。",
+                "effects": {
+                  "set": {
+                    "current_spot_id": "hidden_passage",
+                    "characters.holmes.spot_id": "hidden_passage"
+                  },
+                  "add_time": {"minutes": 3}
+                },
+                "next_event_id": "hidden_passage_event"
+              },
+              {
+                "text": "玄関ホールへ戻る",
+                "effects": {
+                  "set": {
+                    "current_spot_id": "entrance_hall",
+                    "characters.holmes.spot_id": "entrance_hall"
+                  },
+                  "add_time": {"minutes": 3}
+                },
+                "next_event_id": "entrance_hall_event"
+              }
+            ]
+          },
+          "basement_stairs_event": {
+            "title": "地下への階段",
+            "event_type": "spot_event",
+            "spot_id": "basement_stairs",
+            "participants": ["holmes"],
+            "text": [
+              "石造りの急な階段が地下へ続いている。古びた鉄扉が行く手を遮っている。",
+              "扉には真鍮製の錠前がかかっており、対応する鍵が必要だ。"
+            ],
+            "conditional_texts": [
+              {
+                "conditions": {
+                  "required_flags": ["brass_key_found"]
+                },
+                "text": [
+                  "真鍮の鍵を持っている。この錠前を開けられるはずだ。"
+                ]
+              },
+              {
+                "conditions": {
+                  "required_flags": ["basement_unlocked"]
+                },
+                "text": [
+                  "鉄扉はすでに解錠されている。地下金庫室へ通じている。"
+                ]
+              }
+            ],
+            "actions": [
+              {
+                "id": "unlock_basement",
+                "text": "真鍮の鍵で鉄扉を開ける",
+                "conditions": {
+                  "required_items": [{"item_id": "brass_key", "quantity": 1}],
+                  "forbidden_flags": ["basement_unlocked"]
+                },
+                "effects": {
+                  "set_flags": ["basement_unlocked"],
+                  "add_time": {"minutes": 2}
+                },
+                "success_message": "錠前が外れ、鉄扉が軋みながら開いた。",
+                "hidden_when_disabled": true
+              }
+            ],
+            "choices": [
+              {
+                "text": "地下金庫室へ降りる",
+                "conditions": {
+                  "required_flags": ["basement_unlocked"]
+                },
+                "disabled_text": "鉄扉が施錠されていて降りられない",
+                "failure_message": "真鍮の鍵で錠前を外す必要がある。",
+                "effects": {
+                  "set": {
+                    "current_spot_id": "basement_vault",
+                    "characters.holmes.spot_id": "basement_vault"
+                  },
+                  "add_time": {"minutes": 5}
+                },
+                "next_event_id": "basement_vault_event"
+              },
+              {
+                "text": "玄関ホールへ戻る",
+                "effects": {
+                  "set": {
+                    "current_spot_id": "entrance_hall",
+                    "characters.holmes.spot_id": "entrance_hall"
+                  },
+                  "add_time": {"minutes": 3}
+                },
+                "next_event_id": "entrance_hall_event"
+              }
+            ]
+          },
+          "basement_vault_event": {
+            "title": "地下金庫室",
+            "event_type": "spot_event",
+            "spot_id": "basement_vault",
+            "participants": ["holmes"],
+            "text": [
+              "地下の金庫室。棚には犯罪組織の記録と思しき書類が並んでいる。",
+              "奥の壁に隠し通路と合流するらしき扉の輪郭が見える。"
+            ],
+            "conditional_texts": [
+              {
+                "conditions": {
+                  "required_flags": ["vault_searched"]
+                },
+                "text": [
+                  "金庫室はすでに調べ終えた。証拠書類の内容は記憶に刻まれている。"
+                ]
+              },
+              {
+                "conditions": {
+                  "required_flags": ["evidence_collected"]
+                },
+                "text": [
+                  "犯罪組織の全容を示す証拠を手に入れた。これがあれば脱出後にレストレード警部へ渡せる。"
+                ]
+              },
+              {
+                "conditions": {
+                  "required_flags": ["hidden_passage_open"]
+                },
+                "text": [
+                  "書斎側からも通路が開いている。隠し通路を通れば書斎へ抜けられる。"
+                ]
+              }
+            ],
+            "actions": [
+              {
+                "id": "search_vault",
+                "text": "金庫室の書類を調査する",
+                "conditions": {
+                  "forbidden_flags": ["vault_searched"]
+                },
+                "effects": {
+                  "set_flags": ["vault_searched"],
+                  "add": {"characters.holmes.current_stats.体力": -10},
+                  "add_time": {"minutes": 15}
+                },
+                "success_message": "『これは……モラン大佐が直接指揮した犯罪の記録だ。証拠として充分すぎる』",
+                "hidden_when_disabled": true
+              },
+              {
+                "id": "collect_evidence",
+                "text": "証拠書類を手に取る",
+                "conditions": {
+                  "required_flags": ["vault_searched"],
+                  "forbidden_flags": ["evidence_collected"]
+                },
+                "effects": {
+                  "set_flags": ["evidence_collected"],
+                  "add_time": {"minutes": 5}
+                },
+                "success_message": "証拠書類を懐に収めた。この脱出は単なる逃走ではなく、事件解決に繋がる。",
+                "hidden_when_disabled": true
+              }
+            ],
+            "choices": [
+              {
+                "text": "隠し通路へ抜ける",
+                "conditions": {
+                  "required_flags": ["hidden_passage_open"]
+                },
+                "disabled_text": "奥の扉は向こう側から開けなければならないようだ",
+                "failure_message": "書斎側から仕掛けを解かなければこの扉は開かない。",
+                "effects": {
+                  "set": {
+                    "current_spot_id": "hidden_passage",
+                    "characters.holmes.spot_id": "hidden_passage"
+                  },
+                  "add_time": {"minutes": 5}
+                },
+                "next_event_id": "hidden_passage_event"
+              },
+              {
+                "text": "地下階段へ戻る",
+                "effects": {
+                  "set": {
+                    "current_spot_id": "basement_stairs",
+                    "characters.holmes.spot_id": "basement_stairs"
+                  },
+                  "add_time": {"minutes": 5}
+                },
+                "next_event_id": "basement_stairs_event"
+              }
+            ]
+          },
+          "hidden_passage_event": {
+            "title": "隠し通路",
+            "event_type": "spot_event",
+            "spot_id": "hidden_passage",
+            "participants": ["holmes"],
+            "text": [
+              "埃っぽい隠し通路。書斎・地下金庫室・温室の三方に繋がっている。",
+              "壁面には古い機構が並んでおり、どれかを操作すれば何かが起きそうだ。"
+            ],
+            "conditional_texts": [
+              {
+                "conditions": {
+                  "required_flags": ["mechanism_activated"]
+                },
+                "text": [
+                  "機構はすでに作動している。温室側の扉が開いているはずだ。"
+                ]
+              },
+              {
+                "conditions": {
+                  "required_flags": ["hall_deduced", "cipher_decoded"]
+                },
+                "text": [
+                  "ホールの観察と暗号解読を経て、ホームズの頭の中で事件の全構図が繋がりつつある。"
+                ]
+              }
+            ],
+            "actions": [
+              {
+                "id": "activate_mechanism",
+                "text": "壁面の機構を操作する",
+                "conditions": {
+                  "required_flags": ["cipher_decoded"],
+                  "forbidden_flags": ["mechanism_activated"]
+                },
+                "effects": {
+                  "set_flags": ["mechanism_activated"],
+                  "add_time": {"minutes": 5}
+                },
+                "success_message": "暗号の知識を活かし機構を正確に操作した。温室側の扉が開く音がした。",
+                "hidden_when_disabled": true
+              },
+              {
+                "id": "full_deduction",
+                "text": "通路で事件の全貌を推理する",
+                "conditions": {
+                  "required_flags": ["hall_deduced", "vault_searched", "cipher_decoded"],
+                  "forbidden_flags": ["case_solved"]
+                },
+                "effects": {
+                  "set_flags": ["case_solved"],
+                  "add": {"characters.holmes.current_stats.体力": -10},
+                  "add_time": {"minutes": 10}
+                },
+                "success_message": "『すべての断片が一致した。モラン大佐は自ら封鎖し、証拠を焼却しようとした。しかし時計が止まった時刻が彼のアリバイを崩す』完全な推理が完成した。",
+                "hidden_when_disabled": true
+              }
+            ],
+            "choices": [
+              {
+                "text": "温室へ抜ける",
+                "conditions": {
+                  "required_flags": ["mechanism_activated"]
+                },
+                "disabled_text": "温室側の扉は閉ざされている",
+                "failure_message": "通路の機構を操作しなければ温室へは抜けられない。",
+                "effects": {
+                  "set": {
+                    "current_spot_id": "greenhouse",
+                    "characters.holmes.spot_id": "greenhouse"
+                  },
+                  "add_time": {"minutes": 4}
+                },
+                "next_event_id": "greenhouse_event"
+              },
+              {
+                "text": "書斎へ戻る",
+                "effects": {
+                  "set": {
+                    "current_spot_id": "study",
+                    "characters.holmes.spot_id": "study"
+                  },
+                  "add_time": {"minutes": 3}
+                },
+                "next_event_id": "study_event"
+              },
+              {
+                "text": "地下金庫室へ戻る",
+                "effects": {
+                  "set": {
+                    "current_spot_id": "basement_vault",
+                    "characters.holmes.spot_id": "basement_vault"
+                  },
+                  "add_time": {"minutes": 5}
+                },
+                "next_event_id": "basement_vault_event"
+              }
+            ]
+          },
+          "greenhouse_event": {
+            "title": "温室",
+            "event_type": "spot_event",
+            "spot_id": "greenhouse",
+            "participants": ["holmes"],
+            "text": [
+              "霧に霞む温室。ガラス張りの天井から月光が差し込んでいる。",
+              "植物の棚が倒れており、その下に裏口へ続く通路が顔を出している。"
+            ],
+            "conditional_texts": [
+              {
+                "conditions": {
+                  "required_flags": ["iron_bar_found"]
+                },
+                "text": [
+                  "鉄の棒を持っている。倒れた棚を動かしてより確実に通路を開けられる。"
+                ]
+              },
+              {
+                "conditions": {
+                  "required_flags": ["back_door_forced"]
+                },
+                "text": [
+                  "裏口の板は外されている。いつでも外へ出られる。"
+                ]
+              },
+              {
+                "conditions": {
+                  "required_flags": ["case_solved"]
+                },
+                "text": [
+                  "事件の全貌を解明したホームズの目には、この温室の痕跡もすべて意味を持って見える。"
+                ]
+              }
+            ],
+            "actions": [
+              {
+                "id": "pick_up_iron_bar",
+                "text": "棚から外れた鉄の支柱を拾う",
+                "conditions": {
+                  "forbidden_flags": ["iron_bar_found"]
+                },
+                "effects": {
+                  "add_items": [{"item_id": "iron_bar", "quantity": 1}],
+                  "remove_spot_items": [{"spot_id": "greenhouse", "item_id": "iron_bar", "quantity": 1}],
+                  "set_flags": ["iron_bar_found"],
+                  "add_time": {"minutes": 2}
+                },
+                "success_message": "鉄の棒を拾い上げた。こじ開けに使えそうだ。",
+                "hidden_when_disabled": true
+              },
+              {
+                "id": "force_back_door",
+                "text": "鉄の棒で裏口の板をこじ開ける",
+                "conditions": {
+                  "required_items": [{"item_id": "iron_bar", "quantity": 1}],
+                  "forbidden_flags": ["back_door_forced"]
+                },
+                "effects": {
+                  "set_flags": ["back_door_forced"],
+                  "add_time": {"minutes": 5}
+                },
+                "success_message": "板が外れ、裏口の向こうに夜のロンドンが見えた。",
+                "hidden_when_disabled": true
+              }
+            ],
+            "choices": [
+              {
+                "text": "裏口から脱出する（通常脱出）",
+                "conditions": {
+                  "required_flags": ["back_door_forced"]
+                },
+                "disabled_text": "裏口の板が塞がっていて出られない",
+                "failure_message": "裏口の板を外す道具が必要だ。",
                 "effects": {
                   "set_flags": ["escaped_normal"],
                   "set": {
-                    "current_spot_id": "outer_wall_exit",
-                    "characters.adventurer.spot_id": "outer_wall_exit"
+                    "current_spot_id": "back_exit",
+                    "characters.holmes.spot_id": "back_exit",
+                    "characters.watson.spot_id": "back_exit"
                   },
-                  "add_time": { "minutes": 3 }
+                  "add_time": {"minutes": 3}
                 },
                 "next_event_id": "normal_escape_end_event"
               },
               {
-                "text": "入口方面へ戻る",
-                "effects": {
-                  "set": {
-                    "current_spot_id": "temple_entrance",
-                    "characters.adventurer.spot_id": "temple_entrance"
-                  },
-                  "add_time": { "minutes": 3 }
+                "text": "証拠を持って事件解決の上で脱出する",
+                "conditions": {
+                  "required_flags": ["back_door_forced", "case_solved", "evidence_collected"]
                 },
-                "next_event_id": "temple_entrance_event"
-              }
-            ]
-          },
-          "hidden_chamber_event": {
-            "title": "隠し部屋",
-            "event_type": "spot_event",
-            "spot_id": "hidden_chamber",
-            "participants": ["adventurer"],
-            "text": [
-              "石扉の先には、神殿外壁へ繋がる細い風穴があった。",
-              "冷たい風が吹き込み、外の気配がかすかに感じられる。"
-            ],
-            "conditional_texts": [
-              {
-                "conditions": { "required_flags": ["vent_climbed"] },
-                "text": ["風穴の縁には、爪で削ったような痕が残っている。"]
-              }
-            ],
-            "choices": [
-              {
-                "text": "風穴をよじ登る",
-                "conditions": { "min_unique": { "筋力": 6 }, "forbidden_flags": ["vent_climbed"] },
+                "disabled_text": "事件の全貌解明と証拠収集が揃えばここから完全勝利脱出できる",
+                "failure_message": "推理の完成・証拠収集・裏口の解放がすべて必要だ。",
                 "effects": {
-                  "set_flags": ["vent_climbed", "escaped_power"],
+                  "set_flags": ["escaped_deduction"],
                   "set": {
-                    "current_spot_id": "outer_wall_exit",
-                    "characters.adventurer.spot_id": "outer_wall_exit"
+                    "current_spot_id": "back_exit",
+                    "characters.holmes.spot_id": "back_exit",
+                    "characters.watson.spot_id": "back_exit"
                   },
-                  "add_time": { "minutes": 8 }
+                  "add_time": {"minutes": 3}
                 },
-                "failure_message": "腕力が足りず、風穴の途中で身体を支えきれない。",
-                "next_event_id": "power_escape_end_event"
+                "next_event_id": "deduction_escape_end_event"
               },
               {
-                "text": "入口へ戻る",
+                "text": "玄関ホールへ戻る",
                 "effects": {
                   "set": {
-                    "current_spot_id": "temple_entrance",
-                    "characters.adventurer.spot_id": "temple_entrance"
+                    "current_spot_id": "entrance_hall",
+                    "characters.holmes.spot_id": "entrance_hall"
                   },
-                  "add_time": { "minutes": 3 }
+                  "add_time": {"minutes": 4}
                 },
-                "next_event_id": "temple_entrance_event"
+                "next_event_id": "entrance_hall_event"
               }
             ]
           },
           "normal_escape_end_event": {
-            "title": "通常脱出",
+            "title": "脱出成功",
             "event_type": "ending",
-            "spot_id": "outer_wall_exit",
-            "participants": ["adventurer"],
+            "spot_id": "back_exit",
+            "participants": ["holmes", "watson"],
             "text": [
-              "重い扉が開き、夜明けの稜線へ飛び出した。",
-              "傷だらけだが、あなたは確かに生還した。"
+              "裏口から霧のロンドンへ踏み出した。背後でモラン邸の窓が一つ、ゆっくりと暗くなった。",
+              "ワトスンが追いつき、肩を並べて夜道を歩く。『無事でよかった、ホームズ』",
+              "事件の記録は後日レストレード警部に委ねることになる。今夜は脱出で精一杯だった。"
             ],
             "choices": [
-              { "text": "完", "next_event_id": null }
+              {
+                "text": "完",
+                "next_event_id": null
+              }
             ]
           },
-          "power_escape_end_event": {
-            "title": "風穴脱出",
+          "deduction_escape_end_event": {
+            "title": "完全解決エンド",
             "event_type": "ending",
-            "spot_id": "outer_wall_exit",
-            "participants": ["adventurer"],
+            "spot_id": "back_exit",
+            "participants": ["holmes", "watson"],
             "text": [
-              "筋力で身体を引き上げ、狭い風穴をよじ登って外壁の裂け目から脱出した。",
-              "封印門も祭壇も使わない、異例の生還だ。"
+              "証拠書類を懐に、ホームズは霧のロンドンへ踏み出した。",
+              "『ワトスン、モラン大佐の逮捕令状を出す根拠はすべて揃った』",
+              "翌朝、スコットランド・ヤードにすべての証拠と完全な推理書が届けられた。",
+              "ベイカー街の密室事件は、シャーロック・ホームズの最も鮮やかな仕事として記録された。"
             ],
             "choices": [
-              { "text": "ユニークエンド", "next_event_id": null }
+              {
+                "text": "完全解決エンド",
+                "next_event_id": null
+              }
             ]
           },
-          "collapse_game_over_event": {
-            "title": "神殿に飲み込まれて",
+          "trapped_game_over_event": {
+            "title": "邸宅に閉じ込められて",
             "event_type": "game_over",
-            "participants": ["adventurer"],
+            "participants": ["holmes"],
             "text": [
-              "体の限界を超え、足が動かなくなった。",
-              "崩落音の中、あなたの意識は闇へ沈んでいく。"
+              "体力の限界を超え、ホームズの足が止まった。",
+              "霧の中で警鐘が鳴り続ける。封鎖された邸宅の中で、意識が遠のいていく。",
+              "『……しくじった』それが最後の言葉だった。"
             ],
             "choices": [
-              { "text": "最初からやり直す", "next_event_id": null }
+              {
+                "text": "最初からやり直す",
+                "next_event_id": null
+              }
             ]
           }
         }
       },
       "initial_state": {
-        "player_character_id": "adventurer",
-        "current_quest_id": "escape_temple",
-        "current_event_id": "temple_entrance_event",
-        "current_spot_id": "temple_entrance",
+        "player_character_id": "holmes",
+        "current_quest_id": "escape_manor",
+        "current_event_id": "entrance_hall_event",
+        "current_spot_id": "entrance_hall",
         "time": {
-          "year": 2026,
-          "month": 3,
-          "day": 15,
-          "hour": 4,
-          "minute": 30,
+          "year": 1895,
+          "month": 11,
+          "day": 3,
+          "hour": 23,
+          "minute": 50,
           "turn": 0
         },
         "flags": [],
-        "unique": { "筋力": 5 },
+        "unique": {
+          "推理力": 8
+        },
         "characters": {
-          "adventurer": {
-            "spot_id": "temple_entrance",
+          "holmes": {
+            "spot_id": "entrance_hall",
             "status": "active",
-            "current_stats": { "体力": 70 },
+            "current_stats": {
+              "体力": 60
+            },
             "inventory": [],
-            "relationships": {}
+            "relationships": {
+              "watson": {
+                "trust": 5
+              }
+            }
+          },
+          "watson": {
+            "spot_id": "entrance_hall",
+            "status": "active",
+            "current_stats": {
+              "体力": 55,
+              "医学知識": 6
+            },
+            "inventory": [],
+            "relationships": {
+              "holmes": {
+                "trust": 5
+              }
+            }
           }
         },
         "spot_states": {
-          "temple_entrance": {
+          "entrance_hall": {
             "items": [
               {
-                "item_id": "old_key",
+                "item_id": "brass_key",
                 "quantity": 1,
-                "container_id": "entrance_crate"
+                "container_id": "grandfather_clock"
+              }
+            ]
+          },
+          "study": {
+            "items": [
+              {
+                "item_id": "cipher_note",
+                "quantity": 1,
+                "container_id": "desk_papers"
+              }
+            ]
+          },
+          "greenhouse": {
+            "items": [
+              {
+                "item_id": "iron_bar",
+                "quantity": 1,
+                "container_id": "fallen_shelf"
               }
             ]
           }
@@ -949,24 +1483,158 @@
     const GENERIC_PROMPT = [
       "以下を厳守して、新仕様(world/scenario/initial_state)のJSON台本を1つ作成してください。",
       "",
-      "【必須】",
-      "- top-level は title/version/definitions/world/scenario/initial_state 構造",
+      "【目的】",
+      "- 「短い見本JSON」ではなく、実際に遊べるボリュームのある中編シナリオを作ること",
+      "- 脱出・調査・分岐・再訪・NPC連携が成立する、探索型サウンドノベルJSONを作ること",
+      "- 出力は構造の正しさだけでなく、十分な物量と遊びごたえを重視すること",
+      "",
+      "【必須構造】",
+      "- top-level は title / version / definitions / world / scenario / initial_state",
       "- 進行は scenario.events を主系として current_event_id / next_event_id で行う",
-      "- scenes/start_scene_id/next_scene_id は使わない",
+      "- scenes / start_scene_id / next_scene_id は使わない",
       "- 主人公体力は initial_state.characters[player_character_id].current_stats に置く",
       "- inventory は initial_state.characters[character_id].inventory を使う",
       "- spot 上アイテムは initial_state.spot_states を使う",
-      "- effects.add_time / required_items / add_items / remove_spot_items を使える形にする",
+      "- NPCの位置参照は characters.<id>.spot_id を基本にする",
+      "- 条件では required_character_spots / forbidden_character_spots を使ってよい",
+      "- effects.add_time / required_items / add_items / remove_spot_items / set を使える形にする",
+      "",
+      "【最重要：シナリオの物量下限】",
+      "- world.spots は最低10個、推奨12〜16個",
+      "- scenario.events は最低16個、推奨18〜26個",
+      "- ending は最低2種類、推奨3種類以上",
+      "- game_over は最低2種類",
+      "- actions は全イベント合計で最低18個",
+      "- choices は全イベント合計で最低25個",
+      "- flags は最低14個",
+      "- spot_states に配置される取得可能アイテムは最低6種類",
+      "- NPCは主人公以外に最低2人",
+      "- NPCの spot_id 移動を最低4回以上使うこと",
+      "- 再訪で本文が変化する conditional_texts を最低8件以上入れること",
+      "",
+      "【最重要：ゲーム構造の下限】",
+      "- 一本道は禁止",
+      "- 最低でも「序盤探索」「中盤の解錠・推理」「終盤の脱出判断」の3段階構造にすること",
+      "- 脱出までに最低3つの独立した中間目標を必要にすること",
+      "- そのうち1つはアイテム、1つは情報、1つはNPC協力で解決すること",
+      "- 1回の探索で全部片付く構造は禁止。複数スポットの往復が必要な構造にすること",
+      "- 間違った順番でも一部進められるが、最終的に不足が露呈する設計にすること",
+      "- 少なくとも1つは「見つけてもすぐ使えないアイテム」を置くこと",
+      "- 少なくとも1つは「情報を得てから意味がわかる場所」を置くこと",
+      "- 少なくとも1つは「NPCが別の場所にいないと成立しない行動」を置くこと",
+      "- 少なくとも1つは「再訪時に新しい本文・行動が解放される場所」を作ること",
+      "",
+      "【文章量の下限】",
+      "- 各 event.text は2〜4文ではなく、最低3行、重要イベントは4〜6行にすること",
+      "- conditional_texts の各本文も1行だけで済ませず、情景・変化・示唆を含めること",
+      "- ending / game_over は最低3行以上",
+      "- 全体として「短いJSON見本」ではなく「中編1話」として読める密度にすること",
+      "",
+      "【内容設計ルール】",
+      "- 露骨な水増しは禁止",
+      "- 同じ意味の行動やフラグを重複させないこと",
+      "- 未使用のフラグ、未使用アイテム、未使用スポットは禁止",
+      "- すべての主要スポットに存在理由を持たせること",
+      "- すべての主要アイテムに入手→使用→結果の流れを作ること",
+      "- すべての主要フラグは物語進行か条件分岐に必ず使うこと",
+      "- choice と action は明確に分けること",
+      "- action は「その場処理」、choice は「遷移」に徹すること",
+      "- hidden_when_disabled を適切に使い、一度きりの行動は再実行しにくくすること",
+      "- 可能なら任意の寄り道報酬や、完全解決ルート用の追加証拠も入れること",
+      "",
+      "【推奨する構成】",
+      "- 導入スポット",
+      "- 情報収集スポット2〜3",
+      "- 鍵や道具を取るスポット2〜3",
+      "- 解錠・仕掛け操作スポット2〜3",
+      "- NPCが別行動するスポット",
+      "- 危険スポットまたは体力消耗スポット",
+      "- 終盤の脱出直前スポット",
+      "- 通常脱出 / 完全解決脱出 / 失敗系エンド",
+      "",
+      "【モデルへの注意】",
+      "- 下記のJSONは「構造見本」であって、目標ボリュームではない",
+      "- 下記見本より明確に大きく、長く、複雑にすること",
+      "- 見本を縮小再生産しないこと",
+      "- とくに events 数、actions 数、choices 数、flags 数は見本を大きく上回ること",
+      "",
+      "【最低達成チェック】",
+      "- 出力前に自分で必ず確認し、下限未達なら書き足してから出力すること",
+      "- spots 10以上",
+      "- events 16以上",
+      "- endings 2以上",
+      "- game_over 2以上",
+      "- actions 合計18以上",
+      "- choices 合計25以上",
+      "- flags 14以上",
+      "- items 6種類以上",
+      "- NPC 2人以上",
+      "- NPC移動 4回以上",
+      "- conditional_texts 8件以上",
       "",
       "【出力形式】",
+      "- コードブロックは1つのみ",
+      "- コードブロックの中身は純粋なJSONのみ",
+      "- JSON以外の説明文・前置き・注釈は禁止",
+      "",
+      "【見本JSON】",
       "```json",
       PROMPT_SAMPLE_JSON,
       "```"
     ].join("\n");
 
     const SHINDO_PROMPT = [
-      "新堂誠・学校ホラー向けで、world/scenario/initial_state 新仕様JSONを1つ作ってください。",
-      "進行は scenario.events + current_event_id / next_event_id のみを使うこと。",
+      "以下を厳守して、新堂誠・学校であった怖い話向けの新仕様(world/scenario/initial_state)JSON台本を1つ作成してください。",
+      "",
+      "【目的】",
+      "- 短い見本JSONではなく、実際に遊べるボリュームのある中編ホラーシナリオを作ること",
+      "- 調査・分岐・再訪・NPC連携・不穏な演出が成立する探索型サウンドノベルJSONを作ること",
+      "",
+      "【必須構造】",
+      "- top-level は title / version / definitions / world / scenario / initial_state",
+      "- 進行は scenario.events を主系として current_event_id / next_event_id で行う",
+      "- scenes / start_scene_id / next_scene_id は使わない",
+      "- 主人公体力は initial_state.characters[player_character_id].current_stats に置く",
+      "- inventory は initial_state.characters[character_id].inventory を使う",
+      "- spot 上アイテムは initial_state.spot_states を使う",
+      "- NPCの位置参照は characters.<id>.spot_id を基本にする",
+      "- 条件では required_character_spots / forbidden_character_spots を使ってよい",
+      "- effects.add_time / required_items / add_items / remove_spot_items / set を使える形にする",
+      "",
+      "【物量下限】",
+      "- world.spots 10個以上",
+      "- scenario.events 16個以上",
+      "- ending 2種類以上",
+      "- game_over 2種類以上",
+      "- actions 合計18個以上",
+      "- choices 合計25個以上",
+      "- flags 14個以上",
+      "- NPCは主人公以外に2人以上",
+      "- NPC移動4回以上",
+      "- conditional_texts 8件以上",
+      "",
+      "【ゲーム構造】",
+      "- 一本道は禁止",
+      "- 序盤探索 / 中盤の手がかり回収と解錠 / 終盤の脱出または真相分岐 の3段階構造にすること",
+      "- 間違った順番でも一部進行するが、後で不足が露呈する構造にすること",
+      "- 再訪時に本文や行動が変わる場所を必ず作ること",
+      "- NPCが別の場所にいるかどうかで会話や行動の成否が変わる構造を入れること",
+      "",
+      "【文章量】",
+      "- 各 event.text は最低3行、重要イベントは4〜6行",
+      "- ending / game_over は最低3行",
+      "- 全体として中編1話として読める密度にすること",
+      "",
+      "【モデルへの注意】",
+      "- 見本は構造見本であり、分量見本ではない",
+      "- 必ず見本より大きく、長く、複雑にすること",
+      "",
+      "【出力形式】",
+      "- コードブロックは1つのみ",
+      "- コードブロックの中身は純粋なJSONのみ",
+      "- JSON以外の説明文・前置き・注釈は禁止",
+      "",
+      "【見本JSON】",
       "```json",
       PROMPT_SAMPLE_JSON,
       "```"
@@ -987,6 +1655,15 @@
     function getPlayerCharacter() {
       const id = getPlayerCharacterId();
       return id && isPlainObject(game.state?.characters?.[id]) ? game.state.characters[id] : null;
+    }
+
+    function getCharacterById(characterId) {
+      return typeof characterId === "string" && isPlainObject(game.state?.characters?.[characterId]) ? game.state.characters[characterId] : null;
+    }
+
+    function getCharacterSpotId(characterId) {
+      const character = getCharacterById(characterId);
+      return typeof character?.spot_id === "string" ? character.spot_id : "";
     }
 
     function getPlayerInventory() {
@@ -1105,6 +1782,20 @@
       }).join(" / ");
     }
 
+    function buildNpcSummaryLines() {
+      const lines = [];
+      const defs = game.runtime?.definitions?.characters;
+      const playerId = getPlayerCharacterId();
+      Object.entries(game.state?.characters || {}).forEach(([characterId, character]) => {
+        if (characterId === playerId || !isPlainObject(character)) return;
+        const name = defs?.[characterId]?.name || characterId;
+        const spotId = typeof character.spot_id === "string" ? character.spot_id : "";
+        const status = typeof character.status === "string" ? character.status : "-";
+        lines.push(`${name}: ${getDisplaySpotName(spotId)} / ${status}`);
+      });
+      return lines;
+    }
+
     function buildStateSummary() {
       if (!isPlainObject(game.state)) {
         return "状態データなし";
@@ -1141,7 +1832,7 @@
         const statEntries = Object.entries(player.current_stats)
           .filter(([, value]) => typeof value === "number")
           .map(([key, value]) => `${key}: ${value}`);
-        if (statEntries.length) {
+        if (statEntries.length > 0) {
           lines.push(`ステータス: ${statEntries.join(" / ")}`);
         }
       }
@@ -1156,6 +1847,12 @@
         lines.push(`フラグ: ${game.state.flags.join(" / ")}`);
       } else {
         lines.push("フラグ: なし");
+      }
+
+      const npcLines = buildNpcSummaryLines();
+      if (npcLines.length > 0) {
+        lines.push("NPC位置:");
+        npcLines.forEach((line) => lines.push(`- ${line}`));
       }
 
       lines.push(`この場所の残アイテム: ${getCurrentSpotItemsText()}`);
@@ -1184,9 +1881,9 @@
       ui.header.currentEventIdText.textContent = game.currentEventId || "-";
       ui.header.currentSpotIdText.textContent = getDisplaySpotName(typeof game.state?.current_spot_id === "string" ? game.state.current_spot_id : "");
       ui.header.currentTimeText.textContent = formatTime(game.state?.time);
-      ui.header.stepText.textContent = String(game.stepCount);
       const hp = getHealthValue();
       ui.header.healthText.textContent = hp === null ? "-" : String(hp);
+      ui.header.stepText.textContent = String(game.stepCount);
     }
 
     function renderStatePanel() {
@@ -1231,6 +1928,19 @@
       ui.event.textArea.appendChild(box);
     }
 
+    function characterSpotConditionMet(map, mode) {
+      if (!isPlainObject(map)) return true;
+      for (const [characterId, spotIds] of Object.entries(map)) {
+        const currentSpotId = getCharacterSpotId(characterId);
+        const allowed = Array.isArray(spotIds) ? spotIds.filter((v) => typeof v === "string") : [];
+        if (allowed.length === 0) return false;
+        const matched = allowed.includes(currentSpotId);
+        if (mode === "required" && !matched) return false;
+        if (mode === "forbidden" && matched) return false;
+      }
+      return true;
+    }
+
     function checkConditions(conditions) {
       if (!isPlainObject(conditions)) return true;
       ensureStateCollections();
@@ -1240,6 +1950,14 @@
       }
 
       if (Array.isArray(conditions.forbidden_flags) && conditions.forbidden_flags.some((flag) => game.state.flags.includes(flag))) {
+        return false;
+      }
+
+      if (!characterSpotConditionMet(conditions.required_character_spots, "required")) {
+        return false;
+      }
+
+      if (!characterSpotConditionMet(conditions.forbidden_character_spots, "forbidden")) {
         return false;
       }
 
@@ -1615,6 +2333,83 @@
       renderScreen();
     }
 
+    function validateCharacterSpotMap(map, label, errors, data) {
+      if (!isPlainObject(map)) {
+        errors.push(label + " はオブジェクトである必要があります。");
+        return;
+      }
+      Object.entries(map).forEach(([characterId, spots]) => {
+        if (!data.initial_state?.characters?.[characterId]) {
+          errors.push(`${label}.${characterId} のキャラが initial_state.characters に存在しません: ${characterId}`);
+          return;
+        }
+        if (!Array.isArray(spots) || spots.length === 0 || spots.some((spotId) => typeof spotId !== "string")) {
+          errors.push(`${label}.${characterId} は1件以上のスポットID文字列配列である必要があります。`);
+          return;
+        }
+        spots.forEach((spotId) => {
+          if (!data.world?.spots?.[spotId]) {
+            errors.push(`${label}.${characterId} の spot_id が world.spots に存在しません: ${spotId}`);
+          }
+        });
+      });
+    }
+
+    function validateConditionsObject(conditions, label, data, errors) {
+      if (!isPlainObject(conditions)) return;
+
+      if (conditions.required_character_spots !== undefined) {
+        validateCharacterSpotMap(conditions.required_character_spots, `${label}.required_character_spots`, errors, data);
+      }
+
+      if (conditions.forbidden_character_spots !== undefined) {
+        validateCharacterSpotMap(conditions.forbidden_character_spots, `${label}.forbidden_character_spots`, errors, data);
+      }
+
+      if (Array.isArray(conditions.required_items)) {
+        conditions.required_items.forEach((item, index) => {
+          if (typeof item === "string") return;
+          if (!isPlainObject(item) || typeof item.item_id !== "string") {
+            errors.push(`${label}.required_items[${index}] は item_id を持つオブジェクトまたは文字列である必要があります。`);
+          }
+        });
+      }
+    }
+
+    function validateEffectsObject(effects, label, data, errors) {
+      if (!isPlainObject(effects)) return;
+
+      if (isPlainObject(effects.set)) {
+        Object.entries(effects.set).forEach(([path, value]) => {
+          if (path.endsWith(".spot_id") && typeof value === "string" && !data.world?.spots?.[value]) {
+            errors.push(`${label}.set.${path} のスポットIDが world.spots に存在しません: ${value}`);
+          }
+        });
+      }
+
+      if (Array.isArray(effects.add_items)) {
+        effects.add_items.forEach((item, index) => {
+          if (typeof item === "string") return;
+          if (!isPlainObject(item) || typeof item.item_id !== "string") {
+            errors.push(`${label}.add_items[${index}] は item_id を持つオブジェクトまたは文字列である必要があります。`);
+          }
+        });
+      }
+
+      if (Array.isArray(effects.remove_spot_items)) {
+        effects.remove_spot_items.forEach((item, index) => {
+          if (typeof item === "string") return;
+          if (!isPlainObject(item) || typeof item.item_id !== "string") {
+            errors.push(`${label}.remove_spot_items[${index}] は item_id を持つオブジェクトまたは文字列である必要があります。`);
+            return;
+          }
+          if (typeof item.spot_id === "string" && !data.world?.spots?.[item.spot_id]) {
+            errors.push(`${label}.remove_spot_items[${index}].spot_id が world.spots に存在しません: ${item.spot_id}`);
+          }
+        });
+      }
+    }
+
     function validateScript(data) {
       const errors = [];
       if (!isPlainObject(data)) return ["JSON全体はオブジェクトである必要があります。"];
@@ -1656,6 +2451,18 @@
         errors.push("initial_state.player_character_id に対応する characters エントリが存在しません。");
       }
 
+      if (isPlainObject(data.initial_state?.characters)) {
+        Object.entries(data.initial_state.characters).forEach(([characterId, character]) => {
+          if (!isPlainObject(character)) {
+            errors.push(`initial_state.characters.${characterId} はオブジェクトである必要があります。`);
+            return;
+          }
+          if (typeof character.spot_id === "string" && character.spot_id.trim() && !data.world?.spots?.[character.spot_id]) {
+            errors.push(`initial_state.characters.${characterId}.spot_id が world.spots に存在しません: ${character.spot_id}`);
+          }
+        });
+      }
+
       if (isPlainObject(data.scenario?.events)) {
         Object.entries(data.scenario.events).forEach(([eventId, eventDef]) => {
           const label = `scenario.events.${eventId}`;
@@ -1676,6 +2483,29 @@
 
           if (typeof eventDef.spot_id === "string" && eventDef.spot_id.trim() && !data.world?.spots?.[eventDef.spot_id]) {
             errors.push(label + ".spot_id が world.spots に存在しません: " + eventDef.spot_id);
+          }
+
+          if (Array.isArray(eventDef.participants)) {
+            eventDef.participants.forEach((characterId, index) => {
+              if (typeof characterId !== "string") {
+                errors.push(`${label}.participants[${index}] は文字列である必要があります。`);
+              } else if (!data.initial_state?.characters?.[characterId]) {
+                errors.push(`${label}.participants[${index}] のキャラが initial_state.characters に存在しません: ${characterId}`);
+              }
+            });
+          }
+
+          if (Array.isArray(eventDef.conditional_texts)) {
+            eventDef.conditional_texts.forEach((entry, index) => {
+              if (!isPlainObject(entry)) {
+                errors.push(`${label}.conditional_texts[${index}] はオブジェクトである必要があります。`);
+                return;
+              }
+              validateConditionsObject(entry.conditions, `${label}.conditional_texts[${index}].conditions`, data, errors);
+              if (!(typeof entry.text === "string" || (Array.isArray(entry.text) && entry.text.every((line) => typeof line === "string")))) {
+                errors.push(`${label}.conditional_texts[${index}].text は文字列または文字列配列である必要があります。`);
+              }
+            });
           }
 
           const optionLists = [
@@ -1710,6 +2540,8 @@
               if (opt.effects !== undefined && !isPlainObject(opt.effects)) {
                 errors.push(oLabel + ".effects はオブジェクトである必要があります。");
               }
+              validateConditionsObject(opt.conditions, `${oLabel}.conditions`, data, errors);
+              validateEffectsObject(opt.effects, `${oLabel}.effects`, data, errors);
             });
           });
         });
@@ -1748,6 +2580,8 @@
         "進行は scenario.events と current_event_id / next_event_id で行ってください。",
         "inventory は initial_state.characters[character_id].inventory を使ってください。",
         "spot 上アイテムは initial_state.spot_states を使ってください。",
+        "NPC位置は characters.<id>.spot_id で管理してください。",
+        "条件では required_character_spots / forbidden_character_spots を使ってよいです。",
         "時刻は initial_state.time を使ってください。",
         "",
         "【引き継ぎ情報(JSON)】",
@@ -1803,7 +2637,7 @@
 
     function loadExampleIntoTextarea() {
       ui.setup.scriptInput.value = JSON.stringify(SAMPLE_SCENARIO, null, 2);
-      setGlobalStatus("ok", "新仕様サンプルJSONを読み込みました。");
+      setGlobalStatus("ok", "ホームズの新仕様サンプルJSONを読み込みました。");
     }
 
     async function handleCopyPrompt() {
@@ -1823,6 +2657,21 @@
         setGlobalStatus("ok", "JSON入力欄を全削除し、クリップボードの内容を貼り付けました。");
       } catch (error) {
         setGlobalStatus("fail", "貼り付け失敗: " + (error instanceof Error ? error.message : String(error)));
+      }
+    }
+
+    async function handleJsonFileSelected(event) {
+      const file = event.target.files && event.target.files[0];
+      if (!file) return;
+
+      try {
+        const text = await file.text();
+        ui.setup.scriptInput.value = text;
+        setGlobalStatus("ok", `JSONファイルを読み込みました: ${file.name}`);
+      } catch (error) {
+        setGlobalStatus("fail", "ファイル読込失敗: " + (error instanceof Error ? error.message : String(error)));
+      } finally {
+        event.target.value = "";
       }
     }
 
@@ -1852,6 +2701,10 @@
 
     function bindUiEvents() {
       ui.setup.loadExampleButton.addEventListener("click", loadExampleIntoTextarea);
+      ui.setup.openFileButton.addEventListener("click", () => {
+        ui.setup.jsonFileInput.click();
+      });
+      ui.setup.jsonFileInput.addEventListener("change", handleJsonFileSelected);
       ui.setup.copyPromptButton.addEventListener("click", handleCopyPrompt);
       ui.setup.pasteScriptButton.addEventListener("click", handlePasteScript);
       ui.setup.loadScriptButton.addEventListener("click", loadScriptFromTextarea);

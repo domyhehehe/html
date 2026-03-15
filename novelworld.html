@@ -2421,10 +2421,18 @@
       if (!isPlainObject(data.initial_state)) errors.push("initial_state はオブジェクトである必要があります。");
 
       if (!isPlainObject(data.world?.areas)) errors.push("world.areas はオブジェクトである必要があります。");
-      if (!isPlainObject(data.world?.dungeons)) errors.push("world.dungeons はオブジェクトである必要があります。");
+      if (data.world?.dungeons !== undefined && !isPlainObject(data.world?.dungeons)) {errors.push("world.dungeons は省略可能ですが、存在する場合はオブジェクトである必要があります。");}     
       if (!isPlainObject(data.world?.spots)) errors.push("world.spots はオブジェクトである必要があります。");
+      // 追加した spot 検証の考え方
+if (isPlainObject(data.world?.spots)) {
+  Object.entries(data.world.spots).forEach(([spotId, spot]) => {
+    // area_id は必須
+    // dungeon_id は任意
+    // dungeon_id があるときだけ world.dungeons の存在確認
+    // さらに dungeon.area_id と spot.area_id の整合性も確認
+  });
+}
       if (!isPlainObject(data.scenario?.quests)) errors.push("scenario.quests はオブジェクトである必要があります。");
-
       if (!isPlainObject(data.scenario?.events) || Object.keys(data.scenario.events).length === 0) {
         errors.push("scenario.events は1件以上のオブジェクトである必要があります。");
       }

@@ -1,4 +1,5 @@
 ﻿window.HOLMES_PROMPTS = window.HOLMES_PROMPTS || {};
+const HOLMES_PROMPT_SAMPLE_JSON = window.HOLMES_PROMPT_SAMPLE_JSON || "";
 window.HOLMES_PROMPTS.generic = [
       "以下を厳守して、新仕様(world/scenario/initial_state)のJSON台本を1つ作成してください。",
       "",
@@ -98,6 +99,6 @@ window.HOLMES_PROMPTS.generic = [
       "",
       "【見本JSON】",
       "```json",
-      PROMPT_SAMPLE_JSON,
+      HOLMES_PROMPT_SAMPLE_JSON,
       "```"
     ].join("\n");

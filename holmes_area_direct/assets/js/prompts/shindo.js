@@ -1,4 +1,5 @@
 ﻿window.HOLMES_PROMPTS = window.HOLMES_PROMPTS || {};
+const HOLMES_PROMPT_SAMPLE_JSON = window.HOLMES_PROMPT_SAMPLE_JSON || "";
 window.HOLMES_PROMPTS.shindo = [
       "以下を厳守して、新堂誠・学校であった怖い話向けの新仕様(world/scenario/initial_state)JSON台本を1つ作成してください。",
       "",
@@ -52,6 +53,6 @@ window.HOLMES_PROMPTS.shindo = [
       "",
       "【見本JSON】",
       "```json",
-      PROMPT_SAMPLE_JSON,
+      HOLMES_PROMPT_SAMPLE_JSON,
       "```"
     ].join("\n");

@@ -21,35 +21,120 @@
 
     <div class="card">
       <h2>セットアップ</h2>
-      <label class="label" for="promptModeSelect">コピーするAI用プロンプト</label>
-      <select id="promptModeSelect">
-        <option value="generic">汎用JSON台本ランナー用</option>
-        <option value="shindo">新堂誠・学校であった怖い話 用</option>
-      </select>
+      <label class="label" for="promptModeSelect">AI用プロンプト</label>
+      <div class="setup-prompt-row">
+        <select id="promptModeSelect">
+          <option value="generic">汎用JSON台本ランナー用</option>
+          <option value="shindo">新堂誠・学校であった怖い話 用</option>
+          <option value="editor_area">AreasカテゴリJSON生成用</option>
+          <option value="editor_dungeon">DungeonsカテゴリJSON生成用</option>
+          <option value="editor_spot">SpotsカテゴリJSON生成用</option>
+          <option value="editor_character">CharactersカテゴリJSON生成用</option>
+          <option value="editor_item">ItemsカテゴリJSON生成用</option>
+          <option value="editor_event">EventsカテゴリJSON生成用</option>
+          <option value="editor_scenario">ScenariosカテゴリJSON生成用</option>
+          <option value="editor_quest">QuestsカテゴリJSON生成用</option>
+          <option value="editor_merge_assistant">カテゴリJSONマージ相談用</option>
+        </select>
+        <button id="copyPromptButton" class="button secondary" type="button">AI用プロンプトをコピー</button>
+      </div>
 
-      <label class="label" for="scriptInput" style="margin-top:12px;">台本JSON</label>
+      <label class="label" for="scriptInput" style="margin-top:12px;">完全JSON</label>
       <label class="label" for="sampleSelect" style="margin-top:12px;">サンプル</label>
       <select id="sampleSelect"></select>
       <textarea id="scriptInput" spellcheck="false"></textarea>
       <input id="jsonFileInput" type="file" accept=".json,application/json" class="hidden" />
+      <div class="row field-actions">
+        <button id="openFileButton" class="button secondary" type="button">アップロード</button>
+        <button id="saveIntegratedJsonButton" class="button secondary" type="button">ダウンロード</button>
+        <button id="copyScriptButton" class="button secondary" type="button">クリップボードへコピー</button>
+        <button id="pasteScriptButton" class="button secondary" type="button">クリップボードからペースト</button>
+      </div>
 
       <p class="note">
-        新仕様専用: <code class="inline">definitions / world / scenarios / quests / initial_state</code>。
-        進行は <code class="inline">initial_state.active_scenario_id</code> で有効化された scenario の
-        <code class="inline">events</code> と <code class="inline">current_event_id / next_event_id</code>。
+        新仕様専用: <code class="inline">definitions / world / events / scenarios / quests / initial_state</code>。
+        イベント本体は top-level <code class="inline">events</code> に置き、
+        scenario / quest は event ID を参照します。
         NPC位置は <code class="inline">characters[character_id].spot_id</code> を正式採用し、<code class="inline">required_character_spots</code> / <code class="inline">forbidden_character_spots</code> に対応。
       </p>
 
       <div class="row">
         <button id="loadExampleButton" class="button secondary" type="button">サンプル読込</button>
-        <button id="openFileButton" class="button secondary" type="button">JSONファイルを選択</button>
-        <button id="copyPromptButton" class="button secondary" type="button">AI用プロンプトをコピー</button>
-        <button id="pasteScriptButton" class="button secondary" type="button">全削除してクリップボード貼り付け</button>
         <button id="loadScriptButton" class="button ok" type="button">このJSONで開始</button>
         <button id="restartButton" class="button secondary" type="button">最初からやり直す</button>
         <button id="copyStateButton" class="button secondary" type="button">現在状態をコピー</button>
         <button id="copyContinuationButton" class="button secondary" type="button">続篇用プロンプトをコピー</button>
       </div>
+    </div>
+
+    <div class="card">
+      <h2>エディタ</h2>
+      <label class="label" for="editorModeSelect">モード</label>
+      <select id="editorModeSelect">
+        <option value="json">JSON直接編集モード</option>
+        <option value="editor">基本エディタモード</option>
+      </select>
+
+      <div id="editorPanel" class="editor-panel hidden">
+        <div class="editor-toolbar">
+          <div class="editor-toolbar-group">
+            <label class="label" for="editorCategorySelect">編集カテゴリ</label>
+            <select id="editorCategorySelect"></select>
+          </div>
+          <div class="editor-toolbar-group">
+            <label class="label" for="editorItemSelect">項目一覧</label>
+            <select id="editorItemSelect"></select>
+          </div>
+        </div>
+
+        <div class="row" style="margin-top:10px;">
+          <button id="editorNewButton" class="button secondary" type="button">新規作成</button>
+          <button id="editorDuplicateButton" class="button secondary" type="button">複製</button>
+          <button id="editorDeleteButton" class="button secondary" type="button">削除</button>
+          <button id="editorApplyButton" class="button ok" type="button">JSONへ反映</button>
+          <button id="editorRebuildButton" class="button secondary" type="button">JSONから再構築</button>
+        </div>
+
+        <div id="editorStatus" class="status" style="margin-top:10px;">JSONから再構築すると、カテゴリ別に編集できます。</div>
+        <div id="editorForm" class="editor-form" style="margin-top:12px;"></div>
+      </div>
+    </div>
+
+    <div id="aiAssistCard" class="card hidden">
+      <h2>AI支援</h2>
+      <div id="aiAssistStatus" class="status">AI生成物はカテゴリJSON欄で往復し、必要なものだけ明示的にマージしてください。</div>
+
+      <label class="label" for="fragmentInput" style="margin-top:12px;">カテゴリJSON欄</label>
+      <textarea id="fragmentInput" spellcheck="false"></textarea>
+      <div class="row field-actions">
+        <button id="loadFragmentFileButton" class="button secondary" type="button">アップロード</button>
+        <button id="saveFragmentButton" class="button secondary" type="button">ダウンロード</button>
+        <button id="copyFragmentButton" class="button secondary" type="button">クリップボードへコピー</button>
+        <button id="pasteFragmentButton" class="button secondary" type="button">クリップボードからペースト</button>
+      </div>
+
+      <div class="ai-assist-section">
+        <div class="label">1. 現在のカテゴリJSONを用意</div>
+        <div class="row">
+          <button id="refreshFragmentButton" class="button secondary" type="button">現在カテゴリをカテゴリJSON欄へ反映</button>
+        </div>
+      </div>
+
+      <div class="ai-assist-section">
+        <div class="label">2. AIへ渡す</div>
+        <div class="row">
+          <button id="copyPromptWithFragmentButton" class="button secondary" type="button">プロンプト+カテゴリJSONをコピー</button>
+        </div>
+      </div>
+
+      <div class="ai-assist-section">
+        <div class="label">3. AI返却カテゴリJSONを取り込む</div>
+        <div class="row">
+          <button id="mergeFragmentButton" class="button ok" type="button">カテゴリJSON欄の内容をマージ</button>
+        </div>
+      </div>
+
+      <input id="fragmentFileInput" type="file" accept=".json,application/json" class="hidden" />
     </div>
 
     <div class="card">

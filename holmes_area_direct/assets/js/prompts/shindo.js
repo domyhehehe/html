@@ -1,16 +1,16 @@
 ﻿window.HOLMES_PROMPTS = window.HOLMES_PROMPTS || {};
 const HOLMES_PROMPT_SAMPLE_JSON = window.HOLMES_PROMPT_SAMPLE_JSON || "";
 window.HOLMES_PROMPTS.shindo = [
-      "以下を厳守して、新堂誠・学校であった怖い話向けの新仕様(world/scenarios/quests/initial_state)JSON台本を1つ作成してください。",
+      "以下を厳守して、新堂誠・学校であった怖い話向けの新仕様(definitions/world/events/scenarios/quests/initial_state)JSON台本を1つ作成してください。",
       "",
       "【目的】",
       "- 短い見本JSONではなく、実際に遊べるボリュームのある中編ホラーシナリオを作ること",
       "- 調査・分岐・再訪・NPC連携・不穏な演出が成立する探索型サウンドノベルJSONを作ること",
       "",
       "【必須構造】",
-      "- top-level は title / version / definitions / world / scenarios / quests / initial_state",
+      "- top-level は title / version / definitions / world / events / scenarios / quests / initial_state",
       "- world は常設世界、scenarios は世界差分、quests は複数の目標定義として分離する",
-      "- 進行は initial_state.active_scenario_id で有効化された scenario の events と current_event_id / next_event_id で行う",
+      "- event本体は top-level events に集約し、scenario / quest は event_ids や start_event_id で参照する",
       "- scenes / start_scene_id / next_scene_id は使わない",
       "- 主人公体力は initial_state.characters[player_character_id].current_stats に置く",
       "- inventory は initial_state.characters[character_id].inventory を使う",
@@ -21,7 +21,7 @@ window.HOLMES_PROMPTS.shindo = [
       "",
       "【物量下限】",
       "- world.spots 10個以上",
-      "- active scenario の events 16個以上",
+      "- top-level events 16個以上",
       "- ending 2種類以上",
       "- game_over 2種類以上",
       "- actions 合計18個以上",

@@ -34,9 +34,9 @@
       <input id="jsonFileInput" type="file" accept=".json,application/json" class="hidden" />
 
       <p class="note">
-        新仕様専用: <code class="inline">definitions / world / scenarios / quests / initial_state</code>。
-        進行は <code class="inline">initial_state.active_scenario_id</code> で有効化された scenario の
-        <code class="inline">events</code> と <code class="inline">current_event_id / next_event_id</code>。
+        新仕様専用: <code class="inline">definitions / world / events / scenarios / quests / initial_state</code>。
+        イベント本体は top-level <code class="inline">events</code> に置き、
+        scenario / quest は event ID を参照します。
         NPC位置は <code class="inline">characters[character_id].spot_id</code> を正式採用し、<code class="inline">required_character_spots</code> / <code class="inline">forbidden_character_spots</code> に対応。
       </p>
 

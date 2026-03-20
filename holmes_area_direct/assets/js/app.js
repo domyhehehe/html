@@ -159,6 +159,7 @@
         scriptInput: document.getElementById("scriptInput"),
         jsonFileInput: document.getElementById("jsonFileInput"),
         openFileButton: document.getElementById("openFileButton"),
+        copyScriptButton: document.getElementById("copyScriptButton"),
         loadExampleButton: document.getElementById("loadExampleButton"),
         copyPromptButton: document.getElementById("copyPromptButton"),
         pasteScriptButton: document.getElementById("pasteScriptButton"),
@@ -167,6 +168,19 @@
         copyStateButton: document.getElementById("copyStateButton"),
         copyStatusButton: document.getElementById("copyStatusButton"),
         copyContinuationButton: document.getElementById("copyContinuationButton")
+      },
+      aiAssist: {
+        card: document.getElementById("aiAssistCard"),
+        status: document.getElementById("aiAssistStatus"),
+        fragmentInput: document.getElementById("fragmentInput"),
+        copyPromptWithFragmentButton: document.getElementById("copyPromptWithFragmentButton"),
+        copyFragmentButton: document.getElementById("copyFragmentButton"),
+        refreshFragmentButton: document.getElementById("refreshFragmentButton"),
+        pasteFragmentButton: document.getElementById("pasteFragmentButton"),
+        mergeFragmentButton: document.getElementById("mergeFragmentButton"),
+        saveFragmentButton: document.getElementById("saveFragmentButton"),
+        loadFragmentFileButton: document.getElementById("loadFragmentFileButton"),
+        fragmentFileInput: document.getElementById("fragmentFileInput")
       },
       editor: {
         modeSelect: document.getElementById("editorModeSelect"),
@@ -364,6 +378,328 @@
       ui.editor.status.textContent = message;
     }
 
+    function buildAiAssistStatus(type, message) {
+      if (!ui.aiAssist.status) return;
+      ui.aiAssist.status.className = `status ${type}`.trim();
+      ui.aiAssist.status.textContent = message;
+    }
+
+    function getCurrentIntegratedJson() {
+      if (isPlainObject(game.editorDraft)) {
+        return buildIntegratedEditorJson();
+      }
+
+      const parsed = parseJsonSafely(ui.setup.scriptInput.value.trim());
+      if (parsed.ok) {
+        return normalizeScriptStructure(parsed.data);
+      }
+
+      return createEmptyScriptTemplate();
+    }
+
+    function getCurrentPromptSampleJson() {
+      return JSON.stringify(getCurrentIntegratedJson(), null, 2);
+    }
+
+    function getPromptForMode(mode) {
+      if (mode === "generic") return GENERIC_PROMPT;
+      if (mode === "shindo") return SHINDO_PROMPT;
+
+      const editorPromptMap = {
+        editor_area: { label: "areas", rootKey: "areas", category: "areas" },
+        editor_dungeon: { label: "dungeons", rootKey: "dungeons", category: "dungeons" },
+        editor_spot: { label: "spots", rootKey: "spots", category: "spots" },
+        editor_character: { label: "characters", rootKey: "characters", category: "characters" },
+        editor_item: { label: "items", rootKey: "items", category: "items" },
+        editor_event: { label: "events", rootKey: "events", category: "events" },
+        editor_scenario: { label: "scenarios", rootKey: "scenarios", category: "scenarios" },
+        editor_quest: { label: "quests", rootKey: "quests", category: "quests" }
+      };
+
+      if (mode === "editor_merge_assistant") {
+        return [
+          "以下の統合JSONに対して追加・修正したい差分を、カテゴリJSONだけで返してください。",
+          "完全JSONは返さず、対象カテゴリだけの最小カテゴリJSONにしてください。",
+          "使ってよい形式は areas / dungeons / spots / characters / items / events / scenarios / quests / scenario_id+scenario / quest_id+quest / initial_state_fragment です。",
+          "出力はコードブロック1つ、JSONのみ。説明文は禁止です。",
+          "",
+          "【現在の統合JSON】",
+          "```json",
+          getCurrentPromptSampleJson(),
+          "```"
+        ].join("\n");
+      }
+
+      const config = editorPromptMap[mode];
+      if (!config) return GENERIC_PROMPT;
+
+      const exampleJson = (() => {
+        const integrated = getCurrentIntegratedJson();
+        const dataByCategory = {
+          areas: integrated.world?.areas || {},
+          dungeons: integrated.world?.dungeons || {},
+          spots: integrated.world?.spots || {},
+          characters: integrated.definitions?.characters || {},
+          items: integrated.definitions?.items || {},
+          events: integrated.events || {},
+          scenarios: integrated.scenarios || {},
+          quests: integrated.quests || {}
+        };
+        return JSON.stringify({ [config.rootKey]: dataByCategory[config.category] || {} }, null, 2);
+      })();
+
+      return [
+        `以下を厳守して、${config.label} 用のカテゴリJSONを1つ作成してください。`,
+        "",
+        "【目的】",
+        `- 統合JSON全体ではなく ${config.rootKey} だけを返すこと`,
+        "- 既存データに後からマージできる、安全なカテゴリJSONにすること",
+        "- 出力は純粋なJSONのみとし、説明文を混ぜないこと",
+        "",
+        "【必須ルール】",
+        `- top-level は ${config.rootKey} のみを基本とすること`,
+        `- 形式は {"${config.rootKey}": {...}} を基本とすること`,
+        "- 既存IDを上書きする場合も、必要な項目を省略しすぎないこと",
+        "- 新仕様に従い、event本体は top-level events に置くこと",
+        "- scenario / quest は event_ids や start_event_id で event を参照すること",
+        "- JSON以外の説明文・注釈・前置きは禁止",
+        "",
+        "【出力形式】",
+        "- コードブロックは1つのみ",
+        "- コードブロックの中身は純粋なJSONのみ",
+        "",
+        "【現在の参考カテゴリJSON】",
+        "```json",
+        exampleJson,
+        "```",
+        "",
+        "【現在の統合JSON】",
+        "```json",
+        getCurrentPromptSampleJson(),
+        "```"
+      ].join("\n");
+    }
+
+    function stripSampleJsonSection(prompt) {
+      const marker = "【見本JSON】";
+      const index = prompt.indexOf(marker);
+      if (index === -1) return prompt;
+      return prompt.slice(0, index).trimEnd();
+    }
+
+    function deepMergeObjects(baseValue, patchValue) {
+      if (Array.isArray(patchValue)) {
+        return cloneJson(patchValue);
+      }
+
+      if (!isPlainObject(patchValue)) {
+        return patchValue;
+      }
+
+      const result = isPlainObject(baseValue) ? cloneJson(baseValue) : {};
+      Object.entries(patchValue).forEach(([key, value]) => {
+        if (isPlainObject(value) && isPlainObject(result[key])) {
+          result[key] = deepMergeObjects(result[key], value);
+        } else {
+          result[key] = cloneJson(value);
+        }
+      });
+      return result;
+    }
+
+    function classifyJsonPayload(data) {
+      if (!isPlainObject(data)) {
+        return { kind: "invalid", reason: "JSON全体はオブジェクトである必要があります。" };
+      }
+
+      const fullKeys = ["title", "version", "definitions", "world", "events", "initial_state"];
+      const fragmentKeys = [
+        "areas",
+        "dungeons",
+        "spots",
+        "characters",
+        "items",
+        "events",
+        "scenarios",
+        "quests",
+        "scenario_id",
+        "scenario",
+        "quest_id",
+        "quest",
+        "initial_state_fragment"
+      ];
+
+      const hasFullStructure =
+        (typeof data.title === "string" || typeof data.version === "string") &&
+        (isPlainObject(data.definitions) || isPlainObject(data.world) || isPlainObject(data.initial_state));
+
+      if (hasFullStructure) {
+        return { kind: "full" };
+      }
+
+      const keys = Object.keys(data);
+      if (keys.length === 0) {
+        return { kind: "invalid", reason: "空のJSONは取り込めません。" };
+      }
+
+      if (keys.every((key) => fragmentKeys.includes(key))) {
+        return { kind: "fragment" };
+      }
+
+      return { kind: "invalid", reason: "完全JSONでもカテゴリJSONでもない形式です。" };
+    }
+
+    function mergeCollectionFragment(targetCollection, fragmentCollection, label, report) {
+      Object.entries(fragmentCollection).forEach(([itemId, itemValue]) => {
+        const existed = isPlainObject(targetCollection[itemId]);
+        targetCollection[itemId] = deepMergeObjects(targetCollection[itemId], itemValue);
+        report.lines.push(`${label}.${itemId}: ${existed ? "上書き" : "追加"}`);
+        if (existed) {
+          report.updated += 1;
+        } else {
+          report.created += 1;
+        }
+      });
+    }
+
+    function mergeFragmentIntoDraft(fragment) {
+      const draft = ensureEditorDraft();
+      const report = {
+        created: 0,
+        updated: 0,
+        lines: []
+      };
+
+      if (isPlainObject(fragment.areas)) {
+        mergeCollectionFragment(draft.world.areas, fragment.areas, "areas", report);
+      }
+      if (isPlainObject(fragment.dungeons)) {
+        mergeCollectionFragment(draft.world.dungeons, fragment.dungeons, "dungeons", report);
+      }
+      if (isPlainObject(fragment.spots)) {
+        mergeCollectionFragment(draft.world.spots, fragment.spots, "spots", report);
+      }
+      if (isPlainObject(fragment.characters)) {
+        mergeCollectionFragment(draft.definitions.characters, fragment.characters, "characters", report);
+      }
+      if (isPlainObject(fragment.items)) {
+        mergeCollectionFragment(draft.definitions.items, fragment.items, "items", report);
+      }
+      if (isPlainObject(fragment.events)) {
+        mergeCollectionFragment(draft.events, fragment.events, "events", report);
+      }
+      if (isPlainObject(fragment.scenarios)) {
+        mergeCollectionFragment(draft.scenarios, fragment.scenarios, "scenarios", report);
+      }
+      if (isPlainObject(fragment.quests)) {
+        mergeCollectionFragment(draft.quests, fragment.quests, "quests", report);
+      }
+      if (typeof fragment.scenario_id === "string" && isPlainObject(fragment.scenario)) {
+        const scenarioId = fragment.scenario_id.trim();
+        const existed = isPlainObject(draft.scenarios[scenarioId]);
+        draft.scenarios[scenarioId] = deepMergeObjects(draft.scenarios[scenarioId], fragment.scenario);
+        report.lines.push(`scenarios.${scenarioId}: ${existed ? "上書き" : "追加"}`);
+        existed ? report.updated += 1 : report.created += 1;
+      }
+      if (typeof fragment.quest_id === "string" && isPlainObject(fragment.quest)) {
+        const questId = fragment.quest_id.trim();
+        const existed = isPlainObject(draft.quests[questId]);
+        draft.quests[questId] = deepMergeObjects(draft.quests[questId], fragment.quest);
+        report.lines.push(`quests.${questId}: ${existed ? "上書き" : "追加"}`);
+        existed ? report.updated += 1 : report.created += 1;
+      }
+      if (isPlainObject(fragment.initial_state_fragment)) {
+        draft.initial_state = deepMergeObjects(draft.initial_state, fragment.initial_state_fragment);
+        report.lines.push("initial_state_fragment: 上書き");
+        report.updated += 1;
+      }
+
+      syncDraftInitialStateReferences();
+      game.editorDraft = normalizeScriptStructure(draft);
+      return report;
+    }
+
+    function buildFragmentPayloadFromSelection() {
+      ensureEditorDraft();
+      const category = game.editorSelection.category;
+      const itemId = game.editorSelection.itemId;
+
+      if (category === "initial_state") {
+        return {
+          filename: "initial_state.category.json",
+          payload: {
+            initial_state_fragment: {
+              player_character_id: game.editorDraft.initial_state.player_character_id || "",
+              active_scenario_id: game.editorDraft.initial_state.active_scenario_id || "",
+              current_event_id: game.editorDraft.initial_state.current_event_id || "",
+              current_spot_id: game.editorDraft.initial_state.current_spot_id || "",
+              flags: Array.isArray(game.editorDraft.initial_state.flags) ? cloneJson(game.editorDraft.initial_state.flags) : []
+            }
+          }
+        };
+      }
+
+      const collection = getEditorCollection(category);
+      const rootMap = {
+        areas: "areas",
+        dungeons: "dungeons",
+        spots: "spots",
+        characters: "characters",
+        items: "items",
+        events: "events",
+        scenarios: "scenarios",
+        quests: "quests"
+      };
+      const rootKey = rootMap[category];
+      if (!rootKey) {
+        throw new Error("このカテゴリはカテゴリJSONダウンロードに対応していません。");
+      }
+
+      if (itemId && isPlainObject(collection[itemId])) {
+        if (category === "scenarios") {
+          return {
+            filename: `scenario.${itemId}.category.json`,
+            payload: { scenario_id: itemId, scenario: cloneJson(collection[itemId]) }
+          };
+        }
+        if (category === "quests") {
+          return {
+            filename: `quest.${itemId}.category.json`,
+            payload: { quest_id: itemId, quest: cloneJson(collection[itemId]) }
+          };
+        }
+        return {
+          filename: `${category}.${itemId}.category.json`,
+          payload: { [rootKey]: { [itemId]: cloneJson(collection[itemId]) } }
+        };
+      }
+
+      return {
+        filename: `${category}.category.json`,
+        payload: { [rootKey]: cloneJson(collection) }
+      };
+    }
+
+    function refreshFragmentWorkspace() {
+      try {
+        if (game.editorSelection.itemId) {
+          applyEditorFormChanges();
+        }
+      } catch (error) {
+        buildAiAssistStatus("warn", "現在のフォームに未解決エラーがあるため、直前のカテゴリJSONを表示します。");
+      }
+
+      const fragment = buildFragmentPayloadFromSelection();
+      ui.aiAssist.fragmentInput.value = JSON.stringify(fragment.payload, null, 2);
+      return fragment;
+    }
+
+    function getFragmentWorkspaceText() {
+      const text = String(ui.aiAssist.fragmentInput.value || "").trim();
+      if (text) return text;
+      return JSON.stringify(buildFragmentPayloadFromSelection().payload, null, 2);
+    }
+
     function getEditorItemEntries(category) {
       if (category === "initial_state") {
         return [
@@ -430,8 +766,11 @@
         return {
           player_character_id: "",
           active_scenario_id: "",
+          active_quest_ids: [],
+          primary_quest_id: "",
           current_event_id: "",
           current_spot_id: "",
+          time: {},
           flags: []
         };
       }
@@ -481,6 +820,7 @@
       const entries = getEditorItemEntries(game.editorSelection.category);
       game.editorSelection.itemId = entries[0]?.id || (game.editorSelection.category === "initial_state" ? "initial_state" : "");
       renderEditor();
+      refreshFragmentWorkspace();
     }
 
     function syncDraftInitialStateReferences() {
@@ -513,7 +853,21 @@
       wrapper.appendChild(title);
 
       let control;
-      if (options.type === "textarea") {
+      if (options.type === "select") {
+        control = document.createElement("select");
+        const emptyOption = document.createElement("option");
+        emptyOption.value = "";
+        emptyOption.textContent = options.emptyLabel || "-";
+        control.appendChild(emptyOption);
+
+        (options.options || []).forEach((entry) => {
+          const option = document.createElement("option");
+          option.value = entry.value;
+          option.textContent = entry.label;
+          control.appendChild(option);
+        });
+        control.value = value ?? "";
+      } else if (options.type === "textarea") {
         control = document.createElement("textarea");
         if (options.large) {
           control.classList.add("editor-text-lg");
@@ -548,18 +902,60 @@
       return wrapper;
     }
 
+    function buildReferenceOptions(collection, titleField = "title") {
+      return Object.entries(collection || {})
+        .filter(([, value]) => isPlainObject(value))
+        .map(([id, value]) => {
+          const title = typeof value[titleField] === "string" && value[titleField].trim()
+            ? value[titleField].trim()
+            : (typeof value.name === "string" && value.name.trim() ? value.name.trim() : "");
+          return {
+            value: id,
+            label: title ? `${id} | ${title}` : id
+          };
+        })
+        .sort((a, b) => a.label.localeCompare(b.label, "ja"));
+    }
+
     function renderEditorForm(category, itemId) {
       ui.editor.form.innerHTML = "";
 
       if (category === "initial_state") {
         const state = ensureEditorDraft().initial_state;
+        const draft = ensureEditorDraft();
+        const characterOptions = buildReferenceOptions(draft.definitions.characters, "name");
+        const scenarioOptions = buildReferenceOptions(draft.scenarios, "title");
+        const questOptions = buildReferenceOptions(draft.quests, "title");
+        const eventOptions = buildReferenceOptions(draft.events, "title");
         const grid = document.createElement("div");
         grid.className = "editor-grid";
-        grid.appendChild(createEditorField("player_character_id", "player_character_id", state.player_character_id || ""));
-        grid.appendChild(createEditorField("active_scenario_id", "active_scenario_id", state.active_scenario_id || ""));
-        grid.appendChild(createEditorField("current_event_id", "current_event_id", state.current_event_id || ""));
+        grid.appendChild(createEditorField("player_character_id", "player_character_id", state.player_character_id || "", {
+          type: "select",
+          options: characterOptions
+        }));
+        grid.appendChild(createEditorField("active_scenario_id", "active_scenario_id", state.active_scenario_id || "", {
+          type: "select",
+          options: scenarioOptions
+        }));
+        grid.appendChild(createEditorField("active_quest_ids", "active_quest_ids", Array.isArray(state.active_quest_ids) ? state.active_quest_ids.join(", ") : "", {
+          hint: "カンマ区切り"
+        }));
+        grid.appendChild(createEditorField("primary_quest_id", "primary_quest_id", state.primary_quest_id || "", {
+          type: "select",
+          options: questOptions
+        }));
+        grid.appendChild(createEditorField("current_event_id", "current_event_id", state.current_event_id || "", {
+          type: "select",
+          options: eventOptions
+        }));
         grid.appendChild(createEditorField("current_spot_id", "current_spot_id", state.current_spot_id || ""));
         ui.editor.form.appendChild(grid);
+        ui.editor.form.appendChild(
+          createEditorField("time", "time", JSON.stringify(state.time || {}, null, 2), {
+            type: "textarea",
+            hint: "JSON形式"
+          })
+        );
         ui.editor.form.appendChild(
           createEditorField("flags", "flags", (state.flags || []).join("\n"), {
             type: "textarea",
@@ -677,9 +1073,17 @@
       }
 
       if (category === "scenarios") {
+        const draft = ensureEditorDraft();
+        const eventOptions = buildReferenceOptions(draft.events, "title");
         grid.appendChild(createEditorField("title", "title", item.title || ""));
-        grid.appendChild(createEditorField("start_event_id", "start_event_id", item.start_event_id || ""));
-        grid.appendChild(createEditorField("game_over_event_id", "game_over_event_id", item.game_over_event_id || ""));
+        grid.appendChild(createEditorField("start_event_id", "start_event_id", item.start_event_id || "", {
+          type: "select",
+          options: eventOptions
+        }));
+        grid.appendChild(createEditorField("game_over_event_id", "game_over_event_id", item.game_over_event_id || "", {
+          type: "select",
+          options: eventOptions
+        }));
         ui.editor.form.appendChild(grid);
         ui.editor.form.appendChild(createEditorField("event_ids", "event_ids", Array.isArray(item.event_ids) ? item.event_ids.join(", ") : "", {
           hint: "カンマ区切り"
@@ -696,15 +1100,21 @@
       }
 
       if (category === "quests") {
+        const draft = ensureEditorDraft();
+        const scenarioOptions = buildReferenceOptions(draft.scenarios, "title");
+        const eventOptions = buildReferenceOptions(draft.events, "title");
         grid.appendChild(createEditorField("title", "title", item.title || ""));
         ui.editor.form.appendChild(grid);
         ui.editor.form.appendChild(createEditorField("description", "description", item.description || "", { type: "textarea" }));
         ui.editor.form.appendChild(createEditorField("related_scenario_ids", "related_scenario_ids", Array.isArray(item.related_scenario_ids) ? item.related_scenario_ids.join(", ") : "", {
-          hint: "カンマ区切り"
+          hint: scenarioOptions.length > 0 ? `候補: ${scenarioOptions.map((entry) => entry.value).join(", ")}` : "カンマ区切り"
         }));
-        ui.editor.form.appendChild(createEditorField("start_event_id", "start_event_id", item.start_event_id || ""));
+        ui.editor.form.appendChild(createEditorField("start_event_id", "start_event_id", item.start_event_id || "", {
+          type: "select",
+          options: eventOptions
+        }));
         ui.editor.form.appendChild(createEditorField("event_ids", "event_ids", Array.isArray(item.event_ids) ? item.event_ids.join(", ") : "", {
-          hint: "カンマ区切り"
+          hint: eventOptions.length > 0 ? `候補: ${eventOptions.map((entry) => entry.value).join(", ")}` : "カンマ区切り"
         }));
         ui.editor.form.appendChild(createEditorField("restrictions", "restrictions", JSON.stringify(item.restrictions || {}, null, 2), {
           type: "textarea",
@@ -756,6 +1166,12 @@
 
       renderEditorForm(game.editorSelection.category, game.editorSelection.itemId);
       toggleEditorMode();
+      try {
+        const fragment = buildFragmentPayloadFromSelection();
+        ui.aiAssist.fragmentInput.value = JSON.stringify(fragment.payload, null, 2);
+      } catch (error) {
+        // フォーム再描画時の補助同期なので、失敗してもUI全体は止めない
+      }
     }
 
     function getEditorFieldValue(name) {
@@ -774,8 +1190,11 @@
       if (category === "initial_state") {
         game.editorDraft.initial_state.player_character_id = String(getEditorFieldValue("player_character_id") || "").trim();
         game.editorDraft.initial_state.active_scenario_id = String(getEditorFieldValue("active_scenario_id") || "").trim();
+        game.editorDraft.initial_state.active_quest_ids = parseCommaList(String(getEditorFieldValue("active_quest_ids") || ""));
+        game.editorDraft.initial_state.primary_quest_id = String(getEditorFieldValue("primary_quest_id") || "").trim();
         game.editorDraft.initial_state.current_event_id = String(getEditorFieldValue("current_event_id") || "").trim();
         game.editorDraft.initial_state.current_spot_id = String(getEditorFieldValue("current_spot_id") || "").trim();
+        game.editorDraft.initial_state.time = parseJsonField(String(getEditorFieldValue("time") || ""), {});
         game.editorDraft.initial_state.flags = parseLineList(String(getEditorFieldValue("flags") || ""));
         syncDraftInitialStateReferences();
         return;
@@ -857,6 +1276,7 @@
     function toggleEditorMode() {
       const isEditorMode = ui.editor.modeSelect?.value === "editor";
       ui.editor.panel.classList.toggle("hidden", !isEditorMode);
+      ui.aiAssist.card.classList.toggle("hidden", !isEditorMode);
     }
 
     function rebuildEditorFromTextarea() {
@@ -916,27 +1336,22 @@
 
     function saveIntegratedJson() {
       try {
-        applyEditorFormChanges();
-        const integrated = buildIntegratedEditorJson();
-        const errors = validateScript(integrated);
-
-        if (errors.length > 0) {
-          throw new Error(errors.join("\n"));
+        const text = String(ui.setup.scriptInput.value || "");
+        if (!text.trim()) {
+          throw new Error("完全JSON欄が空です。");
         }
 
-        const safeTitle = String(integrated.title || "holmes_script")
+        const parsed = parseJsonSafely(text);
+        const safeTitle = String(parsed.ok && typeof parsed.data?.title === "string" ? parsed.data.title : "holmes_script")
           .replace(/[\\/:*?"<>|]/g, "_")
           .replace(/\s+/g, "_");
-        ui.setup.scriptInput.value = JSON.stringify(integrated, null, 2);
-        downloadTextFile(`${safeTitle || "holmes_script"}.json`, ui.setup.scriptInput.value);
-        game.editorDraft = cloneJson(integrated);
-        renderEditor();
-        buildEditorStatus("ok", "統合JSONを保存しました。");
-        setGlobalStatus("ok", "統合JSONを保存しました。");
+        downloadTextFile(`${safeTitle || "holmes_script"}.json`, text);
+        buildEditorStatus("ok", "完全JSON欄の内容をダウンロードしました。");
+        setGlobalStatus("ok", "完全JSON欄の内容をダウンロードしました。");
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
-        buildEditorStatus("fail", "保存に失敗しました: " + message);
-        setGlobalStatus("fail", "統合JSON保存失敗:\n" + message);
+        buildEditorStatus("fail", "完全JSON欄のダウンロードに失敗しました: " + message);
+        setGlobalStatus("fail", "完全JSON欄ダウンロード失敗:\n" + message);
       }
     }
 
@@ -1046,7 +1461,8 @@
         if (!isPlainObject(scenarioDef)) return;
 
         if (isPlainObject(scenarioDef.events)) {
-          if (!Array.isArray(scenarioDef.event_ids)) {
+          const hadExplicitEventIds = Array.isArray(scenarioDef.event_ids);
+          if (!hadExplicitEventIds) {
             scenarioDef.event_ids = [];
           }
 
@@ -1054,7 +1470,7 @@
             if (isPlainObject(eventDef) && !isPlainObject(data.events[eventId])) {
               data.events[eventId] = cloneJson(eventDef);
             }
-            if (!scenarioDef.event_ids.includes(eventId)) {
+            if (!hadExplicitEventIds && !scenarioDef.event_ids.includes(eventId)) {
               scenarioDef.event_ids.push(eventId);
             }
           });
@@ -1382,6 +1798,41 @@
       return isPlainObject(game.runtime?.events) ? game.runtime.events : {};
     }
 
+    function getGloballyAssignedEventIds() {
+      const assignedIds = [];
+      const pushId = (eventId) => {
+        if (typeof eventId !== "string" || !eventId.trim()) return;
+        const normalizedId = eventId.trim();
+        if (!assignedIds.includes(normalizedId)) {
+          assignedIds.push(normalizedId);
+        }
+      };
+
+      Object.values(getScenarioDefinitions()).forEach((scenarioDef) => {
+        if (!isPlainObject(scenarioDef)) return;
+        pushId(scenarioDef.start_event_id);
+        pushId(scenarioDef.game_over_event_id);
+        if (Array.isArray(scenarioDef.event_ids)) {
+          scenarioDef.event_ids.forEach(pushId);
+        }
+      });
+
+      Object.values(getQuestDefinitions()).forEach((questDef) => {
+        if (!isPlainObject(questDef)) return;
+        pushId(questDef.start_event_id);
+        if (Array.isArray(questDef.event_ids)) {
+          questDef.event_ids.forEach(pushId);
+        }
+      });
+
+      return assignedIds;
+    }
+
+    function getUnassignedEventIds() {
+      const assignedIds = getGloballyAssignedEventIds();
+      return Object.keys(getRuntimeEventDefinitions()).filter((eventId) => !assignedIds.includes(eventId));
+    }
+
     function getReferencedEventIds() {
       const referencedIds = [];
       const pushId = (eventId) => {
@@ -1411,6 +1862,8 @@
           }
         });
       }
+
+      getUnassignedEventIds().forEach(pushId);
 
       return referencedIds;
     }
@@ -2106,6 +2559,67 @@
       advanceGameTime(minutes);
     }
 
+    function cloneCurrentTimeOrNull() {
+      return isPlainObject(game.state?.time) ? cloneJson(game.state.time) : null;
+    }
+
+    function ensureQuestStateEntry(questId) {
+      if (typeof questId !== "string" || !questId.trim()) return;
+      ensureStateCollections();
+      const normalizedQuestId = questId.trim();
+
+      if (!game.state.active_quest_ids.includes(normalizedQuestId)) {
+        game.state.active_quest_ids.push(normalizedQuestId);
+      }
+
+      if (!isPlainObject(game.state.quest_states[normalizedQuestId])) {
+        game.state.quest_states[normalizedQuestId] = {
+          status: "active",
+          progress_flags: [],
+          completed_at: null
+        };
+      }
+
+      if (typeof game.state.quest_states[normalizedQuestId].status !== "string") {
+        game.state.quest_states[normalizedQuestId].status = "active";
+      }
+      if (!Array.isArray(game.state.quest_states[normalizedQuestId].progress_flags)) {
+        game.state.quest_states[normalizedQuestId].progress_flags = [];
+      }
+      if (!("completed_at" in game.state.quest_states[normalizedQuestId])) {
+        game.state.quest_states[normalizedQuestId].completed_at = null;
+      }
+    }
+
+    function applyScenarioAndQuestEffects(effects) {
+      if (typeof effects.start_scenario === "string" && effects.start_scenario.trim()) {
+        game.state.active_scenario_id = effects.start_scenario.trim();
+        game.state.current_event_id = "";
+        setCurrentEventId("");
+      }
+
+      if (typeof effects.start_quest === "string" && effects.start_quest.trim()) {
+        const questId = effects.start_quest.trim();
+        ensureQuestStateEntry(questId);
+      }
+
+      if (typeof effects.set_primary_quest === "string" && effects.set_primary_quest.trim()) {
+        const questId = effects.set_primary_quest.trim();
+        ensureQuestStateEntry(questId);
+        game.state.primary_quest_id = questId;
+        game.state.current_quest_id = questId;
+      }
+
+      if (typeof effects.complete_quest === "string" && effects.complete_quest.trim()) {
+        const questId = effects.complete_quest.trim();
+        ensureQuestStateEntry(questId);
+        game.state.quest_states[questId].status = "completed";
+        game.state.quest_states[questId].completed_at = cloneCurrentTimeOrNull();
+      }
+
+      ensureStateCollections();
+    }
+
     function applyEffects(effects) {
       if (!isPlainObject(effects)) return;
       ensureStateCollections();
@@ -2128,7 +2642,10 @@
       // 6. スポット上アイテム操作
       applySpotItemEffects(effects);
 
-      // 7. 時間経過
+      // 7. シナリオ・クエスト進行
+      applyScenarioAndQuestEffects(effects);
+
+      // 8. 時間経過
       applyTimeEffects(effects);
     }
 
@@ -2819,6 +3336,38 @@
           }
         });
       }
+
+      if (effects.start_scenario !== undefined) {
+        if (typeof effects.start_scenario !== "string") {
+          errors.push(`${label}.start_scenario は文字列である必要があります。`);
+        } else if (!data.scenarios?.[effects.start_scenario]) {
+          errors.push(`${label}.start_scenario が scenarios に存在しません: ${effects.start_scenario}`);
+        }
+      }
+
+      if (effects.start_quest !== undefined) {
+        if (typeof effects.start_quest !== "string") {
+          errors.push(`${label}.start_quest は文字列である必要があります。`);
+        } else if (!data.quests?.[effects.start_quest]) {
+          errors.push(`${label}.start_quest が quests に存在しません: ${effects.start_quest}`);
+        }
+      }
+
+      if (effects.set_primary_quest !== undefined) {
+        if (typeof effects.set_primary_quest !== "string") {
+          errors.push(`${label}.set_primary_quest は文字列である必要があります。`);
+        } else if (!data.quests?.[effects.set_primary_quest]) {
+          errors.push(`${label}.set_primary_quest が quests に存在しません: ${effects.set_primary_quest}`);
+        }
+      }
+
+      if (effects.complete_quest !== undefined) {
+        if (typeof effects.complete_quest !== "string") {
+          errors.push(`${label}.complete_quest は文字列である必要があります。`);
+        } else if (!data.quests?.[effects.complete_quest]) {
+          errors.push(`${label}.complete_quest が quests に存在しません: ${effects.complete_quest}`);
+        }
+      }
     }
 
     function validateTopLevelStructure(data, errors) {
@@ -3318,16 +3867,64 @@
       const normalizedSample = normalizeScriptStructure(sample.data);
       ui.setup.scriptInput.value = JSON.stringify(normalizedSample, null, 2);
       loadEditorDraft(normalizedSample);
+      refreshFragmentWorkspace();
       buildEditorStatus("ok", `${sample.title || "サンプル"} を基本エディタへ反映しました。`);
       setGlobalStatus("ok", `${sample.title || "サンプル"} を読み込みました。`);
     }
 
     async function handleCopyPrompt() {
       try {
-        const prompt = ui.setup.promptModeSelect.value === "shindo" ? SHINDO_PROMPT : GENERIC_PROMPT;
+        const prompt = getPromptForMode(ui.setup.promptModeSelect.value);
         await copyTextToClipboard(prompt);
+        buildAiAssistStatus("ok", "AI用プロンプトをコピーしました。");
         setGlobalStatus("ok", "AI用プロンプトをコピーしました。");
       } catch (error) {
+        buildAiAssistStatus("fail", "AI用プロンプトのコピーに失敗しました。");
+        setGlobalStatus("fail", "コピー失敗: " + (error instanceof Error ? error.message : String(error)));
+      }
+    }
+
+    async function handleCopyScript() {
+      try {
+        const text = String(ui.setup.scriptInput.value || "");
+        if (!text.trim()) {
+          throw new Error("完全JSON欄が空です。");
+        }
+        await copyTextToClipboard(text);
+        setGlobalStatus("ok", "完全JSON欄の内容をクリップボードへコピーしました。");
+      } catch (error) {
+        setGlobalStatus("fail", "完全JSON欄コピー失敗: " + (error instanceof Error ? error.message : String(error)));
+      }
+    }
+
+    async function handleCopyFragment() {
+      try {
+        await copyTextToClipboard(getFragmentWorkspaceText());
+        buildAiAssistStatus("ok", "カテゴリJSONをコピーしました。");
+        setGlobalStatus("ok", "カテゴリJSONをコピーしました。");
+      } catch (error) {
+        buildAiAssistStatus("fail", "カテゴリJSONのコピーに失敗しました。");
+        setGlobalStatus("fail", "カテゴリJSONコピー失敗: " + (error instanceof Error ? error.message : String(error)));
+      }
+    }
+
+    async function handleCopyPromptWithFragment() {
+      try {
+        const prompt = stripSampleJsonSection(getPromptForMode(ui.setup.promptModeSelect.value));
+        const fragmentText = getFragmentWorkspaceText();
+        const composed = [
+          prompt,
+          "",
+          "【現在のカテゴリJSON】",
+          "```json",
+          fragmentText,
+          "```"
+        ].join("\n");
+        await copyTextToClipboard(composed);
+        buildAiAssistStatus("ok", "AI用プロンプトとカテゴリJSONをまとめてコピーしました。");
+        setGlobalStatus("ok", "AI用プロンプトとカテゴリJSONをコピーしました。");
+      } catch (error) {
+        buildAiAssistStatus("fail", "プロンプトとカテゴリJSONのコピーに失敗しました。");
         setGlobalStatus("fail", "コピー失敗: " + (error instanceof Error ? error.message : String(error)));
       }
     }
@@ -3336,9 +3933,101 @@
       try {
         ui.setup.scriptInput.value = "";
         ui.setup.scriptInput.value = await readTextFromClipboard();
-        setGlobalStatus("ok", "JSON入力欄を全削除し、クリップボードの内容を貼り付けました。");
+        setGlobalStatus("ok", "クリップボードの内容を完全JSON欄へペーストしました。");
       } catch (error) {
         setGlobalStatus("fail", "貼り付け失敗: " + (error instanceof Error ? error.message : String(error)));
+      }
+    }
+
+    async function handlePasteFragment() {
+      try {
+        ui.aiAssist.fragmentInput.value = await readTextFromClipboard();
+        buildAiAssistStatus("ok", "クリップボードの内容をカテゴリJSON欄に貼り付けました。");
+        setGlobalStatus("ok", "カテゴリJSON欄へ貼り付けました。");
+      } catch (error) {
+        buildAiAssistStatus("fail", "カテゴリJSON欄への貼り付けに失敗しました。");
+        setGlobalStatus("fail", "貼り付け失敗: " + (error instanceof Error ? error.message : String(error)));
+      }
+    }
+
+    function mergeFragmentFromTextarea() {
+      const parsed = parseJsonSafely(String(ui.aiAssist.fragmentInput.value || "").trim());
+
+      if (!parsed.ok) {
+        buildAiAssistStatus("fail", "カテゴリJSONの解析に失敗しました。");
+        setGlobalStatus("fail", "JSON解析失敗:\n" + parsed.error);
+        return;
+      }
+
+      const classification = classifyJsonPayload(parsed.data);
+      if (classification.kind !== "fragment") {
+        buildAiAssistStatus("fail", classification.reason || "カテゴリJSONではありません。");
+        setGlobalStatus("warn", classification.reason || "カテゴリJSONではありません。");
+        return;
+      }
+
+      try {
+        if (game.editorSelection.itemId) {
+          applyEditorFormChanges();
+        }
+
+        const report = mergeFragmentIntoDraft(parsed.data);
+        if (report.lines.length === 0) {
+          throw new Error("マージ対象となるカテゴリJSONキーが見つかりませんでした。");
+        }
+        const integrated = buildIntegratedEditorJson();
+        const errors = validateScript(integrated);
+        if (errors.length > 0) {
+          throw new Error(errors.join("\n"));
+        }
+
+        ui.setup.scriptInput.value = JSON.stringify(integrated, null, 2);
+        ui.aiAssist.fragmentInput.value = JSON.stringify(parsed.data, null, 2);
+        game.editorDraft = cloneJson(integrated);
+        renderEditor();
+        const summary = `カテゴリJSONをマージしました。追加 ${report.created} 件 / 上書き ${report.updated} 件`;
+        const details = report.lines.length > 0 ? `\n${report.lines.join("\n")}` : "";
+        buildAiAssistStatus("ok", summary + details);
+        buildEditorStatus("ok", "カテゴリJSONを基本エディタへマージしました。");
+        setGlobalStatus("ok", summary);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        buildAiAssistStatus("fail", "カテゴリJSONマージに失敗しました: " + message);
+        setGlobalStatus("fail", "カテゴリJSONマージ失敗:\n" + message);
+      }
+    }
+
+    function saveFragmentJson() {
+      try {
+        const text = String(ui.aiAssist.fragmentInput.value || "");
+        if (!text.trim()) {
+          throw new Error("カテゴリJSON欄が空です。");
+        }
+        const fragment = buildFragmentPayloadFromSelection();
+        downloadTextFile(fragment.filename, text);
+        buildAiAssistStatus("ok", "カテゴリJSON欄の内容をダウンロードしました。");
+        setGlobalStatus("ok", "カテゴリJSON欄の内容をダウンロードしました。");
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        buildAiAssistStatus("fail", "カテゴリJSON欄のダウンロードに失敗しました: " + message);
+        setGlobalStatus("fail", "カテゴリJSON欄ダウンロード失敗:\n" + message);
+      }
+    }
+
+    async function handleFragmentFileSelected(event) {
+      const file = event.target.files && event.target.files[0];
+      if (!file) return;
+
+      try {
+        const text = await file.text();
+        ui.aiAssist.fragmentInput.value = text;
+        buildAiAssistStatus("ok", `カテゴリJSON欄へアップロードしました: ${file.name}`);
+        setGlobalStatus("ok", `カテゴリJSON欄へアップロードしました: ${file.name}`);
+      } catch (error) {
+        buildAiAssistStatus("fail", "カテゴリJSON欄へのアップロードに失敗しました。");
+        setGlobalStatus("fail", "カテゴリJSON欄アップロード失敗: " + (error instanceof Error ? error.message : String(error)));
+      } finally {
+        event.target.value = "";
       }
     }
 
@@ -3348,25 +4037,11 @@
 
       try {
         const text = await file.text();
-        const parsed = parseJsonSafely(text);
-        if (parsed.ok) {
-          const errors = validateScript(parsed.data);
-          if (errors.length === 0) {
-            const normalized = normalizeScriptStructure(parsed.data);
-            ui.setup.scriptInput.value = JSON.stringify(normalized, null, 2);
-            loadEditorDraft(normalized);
-            buildEditorStatus("ok", `JSONファイルから基本エディタを再構築しました: ${file.name}`);
-          } else {
-            ui.setup.scriptInput.value = text;
-            buildEditorStatus("warn", "JSONファイルは読み込みましたが、基本エディタへは反映していません。");
-          }
-        } else {
-          ui.setup.scriptInput.value = text;
-          buildEditorStatus("warn", "JSONファイルは読み込みましたが、基本エディタへは反映していません。");
-        }
-        setGlobalStatus("ok", `JSONファイルを読み込みました: ${file.name}`);
+        ui.setup.scriptInput.value = text;
+        buildEditorStatus("ok", `完全JSON欄へアップロードしました: ${file.name}`);
+        setGlobalStatus("ok", `完全JSON欄へアップロードしました: ${file.name}`);
       } catch (error) {
-        setGlobalStatus("fail", "ファイル読込失敗: " + (error instanceof Error ? error.message : String(error)));
+        setGlobalStatus("fail", "完全JSON欄アップロード失敗: " + (error instanceof Error ? error.message : String(error)));
       } finally {
         event.target.value = "";
       }
@@ -3463,6 +4138,20 @@
 
       ui.setup.jsonFileInput.addEventListener("change", handleJsonFileSelected);
       ui.setup.copyPromptButton.addEventListener("click", handleCopyPrompt);
+      ui.setup.copyScriptButton.addEventListener("click", handleCopyScript);
+      ui.aiAssist.copyPromptWithFragmentButton.addEventListener("click", handleCopyPromptWithFragment);
+      ui.aiAssist.copyFragmentButton.addEventListener("click", handleCopyFragment);
+      ui.aiAssist.refreshFragmentButton.addEventListener("click", () => {
+        refreshFragmentWorkspace();
+        buildAiAssistStatus("ok", "現在のカテゴリ内容をカテゴリJSON欄へ反映しました。");
+      });
+      ui.aiAssist.pasteFragmentButton.addEventListener("click", handlePasteFragment);
+      ui.aiAssist.mergeFragmentButton.addEventListener("click", mergeFragmentFromTextarea);
+      ui.aiAssist.saveFragmentButton.addEventListener("click", saveFragmentJson);
+      ui.aiAssist.loadFragmentFileButton.addEventListener("click", () => {
+        ui.aiAssist.fragmentFileInput.click();
+      });
+      ui.aiAssist.fragmentFileInput.addEventListener("change", handleFragmentFileSelected);
       ui.setup.pasteScriptButton.addEventListener("click", handlePasteScript);
       ui.setup.loadScriptButton.addEventListener("click", loadScriptFromTextarea);
       ui.setup.restartButton.addEventListener("click", restartLoaded);

@@ -53,6 +53,40 @@
     </div>
 
     <div class="card">
+      <h2>エディタ</h2>
+      <label class="label" for="editorModeSelect">モード</label>
+      <select id="editorModeSelect">
+        <option value="json">JSON直接編集モード</option>
+        <option value="editor">基本エディタモード</option>
+      </select>
+
+      <div id="editorPanel" class="editor-panel hidden">
+        <div class="editor-toolbar">
+          <div class="editor-toolbar-group">
+            <label class="label" for="editorCategorySelect">編集カテゴリ</label>
+            <select id="editorCategorySelect"></select>
+          </div>
+          <div class="editor-toolbar-group">
+            <label class="label" for="editorItemSelect">項目一覧</label>
+            <select id="editorItemSelect"></select>
+          </div>
+        </div>
+
+        <div class="row" style="margin-top:10px;">
+          <button id="editorNewButton" class="button secondary" type="button">新規作成</button>
+          <button id="editorDuplicateButton" class="button secondary" type="button">複製</button>
+          <button id="editorDeleteButton" class="button secondary" type="button">削除</button>
+          <button id="editorApplyButton" class="button ok" type="button">JSONへ反映</button>
+          <button id="editorRebuildButton" class="button secondary" type="button">JSONから再構築</button>
+          <button id="saveIntegratedJsonButton" class="button secondary" type="button">統合JSON保存</button>
+        </div>
+
+        <div id="editorStatus" class="status" style="margin-top:10px;">JSONから再構築すると、カテゴリ別に編集できます。</div>
+        <div id="editorForm" class="editor-form" style="margin-top:12px;"></div>
+      </div>
+    </div>
+
+    <div class="card">
       <h2>進行</h2>
       <div class="topbar">
         <div class="pill"><strong>タイトル:</strong> <span id="gameTitle">-</span></div>

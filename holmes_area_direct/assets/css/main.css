@@ -206,6 +206,49 @@
       font-size:14px;
       line-height:1.5;
     }
+    .editor-panel {
+      margin-top:12px;
+    }
+    .editor-toolbar {
+      display:grid;
+      grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));
+      gap:12px;
+      align-items:end;
+    }
+    .editor-toolbar-group {
+      min-width:0;
+    }
+    .editor-form {
+      display:grid;
+      gap:12px;
+    }
+    .editor-grid {
+      display:grid;
+      grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));
+      gap:12px;
+    }
+    .editor-field {
+      display:grid;
+      gap:8px;
+    }
+    .editor-field textarea {
+      min-height:120px;
+    }
+    .editor-field textarea.editor-text-lg {
+      min-height:220px;
+    }
+    .editor-hint {
+      color:var(--muted);
+      font-size:13px;
+      line-height:1.5;
+    }
+    .editor-empty {
+      padding:14px;
+      border:1px dashed var(--border);
+      border-radius:12px;
+      color:var(--muted);
+      background:var(--panel3);
+    }
     code.inline {
       background:#020617;
       border:1px solid var(--border);

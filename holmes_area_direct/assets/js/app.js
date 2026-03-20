@@ -155,6 +155,7 @@
     const ui = {
       setup: {
         promptModeSelect: document.getElementById("promptModeSelect"),
+        sampleSelect: document.getElementById("sampleSelect"),
         scriptInput: document.getElementById("scriptInput"),
         jsonFileInput: document.getElementById("jsonFileInput"),
         openFileButton: document.getElementById("openFileButton"),
@@ -190,8 +191,7 @@
         eventTitle: document.getElementById("eventTitle"),
         speakerLine: document.getElementById("speakerLine"),
         textArea: document.getElementById("textArea"),
-        choiceList: document.getElementById("choiceList"),
-        moveList: document.getElementById("moveList")
+        choiceList: document.getElementById("choiceList")
       },
       log: {
         logList: document.getElementById("logList")
@@ -210,13 +210,138 @@
     };
 
     const SAMPLE_SCENARIO = window.HOLMES_SAMPLE_SCENARIO || {};
+    const SAMPLE_REGISTRY = Array.isArray(window.HOLMES_SAMPLE_REGISTRY) ? window.HOLMES_SAMPLE_REGISTRY : [];
     const PROMPT_SAMPLE_JSON = window.HOLMES_PROMPT_SAMPLE_JSON || JSON.stringify(SAMPLE_SCENARIO, null, 2);
     const GENERIC_PROMPT = window.HOLMES_PROMPTS?.generic || '';
     const SHINDO_PROMPT = window.HOLMES_PROMPTS?.shindo || '';
 
-    
+    function normalizeScriptStructure(source) {
+      if (!isPlainObject(source)) return source;
 
-    
+      const data = cloneJson(source);
+
+      if (!isPlainObject(data.initial_state)) {
+        data.initial_state = {};
+      }
+
+      if (!isPlainObject(data.scenarios)) {
+        data.scenarios = {};
+      }
+
+      if (!isPlainObject(data.quests)) {
+        data.quests = {};
+      }
+
+      const activeScenarioId =
+        typeof data.initial_state.active_scenario_id === "string" && data.initial_state.active_scenario_id.trim()
+          ? data.initial_state.active_scenario_id.trim()
+          : "";
+
+      if (isPlainObject(data.scenario)) {
+        const legacyScenarioId = activeScenarioId || "main_scenario";
+        if (!isPlainObject(data.scenarios[legacyScenarioId])) {
+          data.scenarios[legacyScenarioId] = cloneJson(data.scenario);
+        }
+        delete data.scenario;
+
+        if (!activeScenarioId) {
+          data.initial_state.active_scenario_id = legacyScenarioId;
+        }
+      }
+
+      Object.entries(data.scenarios).forEach(([scenarioId, scenarioDef]) => {
+        if (!isPlainObject(scenarioDef) || !isPlainObject(scenarioDef.quests)) return;
+
+        Object.entries(scenarioDef.quests).forEach(([questId, questDef]) => {
+          if (!isPlainObject(questDef)) return;
+
+          if (!isPlainObject(data.quests[questId])) {
+            data.quests[questId] = cloneJson(questDef);
+          }
+
+          if (!Array.isArray(data.quests[questId].related_scenario_ids)) {
+            data.quests[questId].related_scenario_ids = [];
+          }
+
+          if (!data.quests[questId].related_scenario_ids.includes(scenarioId)) {
+            data.quests[questId].related_scenario_ids.push(scenarioId);
+          }
+        });
+
+        delete scenarioDef.quests;
+      });
+
+      if (!Array.isArray(data.initial_state.active_quest_ids)) {
+        data.initial_state.active_quest_ids = [];
+      }
+
+      if (
+        typeof data.initial_state.current_quest_id === "string" &&
+        data.initial_state.current_quest_id.trim() &&
+        !data.initial_state.active_quest_ids.includes(data.initial_state.current_quest_id.trim())
+      ) {
+        data.initial_state.active_quest_ids.push(data.initial_state.current_quest_id.trim());
+      }
+
+      data.initial_state.active_quest_ids = data.initial_state.active_quest_ids
+        .filter((questId) => typeof questId === "string" && questId.trim())
+        .map((questId) => questId.trim())
+        .filter((questId, index, array) => array.indexOf(questId) === index);
+
+      if (
+        typeof data.initial_state.primary_quest_id !== "string" ||
+        !data.initial_state.primary_quest_id.trim()
+      ) {
+        data.initial_state.primary_quest_id = data.initial_state.active_quest_ids[0] || "";
+      } else {
+        data.initial_state.primary_quest_id = data.initial_state.primary_quest_id.trim();
+      }
+
+      if (
+        data.initial_state.primary_quest_id &&
+        !data.initial_state.active_quest_ids.includes(data.initial_state.primary_quest_id)
+      ) {
+        data.initial_state.active_quest_ids.unshift(data.initial_state.primary_quest_id);
+      }
+
+      if (!isPlainObject(data.initial_state.quest_states)) {
+        data.initial_state.quest_states = {};
+      }
+
+      data.initial_state.active_quest_ids.forEach((questId) => {
+        if (!isPlainObject(data.initial_state.quest_states[questId])) {
+          data.initial_state.quest_states[questId] = {
+            status: "active",
+            progress_flags: [],
+            completed_at: null
+          };
+          return;
+        }
+
+        if (typeof data.initial_state.quest_states[questId].status !== "string") {
+          data.initial_state.quest_states[questId].status = "active";
+        }
+        if (!Array.isArray(data.initial_state.quest_states[questId].progress_flags)) {
+          data.initial_state.quest_states[questId].progress_flags = [];
+        }
+        if (!("completed_at" in data.initial_state.quest_states[questId])) {
+          data.initial_state.quest_states[questId].completed_at = null;
+        }
+      });
+
+      if (
+        typeof data.initial_state.current_quest_id !== "string" ||
+        !data.initial_state.current_quest_id.trim()
+      ) {
+        data.initial_state.current_quest_id = data.initial_state.primary_quest_id || "";
+      }
+
+      if (typeof data.initial_state.active_scenario_id !== "string") {
+        data.initial_state.active_scenario_id = "";
+      }
+
+      return data;
+    }
 
     // =========================================================
     // 3. ゲーム状態の読み取り
@@ -228,6 +353,174 @@
       if (!isPlainObject(game.state.unique)) game.state.unique = {};
       if (!isPlainObject(game.state.characters)) game.state.characters = {};
       if (!isPlainObject(game.state.spot_states)) game.state.spot_states = {};
+      if (!Array.isArray(game.state.active_quest_ids)) game.state.active_quest_ids = [];
+      if (!isPlainObject(game.state.quest_states)) game.state.quest_states = {};
+      if (typeof game.state.active_scenario_id !== "string") game.state.active_scenario_id = "";
+
+      game.state.active_quest_ids = game.state.active_quest_ids
+        .filter((questId) => typeof questId === "string" && questId.trim())
+        .map((questId) => questId.trim())
+        .filter((questId, index, array) => array.indexOf(questId) === index);
+
+      const fallbackQuestId =
+        typeof game.state.current_quest_id === "string" && game.state.current_quest_id.trim()
+          ? game.state.current_quest_id.trim()
+          : "";
+
+      if (
+        typeof game.state.primary_quest_id !== "string" ||
+        !game.state.primary_quest_id.trim()
+      ) {
+        game.state.primary_quest_id = game.state.active_quest_ids[0] || fallbackQuestId || "";
+      }
+
+      if (game.state.primary_quest_id && !game.state.active_quest_ids.includes(game.state.primary_quest_id)) {
+        game.state.active_quest_ids.unshift(game.state.primary_quest_id);
+      }
+
+      game.state.current_quest_id = game.state.primary_quest_id || "";
+
+      game.state.active_quest_ids.forEach((questId) => {
+        if (!isPlainObject(game.state.quest_states[questId])) {
+          game.state.quest_states[questId] = {
+            status: "active",
+            progress_flags: [],
+            completed_at: null
+          };
+          return;
+        }
+
+        if (typeof game.state.quest_states[questId].status !== "string") {
+          game.state.quest_states[questId].status = "active";
+        }
+        if (!Array.isArray(game.state.quest_states[questId].progress_flags)) {
+          game.state.quest_states[questId].progress_flags = [];
+        }
+        if (!("completed_at" in game.state.quest_states[questId])) {
+          game.state.quest_states[questId].completed_at = null;
+        }
+      });
+    }
+
+    function getScenarioDefinitions() {
+      return isPlainObject(game.runtime?.scenarios) ? game.runtime.scenarios : {};
+    }
+
+    function getQuestDefinitions() {
+      return isPlainObject(game.runtime?.quests) ? game.runtime.quests : {};
+    }
+
+    function getActiveScenarioId() {
+      return typeof game.state?.active_scenario_id === "string" ? game.state.active_scenario_id : "";
+    }
+
+    function getActiveScenario() {
+      const activeScenarioId = getActiveScenarioId();
+      if (!activeScenarioId) return null;
+
+      const scenarios = getScenarioDefinitions();
+      return isPlainObject(scenarios[activeScenarioId]) ? scenarios[activeScenarioId] : null;
+    }
+
+    function getRuntimeAreaDefinitions() {
+      const merged = isPlainObject(game.runtime?.world?.areas) ? cloneJson(game.runtime.world.areas) : {};
+      const activeScenario = getActiveScenario();
+
+      if (isPlainObject(activeScenario?.overlay?.add_areas)) {
+        Object.entries(activeScenario.overlay.add_areas).forEach(([areaId, areaDef]) => {
+          if (isPlainObject(areaDef)) {
+            merged[areaId] = cloneJson(areaDef);
+          }
+        });
+      }
+
+      return merged;
+    }
+
+    function getRuntimeDungeonDefinitions() {
+      const merged = isPlainObject(game.runtime?.world?.dungeons) ? cloneJson(game.runtime.world.dungeons) : {};
+      const activeScenario = getActiveScenario();
+
+      if (isPlainObject(activeScenario?.overlay?.add_dungeons)) {
+        Object.entries(activeScenario.overlay.add_dungeons).forEach(([dungeonId, dungeonDef]) => {
+          if (isPlainObject(dungeonDef)) {
+            merged[dungeonId] = cloneJson(dungeonDef);
+          }
+        });
+      }
+
+      return merged;
+    }
+
+    function getRuntimeSpotDefinitions() {
+      const merged = isPlainObject(game.runtime?.world?.spots) ? cloneJson(game.runtime.world.spots) : {};
+      const activeScenario = getActiveScenario();
+
+      if (isPlainObject(activeScenario?.overlay?.add_spots)) {
+        Object.entries(activeScenario.overlay.add_spots).forEach(([spotId, spotDef]) => {
+          if (isPlainObject(spotDef)) {
+            merged[spotId] = cloneJson(spotDef);
+          }
+        });
+      }
+
+      if (Array.isArray(activeScenario?.overlay?.disabled_spot_ids)) {
+        activeScenario.overlay.disabled_spot_ids.forEach((spotId) => {
+          delete merged[spotId];
+        });
+      }
+
+      return merged;
+    }
+
+    function getRuntimeCharacterDefinitions() {
+      const merged = isPlainObject(game.runtime?.definitions?.characters) ? cloneJson(game.runtime.definitions.characters) : {};
+      const activeScenario = getActiveScenario();
+
+      if (isPlainObject(activeScenario?.overlay?.add_characters)) {
+        Object.entries(activeScenario.overlay.add_characters).forEach(([characterId, characterDef]) => {
+          if (isPlainObject(characterDef)) {
+            merged[characterId] = cloneJson(characterDef);
+          }
+        });
+      }
+
+      return merged;
+    }
+
+    function getRuntimeItemDefinitions() {
+      const merged = isPlainObject(game.runtime?.definitions?.items) ? cloneJson(game.runtime.definitions.items) : {};
+      const activeScenario = getActiveScenario();
+
+      if (isPlainObject(activeScenario?.overlay?.add_items)) {
+        Object.entries(activeScenario.overlay.add_items).forEach(([itemId, itemDef]) => {
+          if (isPlainObject(itemDef)) {
+            merged[itemId] = cloneJson(itemDef);
+          }
+        });
+      }
+
+      return merged;
+    }
+
+    function getPrimaryQuestId() {
+      if (typeof game.state?.primary_quest_id === "string" && game.state.primary_quest_id.trim()) {
+        return game.state.primary_quest_id.trim();
+      }
+
+      if (typeof game.state?.current_quest_id === "string" && game.state.current_quest_id.trim()) {
+        return game.state.current_quest_id.trim();
+      }
+
+      return Array.isArray(game.state?.active_quest_ids) && game.state.active_quest_ids.length > 0
+        ? game.state.active_quest_ids[0]
+        : "";
+    }
+
+    function getQuestById(questId) {
+      if (typeof questId !== "string" || !questId.trim()) return null;
+      const quests = getQuestDefinitions();
+      return isPlainObject(quests[questId]) ? quests[questId] : null;
     }
 
     function getPlayerCharacterId() {
@@ -300,16 +593,54 @@
     }
 
     function getActiveEventById(eventId) {
-      if (!isPlainObject(game.runtime?.scenario?.events)) return null;
-      return game.runtime.scenario.events[eventId] || null;
+      if (typeof eventId !== "string" || !eventId.trim()) return null;
+
+      const activeScenario = getActiveScenario();
+      if (isPlainObject(activeScenario?.events) && isPlainObject(activeScenario.events[eventId])) {
+        return activeScenario.events[eventId];
+      }
+
+      if (isPlainObject(game.runtime?.world?.base_events) && isPlainObject(game.runtime.world.base_events[eventId])) {
+        return game.runtime.world.base_events[eventId];
+      }
+
+      return null;
     }
 
-    function resolveVisibleEvents() {
-      const currentSpotId = getCharacterSpotId(getPlayerCharacterId());
+    function findFirstVisibleEventId(spotId = "") {
+      const currentSpotId = spotId || getCharacterSpotId(getPlayerCharacterId());
+      if (!currentSpotId) return "";
+
+      const activeScenario = getActiveScenario();
+      const eventRules = activeScenario?.event_rules;
+      const mode = activeScenario ? (eventRules?.mode || "scenario_only") : "base_only";
+
+      const baseEventIds = isPlainObject(game.runtime?.world?.base_events)
+        ? Object.entries(game.runtime.world.base_events)
+          .filter(([, eventDef]) => isPlainObject(eventDef) && eventDef.spot_id === currentSpotId)
+          .map(([eventId]) => eventId)
+        : [];
+      const scenarioEventIds = isPlainObject(activeScenario?.events)
+        ? Object.entries(activeScenario.events)
+          .filter(([, eventDef]) => isPlainObject(eventDef) && eventDef.spot_id === currentSpotId)
+          .map(([eventId]) => eventId)
+        : [];
+
+      if (mode === "base_only") return baseEventIds[0] || "";
+      if (mode === "scenario_only") return scenarioEventIds[0] || "";
+      if (mode === "merge") return [...scenarioEventIds, ...baseEventIds][0] || "";
+      if (mode === "disable_all") return "";
+
+      return scenarioEventIds[0] || baseEventIds[0] || "";
+    }
+
+    function resolveVisibleEvents(spotId = "") {
+      const currentSpotId = spotId || getCharacterSpotId(getPlayerCharacterId());
       if (!currentSpotId) return [];
 
-      const eventRules = game.runtime?.scenario?.event_rules;
-      const mode = eventRules?.mode || "scenario_only";
+      const activeScenario = getActiveScenario();
+      const eventRules = activeScenario?.event_rules;
+      const mode = activeScenario ? (eventRules?.mode || "scenario_only") : "base_only";
 
       const baseEvents = [];
       const scenarioEvents = [];
@@ -324,8 +655,8 @@
       }
 
       // scenario.eventsから収集
-      if (isPlainObject(game.runtime?.scenario?.events)) {
-        Object.values(game.runtime.scenario.events).forEach((event) => {
+      if (isPlainObject(activeScenario?.events)) {
+        Object.values(activeScenario.events).forEach((event) => {
           if (event.spot_id === currentSpotId) {
             scenarioEvents.push(event);
           }
@@ -338,7 +669,7 @@
       } else if (mode === "scenario_only") {
         return scenarioEvents;
       } else if (mode === "merge") {
-        return [...baseEvents, ...scenarioEvents];
+        return [...scenarioEvents, ...baseEvents];
       } else if (mode === "disable_all") {
         return [];
       }
@@ -347,36 +678,43 @@
     }
 
     function getCurrentEvent() {
-      const visibleEvents = resolveVisibleEvents();
-      // 現在は最初のイベントを返す（将来的に選択可能に）
+      const currentSpotId = getCharacterSpotId(getPlayerCharacterId());
+      const currentEventId = typeof game.currentEventId === "string" ? game.currentEventId.trim() : "";
+      const currentEvent = getActiveEventById(currentEventId);
+
+      if (currentEvent && currentEvent.spot_id === currentSpotId) {
+        return currentEvent;
+      }
+
+      const visibleEvents = resolveVisibleEvents(currentSpotId);
       return visibleEvents.length > 0 ? visibleEvents[0] : null;
     }
 
     function resolveSpotById(spotId) {
-      if (!isPlainObject(game.runtime?.world?.spots)) return null;
+      const spots = getRuntimeSpotDefinitions();
+      return isPlainObject(spots[spotId]) ? spots[spotId] : null;
+    }
 
-      // まずworld.spotsから取得
-      let spot = game.runtime.world.spots[spotId] || null;
+    function resolveAreaById(areaId) {
+      const areas = getRuntimeAreaDefinitions();
+      return isPlainObject(areas[areaId]) ? areas[areaId] : null;
+    }
 
-      // overlayで追加されたspot
-      if (!spot && isPlainObject(game.runtime?.scenario?.overlay?.add_spots)) {
-        spot = game.runtime.scenario.overlay.add_spots[spotId] || null;
-      }
+    function resolveDungeonById(dungeonId) {
+      const dungeons = getRuntimeDungeonDefinitions();
+      return isPlainObject(dungeons[dungeonId]) ? dungeons[dungeonId] : null;
+    }
 
-      // overlayでdisabledされているかチェック
-      if (spot && Array.isArray(game.runtime?.scenario?.overlay?.disabled_spot_ids) &&
-          game.runtime.scenario.overlay.disabled_spot_ids.includes(spotId)) {
-        return null;
-      }
+    function resolveItemById(itemId) {
+      if (typeof itemId !== "string" || !itemId.trim()) return null;
+      const items = getRuntimeItemDefinitions();
+      return isPlainObject(items[itemId]) ? items[itemId] : null;
+    }
 
-      // overlayでenabledされているか（通常は不要だが）
-      if (!spot && Array.isArray(game.runtime?.scenario?.overlay?.enabled_spot_ids) &&
-          game.runtime.scenario.overlay.enabled_spot_ids.includes(spotId)) {
-        // enabledだが存在しない場合はnull
-        return null;
-      }
-
-      return spot;
+    function resolveCharacterDefinitionById(characterId) {
+      if (typeof characterId !== "string" || !characterId.trim()) return null;
+      const characters = getRuntimeCharacterDefinitions();
+      return isPlainObject(characters[characterId]) ? characters[characterId] : null;
     }
 
     function getSpotById(spotId) {
@@ -386,6 +724,30 @@
     function getDisplaySpotName(spotId) {
       const spot = getSpotById(spotId);
       return spot && typeof spot.name === "string" ? spot.name : (spotId || "-");
+    }
+
+    function getOptionTargetSpotId(option) {
+      if (!isPlainObject(option)) return "";
+
+      if (typeof option.target_spot_id === "string" && option.target_spot_id.trim()) {
+        return option.target_spot_id.trim();
+      }
+
+      const playerCharacterId = getPlayerCharacterId();
+      if (playerCharacterId) {
+        const playerSpotPath = `characters.${playerCharacterId}.spot_id`;
+        const playerSpotValue = getNestedValue(option.effects, `set.${playerSpotPath}`);
+        if (typeof playerSpotValue === "string" && playerSpotValue.trim()) {
+          return playerSpotValue.trim();
+        }
+      }
+
+      const currentSpotValue = getNestedValue(option.effects, "set.current_spot_id");
+      if (typeof currentSpotValue === "string" && currentSpotValue.trim()) {
+        return currentSpotValue.trim();
+      }
+
+      return "";
     }
 
     function getDisplayItemNames() {
@@ -417,13 +779,12 @@
         return "なし";
       }
 
-      const itemDefinitions = game.runtime?.definitions?.items;
-
       return currentSpotState.items.map((entry) => {
         const itemId = entry.item_id;
         const quantity = typeof entry.quantity === "number" ? entry.quantity : 1;
-        const label = isPlainObject(itemDefinitions?.[itemId]) && typeof itemDefinitions[itemId].name === "string"
-          ? itemDefinitions[itemId].name
+        const itemDefinition = resolveItemById(itemId);
+        const label = itemDefinition && typeof itemDefinition.name === "string"
+          ? itemDefinition.name
           : itemId;
         return `${label} x${quantity}`;
       }).join(" / ");
@@ -431,13 +792,12 @@
 
     function buildNpcSummaryLines() {
       const lines = [];
-      const characterDefinitions = game.runtime?.definitions?.characters;
       const playerCharacterId = getPlayerCharacterId();
 
       Object.entries(game.state?.characters || {}).forEach(([characterId, character]) => {
         if (characterId === playerCharacterId || !isPlainObject(character)) return;
 
-        const name = characterDefinitions?.[characterId]?.name || characterId;
+        const name = resolveCharacterDefinitionById(characterId)?.name || characterId;
         const spotId = typeof character.spot_id === "string" ? character.spot_id : "";
         const status = typeof character.status === "string" ? character.status : "-";
 
@@ -455,22 +815,34 @@
       const lines = [];
       const playerCharacterId = getPlayerCharacterId();
       const playerCharacter = getPlayerCharacter();
-      const currentQuestId = typeof game.state.current_quest_id === "string" ? game.state.current_quest_id : "";
-      const currentQuest = isPlainObject(game.runtime?.scenario?.quests?.[currentQuestId])
-        ? game.runtime.scenario.quests[currentQuestId]
-        : null;
+      const primaryQuestId = getPrimaryQuestId();
+      const primaryQuest = getQuestById(primaryQuestId);
+      const activeScenarioId = getActiveScenarioId();
+      const activeScenario = getActiveScenario();
       const currentSpotId = getCharacterSpotId(playerCharacterId);
       const currentEventId = typeof game.state.current_event_id === "string" ? game.state.current_event_id : "";
 
       if (playerCharacterId) {
-        const playerName = game.runtime?.definitions?.characters?.[playerCharacterId]?.name || playerCharacterId;
+        const playerName = resolveCharacterDefinitionById(playerCharacterId)?.name || playerCharacterId;
         lines.push(`プレイヤー: ${playerName}`);
       }
 
-      if (currentQuest) {
-        lines.push(`クエスト: ${currentQuest.title}`);
-      } else if (currentQuestId) {
-        lines.push(`クエストID: ${currentQuestId}`);
+      if (activeScenario) {
+        lines.push(`シナリオ: ${activeScenario.title || activeScenarioId}`);
+      } else if (activeScenarioId) {
+        lines.push(`シナリオID: ${activeScenarioId}`);
+      } else {
+        lines.push("シナリオ: なし");
+      }
+
+      if (primaryQuest) {
+        lines.push(`主クエスト: ${primaryQuest.title}`);
+      } else if (primaryQuestId) {
+        lines.push(`主クエストID: ${primaryQuestId}`);
+      }
+
+      if (Array.isArray(game.state.active_quest_ids) && game.state.active_quest_ids.length > 0) {
+        lines.push(`進行中クエスト: ${game.state.active_quest_ids.join(" / ")}`);
       }
 
       if (currentSpotId) {
@@ -565,6 +937,9 @@
       const character = getCharacterById(characterId);
       if (!character) return;
       character.spot_id = spotId;
+      if (characterId === getPlayerCharacterId()) {
+        setCurrentSpot(spotId);
+      }
     }
 
     function syncPlayerSpotToCurrentSpot() {
@@ -992,8 +1367,9 @@
         return false;
       }
 
-      const gameOverEventId = typeof game.runtime?.scenario?.game_over_event_id === "string"
-        ? game.runtime.scenario.game_over_event_id.trim()
+      const activeScenario = getActiveScenario();
+      const gameOverEventId = typeof activeScenario?.game_over_event_id === "string"
+        ? activeScenario.game_over_event_id.trim()
         : "";
 
       if (gameOverEventId && getActiveEventById(gameOverEventId)) {
@@ -1082,6 +1458,8 @@
     }
 
     function executeActionOrChoice(option, kind) {
+      const previousSpotId = getCharacterSpotId(getPlayerCharacterId());
+
       if (!checkConditions(option.conditions)) {
         handleBlockedOption(option, kind);
         return;
@@ -1103,12 +1481,29 @@
         return;
       }
 
-      if (option.next_event_id === null) {
-        finishStoryIfTerminalOption();
+      if (typeof option.next_event_id === "string" && option.next_event_id.trim()) {
+        transitionToNextEvent(option.next_event_id, kind, option.text);
         return;
       }
 
-      transitionToNextEvent(option.next_event_id, kind, option.text);
+      const currentSpotId = getCharacterSpotId(getPlayerCharacterId());
+      if (currentSpotId && currentSpotId !== previousSpotId) {
+        const resolvedEventId = findFirstVisibleEventId(currentSpotId);
+        if (resolvedEventId) {
+          enterEvent(resolvedEventId);
+          return;
+        }
+      }
+
+      if (option.next_event_id === null) {
+        const currentEvent = getCurrentEvent();
+        if (currentEvent && (currentEvent.event_type === "ending" || currentEvent.event_type === "game_over")) {
+          finishStoryIfTerminalOption();
+          return;
+        }
+      }
+
+      renderScreen();
     }
 
     // =========================================================
@@ -1223,7 +1618,7 @@
       return button;
     }
 
-    function getNormalMoves() {
+    function getNormalMoves(eventDef) {
       const moves = [];
       const playerCharacterId = getPlayerCharacterId();
       if (!playerCharacterId) return moves;
@@ -1232,13 +1627,31 @@
       const currentSpot = getSpotById(currentSpotId);
       if (!currentSpot || !Array.isArray(currentSpot.connections)) return moves;
 
+      const explicitMoveTargets = new Set();
+      if (isPlainObject(eventDef)) {
+        [...(Array.isArray(eventDef.actions) ? eventDef.actions : []), ...(Array.isArray(eventDef.choices) ? eventDef.choices : [])]
+          .forEach((option) => {
+            const targetSpotId = getOptionTargetSpotId(option);
+            if (targetSpotId) {
+              explicitMoveTargets.add(targetSpotId);
+            }
+          });
+      }
+
       currentSpot.connections.forEach((connectedSpotId) => {
+        if (explicitMoveTargets.has(connectedSpotId)) {
+          return;
+        }
+
         if (isMovementAllowed(connectedSpotId)) {
           const spotName = getDisplaySpotName(connectedSpotId);
           moves.push({
             text: `移動: ${spotName}`,
+            move_type: "normal",
+            target_spot_id: connectedSpotId,
             effects: {
               set: {
+                current_spot_id: connectedSpotId,
                 [`characters.${playerCharacterId}.spot_id`]: connectedSpotId
               }
             },
@@ -1251,8 +1664,10 @@
     }
 
     function isMovementAllowed(targetSpotId) {
-      const movementRules = game.runtime?.scenario?.movement_rules;
+      const movementRules = getActiveScenario()?.movement_rules;
       if (!isPlainObject(movementRules)) return true;
+      const targetSpot = getSpotById(targetSpotId);
+      if (!targetSpot) return false;
 
       // default restrictions
       if (isPlainObject(movementRules.default)) {
@@ -1260,7 +1675,18 @@
         if (Array.isArray(def.forbidden_spot_ids) && def.forbidden_spot_ids.includes(targetSpotId)) {
           return false;
         }
-        // allowed_area_ids, allowed_dungeon_ids は簡易チェック（省略）
+
+        if (Array.isArray(def.allowed_area_ids) && def.allowed_area_ids.length > 0) {
+          if (typeof targetSpot.area_id !== "string" || !def.allowed_area_ids.includes(targetSpot.area_id)) {
+            return false;
+          }
+        }
+
+        if (Array.isArray(def.allowed_dungeon_ids) && def.allowed_dungeon_ids.length > 0) {
+          if (typeof targetSpot.dungeon_id !== "string" || !def.allowed_dungeon_ids.includes(targetSpot.dungeon_id)) {
+            return false;
+          }
+        }
       }
 
       // conditional allowances
@@ -1279,7 +1705,6 @@
     }
 
     function renderOptions(eventDef) {
-      ui.event.moveList.innerHTML = "";
       ui.event.choiceList.innerHTML = "";
 
       const orderedOptions = [];
@@ -1305,16 +1730,16 @@
         index += 1;
       });
 
-      // 通常移動をmoveListに
-      const normalMoves = getNormalMoves();
+      // 通常移動を選択肢の末尾に統合
+      const normalMoves = getNormalMoves(eventDef);
       normalMoves.forEach((moveOption, moveIndex) => {
-        const button = buildOptionButton(moveOption, "Move", moveIndex + 1);
+        const button = buildOptionButton(moveOption, "Move", index + moveIndex);
         if (button) {
-          ui.event.moveList.appendChild(button);
+          ui.event.choiceList.appendChild(button);
         }
       });
 
-      if (!ui.event.choiceList.children.length && !ui.event.moveList.children.length) {
+      if (!ui.event.choiceList.children.length) {
         setGlobalStatus("fail", "利用可能な選択肢/操作がありません。");
       } else {
         setGlobalStatus("ok", "選択肢または操作を選んで進めてください。");
@@ -1349,6 +1774,97 @@
     // 9. バリデーション
     // =========================================================
 
+    function getValidationScenario(data) {
+      const activeScenarioId =
+        typeof data.initial_state?.active_scenario_id === "string" && data.initial_state.active_scenario_id.trim()
+          ? data.initial_state.active_scenario_id.trim()
+          : "";
+      return activeScenarioId && isPlainObject(data.scenarios?.[activeScenarioId])
+        ? data.scenarios[activeScenarioId]
+        : null;
+    }
+
+    function getValidationAreaDefinitions(data) {
+      const merged = isPlainObject(data.world?.areas) ? cloneJson(data.world.areas) : {};
+      const activeScenario = getValidationScenario(data);
+
+      if (isPlainObject(activeScenario?.overlay?.add_areas)) {
+        Object.entries(activeScenario.overlay.add_areas).forEach(([areaId, areaDef]) => {
+          if (isPlainObject(areaDef)) {
+            merged[areaId] = cloneJson(areaDef);
+          }
+        });
+      }
+
+      return merged;
+    }
+
+    function getValidationDungeonDefinitions(data) {
+      const merged = isPlainObject(data.world?.dungeons) ? cloneJson(data.world.dungeons) : {};
+      const activeScenario = getValidationScenario(data);
+
+      if (isPlainObject(activeScenario?.overlay?.add_dungeons)) {
+        Object.entries(activeScenario.overlay.add_dungeons).forEach(([dungeonId, dungeonDef]) => {
+          if (isPlainObject(dungeonDef)) {
+            merged[dungeonId] = cloneJson(dungeonDef);
+          }
+        });
+      }
+
+      return merged;
+    }
+
+    function getValidationSpotDefinitions(data) {
+      const merged = isPlainObject(data.world?.spots) ? cloneJson(data.world.spots) : {};
+      const activeScenario = getValidationScenario(data);
+
+      if (isPlainObject(activeScenario?.overlay?.add_spots)) {
+        Object.entries(activeScenario.overlay.add_spots).forEach(([spotId, spotDef]) => {
+          if (isPlainObject(spotDef)) {
+            merged[spotId] = cloneJson(spotDef);
+          }
+        });
+      }
+
+      if (Array.isArray(activeScenario?.overlay?.disabled_spot_ids)) {
+        activeScenario.overlay.disabled_spot_ids.forEach((spotId) => {
+          delete merged[spotId];
+        });
+      }
+
+      return merged;
+    }
+
+    function getValidationCharacterDefinitions(data) {
+      const merged = isPlainObject(data.definitions?.characters) ? cloneJson(data.definitions.characters) : {};
+      const activeScenario = getValidationScenario(data);
+
+      if (isPlainObject(activeScenario?.overlay?.add_characters)) {
+        Object.entries(activeScenario.overlay.add_characters).forEach(([characterId, characterDef]) => {
+          if (isPlainObject(characterDef)) {
+            merged[characterId] = cloneJson(characterDef);
+          }
+        });
+      }
+
+      return merged;
+    }
+
+    function getValidationItemDefinitions(data) {
+      const merged = isPlainObject(data.definitions?.items) ? cloneJson(data.definitions.items) : {};
+      const activeScenario = getValidationScenario(data);
+
+      if (isPlainObject(activeScenario?.overlay?.add_items)) {
+        Object.entries(activeScenario.overlay.add_items).forEach(([itemId, itemDef]) => {
+          if (isPlainObject(itemDef)) {
+            merged[itemId] = cloneJson(itemDef);
+          }
+        });
+      }
+
+      return merged;
+    }
+
     function validateCharacterSpotMap(characterSpotMap, label, errors, data) {
       if (!isPlainObject(characterSpotMap)) {
         errors.push(label + " はオブジェクトである必要があります。");
@@ -1366,8 +1882,9 @@
           return;
         }
 
+        const spotDefinitions = getValidationSpotDefinitions(data);
         spotIds.forEach((spotId) => {
-          if (!data.world?.spots?.[spotId]) {
+          if (!spotDefinitions[spotId]) {
             errors.push(`${label}.${characterId} の spot_id が world.spots に存在しません: ${spotId}`);
           }
         });
@@ -1399,30 +1916,33 @@
       if (!isPlainObject(effects)) return;
 
       if (isPlainObject(effects.set)) {
+        const spotDefinitions = getValidationSpotDefinitions(data);
         Object.entries(effects.set).forEach(([path, value]) => {
-          if (path.endsWith(".spot_id") && typeof value === "string" && !data.world?.spots?.[value]) {
+          if (path.endsWith(".spot_id") && typeof value === "string" && !spotDefinitions[value]) {
             errors.push(`${label}.set.${path} のスポットIDが world.spots に存在しません: ${value}`);
           }
         });
       }
 
       if (Array.isArray(effects.add_items)) {
+        const itemDefinitions = getValidationItemDefinitions(data);
         effects.add_items.forEach((item, index) => {
           if (typeof item === "string") return;
           if (!isPlainObject(item) || typeof item.item_id !== "string") {
             errors.push(`${label}.add_items[${index}] は item_id を持つオブジェクトまたは文字列である必要があります。`);
             return;
           }
-          if (!data.definitions?.items?.[item.item_id]) {
+          if (!itemDefinitions[item.item_id]) {
             errors.push(`${label}.add_items[${index}].item_id が definitions.items に存在しません: ${item.item_id}`);
           }
         });
       }
 
       if (Array.isArray(effects.remove_items)) {
+        const itemDefinitions = getValidationItemDefinitions(data);
         effects.remove_items.forEach((item, index) => {
           if (typeof item === "string") {
-            if (!data.definitions?.items?.[item]) {
+            if (!itemDefinitions[item]) {
               errors.push(`${label}.remove_items[${index}] の item_id が definitions.items に存在しません: ${item}`);
             }
             return;
@@ -1431,16 +1951,18 @@
             errors.push(`${label}.remove_items[${index}] は item_id を持つオブジェクトまたは文字列である必要があります。`);
             return;
           }
-          if (!data.definitions?.items?.[item.item_id]) {
+          if (!itemDefinitions[item.item_id]) {
             errors.push(`${label}.remove_items[${index}].item_id が definitions.items に存在しません: ${item.item_id}`);
           }
         });
       }
 
       if (Array.isArray(effects.remove_spot_items)) {
+        const itemDefinitions = getValidationItemDefinitions(data);
+        const spotDefinitions = getValidationSpotDefinitions(data);
         effects.remove_spot_items.forEach((item, index) => {
           if (typeof item === "string") {
-            if (!data.definitions?.items?.[item]) {
+            if (!itemDefinitions[item]) {
               errors.push(`${label}.remove_spot_items[${index}] の item_id が definitions.items に存在しません: ${item}`);
             }
             return;
@@ -1451,11 +1973,11 @@
             return;
           }
 
-          if (!data.definitions?.items?.[item.item_id]) {
+          if (!itemDefinitions[item.item_id]) {
             errors.push(`${label}.remove_spot_items[${index}].item_id が definitions.items に存在しません: ${item.item_id}`);
           }
 
-          if (typeof item.spot_id === "string" && !data.world?.spots?.[item.spot_id]) {
+          if (typeof item.spot_id === "string" && !spotDefinitions[item.spot_id]) {
             errors.push(`${label}.remove_spot_items[${index}].spot_id が world.spots に存在しません: ${item.spot_id}`);
           }
         });
@@ -1480,8 +2002,12 @@
         errors.push("world はオブジェクトである必要があります。");
       }
 
-      if (!isPlainObject(data.scenario)) {
-        errors.push("scenario はオブジェクトである必要があります。");
+      if (data.scenarios !== undefined && !isPlainObject(data.scenarios)) {
+        errors.push("scenarios は省略可能ですが、存在する場合はオブジェクトである必要があります。");
+      }
+
+      if (data.quests !== undefined && !isPlainObject(data.quests)) {
+        errors.push("quests は省略可能ですが、存在する場合はオブジェクトである必要があります。");
       }
 
       if (!isPlainObject(data.initial_state)) {
@@ -1490,20 +2016,29 @@
     }
 
     function validateWorldStructure(data, errors) {
-      if (!isPlainObject(data.world?.areas)) {
-        errors.push("world.areas はオブジェクトである必要があります。");
+      if (data.world?.areas !== undefined && !isPlainObject(data.world?.areas)) {
+        errors.push("world.areas は省略可能ですが、存在する場合はオブジェクトである必要があります。");
       }
 
       if (data.world?.dungeons !== undefined && !isPlainObject(data.world?.dungeons)) {
         errors.push("world.dungeons は省略可能ですが、存在する場合はオブジェクトである必要があります。");
       }
 
-      if (!isPlainObject(data.world?.spots)) {
-        errors.push("world.spots はオブジェクトである必要があります。");
+      if (data.world?.spots !== undefined && !isPlainObject(data.world?.spots)) {
+        errors.push("world.spots は省略可能ですが、存在する場合はオブジェクトである必要があります。");
         return;
       }
 
-      Object.entries(data.world.spots).forEach(([spotId, spot]) => {
+      const areaDefinitions = getValidationAreaDefinitions(data);
+      const dungeonDefinitions = getValidationDungeonDefinitions(data);
+      const spotDefinitions = getValidationSpotDefinitions(data);
+
+      if (Object.keys(spotDefinitions).length === 0) {
+        errors.push("world.spots または active scenario.overlay.add_spots のいずれかに1件以上のスポットが必要です。");
+        return;
+      }
+
+      Object.entries(spotDefinitions).forEach(([spotId, spot]) => {
         const label = `world.spots.${spotId}`;
 
         if (!isPlainObject(spot)) {
@@ -1513,17 +2048,17 @@
 
         if (typeof spot.area_id !== "string" || !spot.area_id.trim()) {
           errors.push(`${label}.area_id は必須の文字列です。`);
-        } else if (!data.world?.areas?.[spot.area_id]) {
+        } else if (!areaDefinitions[spot.area_id]) {
           errors.push(`${label}.area_id が world.areas に存在しません: ${spot.area_id}`);
         }
 
         if (spot.dungeon_id !== undefined) {
           if (typeof spot.dungeon_id !== "string" || !spot.dungeon_id.trim()) {
             errors.push(`${label}.dungeon_id は省略可能ですが、存在する場合は文字列である必要があります。`);
-          } else if (!data.world?.dungeons?.[spot.dungeon_id]) {
+          } else if (!dungeonDefinitions[spot.dungeon_id]) {
             errors.push(`${label}.dungeon_id が world.dungeons に存在しません: ${spot.dungeon_id}`);
           } else {
-            const dungeon = data.world.dungeons[spot.dungeon_id];
+            const dungeon = dungeonDefinitions[spot.dungeon_id];
             if (typeof dungeon.area_id === "string" && typeof spot.area_id === "string" && dungeon.area_id !== spot.area_id) {
               errors.push(`${label} の area_id (${spot.area_id}) と dungeon.area_id (${dungeon.area_id}) が一致しません。`);
             }
@@ -1534,7 +2069,7 @@
           spot.connections.forEach((connectedSpotId, index) => {
             if (typeof connectedSpotId !== "string") {
               errors.push(`${label}.connections[${index}] は文字列である必要があります。`);
-            } else if (!data.world?.spots?.[connectedSpotId]) {
+            } else if (!spotDefinitions[connectedSpotId]) {
               errors.push(`${label}.connections[${index}] が world.spots に存在しません: ${connectedSpotId}`);
             }
           });
@@ -1560,11 +2095,34 @@
       }
 
       if (
+        typeof data.initial_state?.active_scenario_id === "string" &&
+        data.initial_state.active_scenario_id.trim() &&
+        !isPlainObject(data.scenarios?.[data.initial_state.active_scenario_id.trim()])
+      ) {
+        errors.push(`initial_state.active_scenario_id が scenarios に存在しません: ${data.initial_state.active_scenario_id}`);
+      }
+
+      if (data.initial_state?.active_quest_ids !== undefined && !Array.isArray(data.initial_state.active_quest_ids)) {
+        errors.push("initial_state.active_quest_ids は省略可能ですが、存在する場合は配列である必要があります。");
+      }
+
+      if (
+        typeof data.initial_state?.primary_quest_id === "string" &&
+        data.initial_state.primary_quest_id.trim() &&
+        !isPlainObject(data.quests?.[data.initial_state.primary_quest_id.trim()])
+      ) {
+        errors.push(`initial_state.primary_quest_id が quests に存在しません: ${data.initial_state.primary_quest_id}`);
+      }
+
+      if (
         typeof data.initial_state?.player_character_id === "string" &&
         !isPlainObject(data.initial_state?.characters?.[data.initial_state.player_character_id])
       ) {
         errors.push("initial_state.player_character_id に対応する characters エントリが存在しません。");
       }
+
+      const spotDefinitions = getValidationSpotDefinitions(data);
+      const itemDefinitions = getValidationItemDefinitions(data);
 
       if (isPlainObject(data.initial_state?.characters)) {
         Object.entries(data.initial_state.characters).forEach(([characterId, character]) => {
@@ -1573,7 +2131,7 @@
             return;
           }
 
-          if (typeof character.spot_id === "string" && character.spot_id.trim() && !data.world?.spots?.[character.spot_id]) {
+          if (typeof character.spot_id === "string" && character.spot_id.trim() && !spotDefinitions[character.spot_id]) {
             errors.push(`initial_state.characters.${characterId}.spot_id が world.spots に存在しません: ${character.spot_id}`);
           }
         });
@@ -1581,7 +2139,7 @@
 
       if (isPlainObject(data.initial_state?.spot_states)) {
         Object.entries(data.initial_state.spot_states).forEach(([spotId, spotState]) => {
-          if (!data.world?.spots?.[spotId]) {
+          if (!spotDefinitions[spotId]) {
             errors.push(`initial_state.spot_states.${spotId} は対応する world.spots が存在しません。`);
             return;
           }
@@ -1597,13 +2155,29 @@
                 errors.push(`initial_state.spot_states.${spotId}.items[${index}] は item_id を持つオブジェクトである必要があります。`);
                 return;
               }
-              if (!data.definitions?.items?.[item.item_id]) {
+              if (!itemDefinitions[item.item_id]) {
                 errors.push(`initial_state.spot_states.${spotId}.items[${index}].item_id が definitions.items に存在しません: ${item.item_id}`);
               }
             });
           }
         });
       }
+    }
+
+    function eventExistsInData(data, eventId) {
+      if (typeof eventId !== "string" || !eventId.trim()) return false;
+
+      if (isPlainObject(data.world?.base_events?.[eventId])) {
+        return true;
+      }
+
+      if (!isPlainObject(data.scenarios)) {
+        return false;
+      }
+
+      return Object.values(data.scenarios).some((scenarioDef) =>
+        isPlainObject(scenarioDef?.events?.[eventId])
+      );
     }
 
     function validateOptionDefinition(option, label, data, errors) {
@@ -1620,7 +2194,7 @@
         errors.push(label + ".next_event_id は文字列または null である必要があります。");
       }
 
-      if (typeof option.next_event_id === "string" && !data.scenario?.events?.[option.next_event_id]) {
+      if (typeof option.next_event_id === "string" && !eventExistsInData(data, option.next_event_id)) {
         errors.push(label + ".next_event_id が存在しません: " + option.next_event_id);
       }
 
@@ -1637,116 +2211,170 @@
     }
 
     function validateScenarioEvents(data, errors) {
-      if (data.scenario?.quests !== undefined && !isPlainObject(data.scenario.quests)) {
-        errors.push("scenario.quests は省略可能ですが、存在する場合はオブジェクトである必要があります。");
-      }
-
-      if (!isPlainObject(data.scenario?.events) || Object.keys(data.scenario.events).length === 0) {
-        errors.push("scenario.events は1件以上のオブジェクトである必要があります。");
-        return;
-      }
-
-      Object.entries(data.scenario.events).forEach(([eventId, eventDef]) => {
-        const label = `scenario.events.${eventId}`;
-
-        if (!isMeaningfulId(eventId)) {
-          errors.push(label + " のIDは意味ベース英小文字IDにしてください。");
-        }
-
-        if (!isPlainObject(eventDef)) {
-          errors.push(label + " はオブジェクトである必要があります。");
+      Object.entries(data.quests || {}).forEach(([questId, questDef]) => {
+        const label = `quests.${questId}`;
+        if (!isPlainObject(questDef)) {
+          errors.push(`${label} はオブジェクトである必要があります。`);
           return;
         }
 
-        if (typeof eventDef.title !== "string") {
-          errors.push(label + ".title は文字列である必要があります。");
-        }
-
-        const text = eventDef.text;
-        if (!(typeof text === "string" || (Array.isArray(text) && text.every((line) => typeof line === "string")))) {
-          errors.push(label + ".text は文字列または文字列配列である必要があります。");
-        }
-
-        if (eventDef.spot_id !== undefined && typeof eventDef.spot_id !== "string") {
-          errors.push(label + ".spot_id は文字列である必要があります。");
-        }
-
-        if (typeof eventDef.spot_id === "string" && eventDef.spot_id.trim() && !data.world?.spots?.[eventDef.spot_id]) {
-          errors.push(label + ".spot_id が world.spots に存在しません: " + eventDef.spot_id);
-        }
-
-        if (Array.isArray(eventDef.participants)) {
-          eventDef.participants.forEach((characterId, index) => {
-            if (typeof characterId !== "string") {
-              errors.push(`${label}.participants[${index}] は文字列である必要があります。`);
-            } else if (!data.initial_state?.characters?.[characterId]) {
-              errors.push(`${label}.participants[${index}] のキャラが initial_state.characters に存在しません: ${characterId}`);
+        if (Array.isArray(questDef.related_scenario_ids)) {
+          questDef.related_scenario_ids.forEach((scenarioId, index) => {
+            if (typeof scenarioId !== "string") {
+              errors.push(`${label}.related_scenario_ids[${index}] は文字列である必要があります。`);
+            } else if (!data.scenarios?.[scenarioId]) {
+              errors.push(`${label}.related_scenario_ids[${index}] が scenarios に存在しません: ${scenarioId}`);
             }
           });
         }
-
-        if (Array.isArray(eventDef.conditional_texts)) {
-          eventDef.conditional_texts.forEach((entry, index) => {
-            if (!isPlainObject(entry)) {
-              errors.push(`${label}.conditional_texts[${index}] はオブジェクトである必要があります。`);
-              return;
-            }
-
-            validateConditionsObject(entry.conditions, `${label}.conditional_texts[${index}].conditions`, data, errors);
-
-            if (!(typeof entry.text === "string" || (Array.isArray(entry.text) && entry.text.every((line) => typeof line === "string")))) {
-              errors.push(`${label}.conditional_texts[${index}].text は文字列または文字列配列である必要があります。`);
-            }
-          });
-        }
-
-        const actions = Array.isArray(eventDef.actions) ? eventDef.actions : [];
-        const choices = Array.isArray(eventDef.choices) ? eventDef.choices : [];
-
-        if (actions.length === 0 && choices.length === 0) {
-          errors.push(label + " は actions または choices のいずれか1件以上が必要です。");
-        }
-
-        actions.forEach((action, index) => {
-          validateOptionDefinition(action, `${label}.actions[${index}]`, data, errors);
-        });
-
-        choices.forEach((choice, index) => {
-          validateOptionDefinition(choice, `${label}.choices[${index}]`, data, errors);
-        });
       });
 
+      Object.entries(data.scenarios || {}).forEach(([scenarioId, scenarioDef]) => {
+        const scenarioLabel = `scenarios.${scenarioId}`;
+        if (!isPlainObject(scenarioDef)) {
+          errors.push(`${scenarioLabel} はオブジェクトである必要があります。`);
+          return;
+        }
+
+        if (!isPlainObject(scenarioDef.events) || Object.keys(scenarioDef.events).length === 0) {
+          return;
+        }
+
+        Object.entries(scenarioDef.events).forEach(([eventId, eventDef]) => {
+          const label = `${scenarioLabel}.events.${eventId}`;
+
+          if (!isMeaningfulId(eventId)) {
+            errors.push(label + " のIDは意味ベース英小文字IDにしてください。");
+          }
+
+          if (!isPlainObject(eventDef)) {
+            errors.push(label + " はオブジェクトである必要があります。");
+            return;
+          }
+
+          if (typeof eventDef.title !== "string") {
+            errors.push(label + ".title は文字列である必要があります。");
+          }
+
+          const text = eventDef.text;
+          if (!(typeof text === "string" || (Array.isArray(text) && text.every((line) => typeof line === "string")))) {
+            errors.push(label + ".text は文字列または文字列配列である必要があります。");
+          }
+
+          if (eventDef.spot_id !== undefined && typeof eventDef.spot_id !== "string") {
+            errors.push(label + ".spot_id は文字列である必要があります。");
+          }
+
+          const spotDefinitions = getValidationSpotDefinitions(data);
+          if (typeof eventDef.spot_id === "string" && eventDef.spot_id.trim() && !data.world?.spots?.[eventDef.spot_id]) {
+            if (!spotDefinitions[eventDef.spot_id]) {
+              errors.push(label + ".spot_id が world.spots に存在しません: " + eventDef.spot_id);
+            }
+          }
+
+          if (Array.isArray(eventDef.participants)) {
+            eventDef.participants.forEach((characterId, index) => {
+              if (typeof characterId !== "string") {
+                errors.push(`${label}.participants[${index}] は文字列である必要があります。`);
+              } else if (!data.initial_state?.characters?.[characterId]) {
+                errors.push(`${label}.participants[${index}] のキャラが initial_state.characters に存在しません: ${characterId}`);
+              }
+            });
+          }
+
+          if (Array.isArray(eventDef.conditional_texts)) {
+            eventDef.conditional_texts.forEach((entry, index) => {
+              if (!isPlainObject(entry)) {
+                errors.push(`${label}.conditional_texts[${index}] はオブジェクトである必要があります。`);
+                return;
+              }
+
+              validateConditionsObject(entry.conditions, `${label}.conditional_texts[${index}].conditions`, data, errors);
+
+              if (!(typeof entry.text === "string" || (Array.isArray(entry.text) && entry.text.every((line) => typeof line === "string")))) {
+                errors.push(`${label}.conditional_texts[${index}].text は文字列または文字列配列である必要があります。`);
+              }
+            });
+          }
+
+          const actions = Array.isArray(eventDef.actions) ? eventDef.actions : [];
+          const choices = Array.isArray(eventDef.choices) ? eventDef.choices : [];
+
+          if (actions.length === 0 && choices.length === 0) {
+            errors.push(label + " は actions または choices のいずれか1件以上が必要です。");
+          }
+
+          actions.forEach((action, index) => {
+            validateOptionDefinition(action, `${label}.actions[${index}]`, data, errors);
+          });
+
+          choices.forEach((choice, index) => {
+            validateOptionDefinition(choice, `${label}.choices[${index}]`, data, errors);
+          });
+        });
+        if (
+          typeof scenarioDef.start_event_id === "string" &&
+          scenarioDef.start_event_id.trim() &&
+          !isPlainObject(scenarioDef.events?.[scenarioDef.start_event_id.trim()])
+        ) {
+          errors.push(`${scenarioLabel}.start_event_id が ${scenarioLabel}.events に存在しません。`);
+        }
+
+        if (
+          typeof scenarioDef.game_over_event_id === "string" &&
+          scenarioDef.game_over_event_id.trim() &&
+          !isPlainObject(scenarioDef.events?.[scenarioDef.game_over_event_id.trim()])
+        ) {
+          errors.push(`${scenarioLabel}.game_over_event_id が ${scenarioLabel}.events に存在しません。`);
+        }
+      });
+
+      const activeScenarioId =
+        typeof data.initial_state?.active_scenario_id === "string" && data.initial_state.active_scenario_id.trim()
+          ? data.initial_state.active_scenario_id.trim()
+          : "";
+      const activeScenario = activeScenarioId ? data.scenarios?.[activeScenarioId] : null;
       const startEventId =
         typeof data.initial_state?.current_event_id === "string" && data.initial_state.current_event_id.trim()
           ? data.initial_state.current_event_id.trim()
-          : (typeof data.scenario?.start_event_id === "string" ? data.scenario.start_event_id.trim() : "");
+          : (typeof activeScenario?.start_event_id === "string" ? activeScenario.start_event_id.trim() : "");
 
-      if (!startEventId) {
-        errors.push("initial_state.current_event_id または scenario.start_event_id が必要です。");
-      } else if (!data.scenario.events[startEventId]) {
-        errors.push("開始イベントが scenario.events に存在しません。");
+      if (startEventId && !eventExistsInData(data, startEventId)) {
+        errors.push("開始イベントが存在しません: " + startEventId);
       }
 
-      if (
-        typeof data.scenario?.game_over_event_id === "string" &&
-        data.scenario.game_over_event_id.trim() &&
-        !data.scenario.events?.[data.scenario.game_over_event_id]
-      ) {
-        errors.push("scenario.game_over_event_id が scenario.events に存在しません。");
+      if (!startEventId) {
+        const playerCharacterId = data.initial_state?.player_character_id;
+        const startSpotId =
+          typeof playerCharacterId === "string" &&
+          typeof data.initial_state?.characters?.[playerCharacterId]?.spot_id === "string"
+            ? data.initial_state.characters[playerCharacterId].spot_id
+            : "";
+        const hasBaseStartEvent =
+          isPlainObject(data.world?.base_events) &&
+          Object.values(data.world.base_events).some((event) => isPlainObject(event) && event.spot_id === startSpotId);
+        const hasScenarioStartEvent =
+          isPlainObject(activeScenario?.events) &&
+          Object.values(activeScenario.events).some((event) => isPlainObject(event) && event.spot_id === startSpotId);
+
+        if (!hasBaseStartEvent && !hasScenarioStartEvent) {
+          errors.push("開始イベントがありません。initial_state.current_event_id、active scenario の start_event_id、または開始地点に対応する event が必要です。");
+        }
       }
     }
 
     function validateScript(data) {
+      const normalizedData = normalizeScriptStructure(data);
       const errors = [];
 
-      validateTopLevelStructure(data, errors);
-      if (errors.length > 0 && !isPlainObject(data)) {
+      validateTopLevelStructure(normalizedData, errors);
+      if (errors.length > 0 && !isPlainObject(normalizedData)) {
         return errors;
       }
 
-      validateWorldStructure(data, errors);
-      validateInitialState(data, errors);
-      validateScenarioEvents(data, errors);
+      validateWorldStructure(normalizedData, errors);
+      validateInitialState(normalizedData, errors);
+      validateScenarioEvents(normalizedData, errors);
 
       return errors;
     }
@@ -1769,8 +2397,9 @@
       return [
         "以下の引き継ぎ情報を使って、続篇となる新しいJSON台本を1つ作成してください。",
         "既存JSONへの追記ではなく、新しい別JSONとして作成してください。",
-        "新仕様専用です。top-level は definitions / world / scenario / initial_state を使ってください。",
-        "進行は scenario.events と current_event_id / next_event_id で行ってください。",
+        "新仕様専用です。top-level は definitions / world / scenarios / quests / initial_state を使ってください。",
+        "有効な世界差分は initial_state.active_scenario_id で指定し、進行中クエストは active_quest_ids / primary_quest_id / quest_states で管理してください。",
+        "進行は active scenario の events と current_event_id / next_event_id で行ってください。",
         "inventory は initial_state.characters[character_id].inventory を使ってください。",
         "spot 上アイテムは initial_state.spot_states を使ってください。",
         "NPC位置は characters.<id>.spot_id で管理してください。",
@@ -1801,9 +2430,39 @@
       await copyTextToClipboard(JSON.stringify(payload, null, 2));
     }
 
+    function getAvailableSamples() {
+      if (SAMPLE_REGISTRY.length > 0) {
+        return SAMPLE_REGISTRY.filter((entry) => isPlainObject(entry) && isPlainObject(entry.data));
+      }
+
+      return isPlainObject(SAMPLE_SCENARIO)
+        ? [{ id: "default", title: SAMPLE_SCENARIO.title || "サンプル", data: SAMPLE_SCENARIO }]
+        : [];
+    }
+
+    function populateSampleOptions() {
+      const select = ui.setup.sampleSelect;
+      if (!select) return;
+
+      select.innerHTML = "";
+      getAvailableSamples().forEach((sample, index) => {
+        const option = document.createElement("option");
+        option.value = sample.id || `sample_${index + 1}`;
+        option.textContent = sample.title || option.value;
+        select.appendChild(option);
+      });
+    }
+
     function loadExampleIntoTextarea() {
-      ui.setup.scriptInput.value = JSON.stringify(SAMPLE_SCENARIO, null, 2);
-      setGlobalStatus("ok", "ホームズの新仕様サンプルJSONを読み込みました。");
+      const samples = getAvailableSamples();
+      const selectedId = ui.setup.sampleSelect?.value || "";
+      const sample =
+        samples.find((entry) => entry.id === selectedId) ||
+        samples[0] ||
+        { title: "サンプル", data: SAMPLE_SCENARIO };
+
+      ui.setup.scriptInput.value = JSON.stringify(sample.data, null, 2);
+      setGlobalStatus("ok", `${sample.title || "サンプル"} を読み込みました。`);
     }
 
     async function handleCopyPrompt() {
@@ -1842,9 +2501,11 @@
     }
 
     function startScript(source) {
-      game.loadedSource = cloneJson(source);
-      game.runtime = cloneJson(source);
-      game.state = cloneJson(source.initial_state || {});
+      const normalizedSource = normalizeScriptStructure(source);
+
+      game.loadedSource = cloneJson(normalizedSource);
+      game.runtime = cloneJson(normalizedSource);
+      game.state = cloneJson(normalizedSource.initial_state || {});
       ensureStateCollections();
 
       game.stepCount = 0;
@@ -1859,16 +2520,26 @@
         }
       }
 
-      addLogEntry("開始: " + (source.title || "Untitled"));
+      addLogEntry("開始: " + (normalizedSource.title || "Untitled"));
+
+      const activeScenario = getActiveScenario();
 
       const startEventId =
         typeof game.state.current_event_id === "string" && game.state.current_event_id.trim()
           ? game.state.current_event_id.trim()
-          : (typeof game.runtime.scenario?.start_event_id === "string" ? game.runtime.scenario.start_event_id.trim() : "");
+          : (typeof activeScenario?.start_event_id === "string" ? activeScenario.start_event_id.trim() : "");
 
       setCurrentEventId(startEventId);
 
       if (!startEventId) {
+        const fallbackEventId = findFirstVisibleEventId();
+        if (fallbackEventId) {
+          setCurrentEventId(fallbackEventId);
+          enterEvent(fallbackEventId);
+          setGlobalStatus("ok", "開始地点のイベントを表示しました。");
+          return;
+        }
+
         renderScreen();
         setGlobalStatus("fail", "開始イベントが設定されていません。");
         return;
@@ -1964,6 +2635,7 @@
       renderHeaderPanel();
       renderStatePanel();
       renderLogPanel();
+      populateSampleOptions();
       bindUiEvents();
       loadExampleIntoTextarea();
     }

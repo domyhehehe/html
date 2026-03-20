@@ -28,12 +28,15 @@
       </select>
 
       <label class="label" for="scriptInput" style="margin-top:12px;">台本JSON</label>
+      <label class="label" for="sampleSelect" style="margin-top:12px;">サンプル</label>
+      <select id="sampleSelect"></select>
       <textarea id="scriptInput" spellcheck="false"></textarea>
       <input id="jsonFileInput" type="file" accept=".json,application/json" class="hidden" />
 
       <p class="note">
-        新仕様専用: <code class="inline">definitions / world / scenario / initial_state</code>。
-        進行は <code class="inline">scenario.events</code> と <code class="inline">current_event_id / next_event_id</code>。
+        新仕様専用: <code class="inline">definitions / world / scenarios / quests / initial_state</code>。
+        進行は <code class="inline">initial_state.active_scenario_id</code> で有効化された scenario の
+        <code class="inline">events</code> と <code class="inline">current_event_id / next_event_id</code>。
         NPC位置は <code class="inline">characters[character_id].spot_id</code> を正式採用し、<code class="inline">required_character_spots</code> / <code class="inline">forbidden_character_spots</code> に対応。
       </p>
 
@@ -74,11 +77,6 @@
     </div>
 
     <div class="card">
-      <h2>移動</h2>
-      <div id="moveList" class="choice-list"></div>
-    </div>
-
-    <div class="card">
       <h2>本文</h2>
       <div id="eventTitle" class="scene-title">-</div>
       <div id="speakerLine" class="speaker-line"></div>
@@ -93,6 +91,7 @@
   </div>
 
   <script src="./assets/js/data/sample-scenario.js"></script>
+  <script src="./assets/js/data/samples.js"></script>
   <script src="./assets/js/prompts/generic.js"></script>
   <script src="./assets/js/prompts/shindo.js"></script>
   <script src="./assets/js/app.js"></script>

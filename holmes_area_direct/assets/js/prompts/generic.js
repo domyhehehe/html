@@ -1,7 +1,7 @@
 ﻿window.HOLMES_PROMPTS = window.HOLMES_PROMPTS || {};
 const HOLMES_PROMPT_SAMPLE_JSON = window.HOLMES_PROMPT_SAMPLE_JSON || "";
 window.HOLMES_PROMPTS.generic = [
-      "以下を厳守して、新仕様(world/scenario/initial_state)のJSON台本を1つ作成してください。",
+      "以下を厳守して、新仕様(world/scenarios/quests/initial_state)のJSON台本を1つ作成してください。",
       "",
       "【目的】",
       "- 「短い見本JSON」ではなく、実際に遊べるボリュームのある中編シナリオを作ること",
@@ -9,8 +9,9 @@ window.HOLMES_PROMPTS.generic = [
       "- 出力は構造の正しさだけでなく、十分な物量と遊びごたえを重視すること",
       "",
       "【必須構造】",
-      "- top-level は title / version / definitions / world / scenario / initial_state",
-      "- 進行は scenario.events を主系として current_event_id / next_event_id で行う",
+      "- top-level は title / version / definitions / world / scenarios / quests / initial_state",
+      "- world は常設世界、scenarios は世界差分、quests は複数の目標定義として分離する",
+      "- 進行は initial_state.active_scenario_id で有効化された scenario の events と current_event_id / next_event_id で行う",
       "- scenes / start_scene_id / next_scene_id は使わない",
       "- 主人公体力は initial_state.characters[player_character_id].current_stats に置く",
       "- inventory は initial_state.characters[character_id].inventory を使う",
@@ -21,7 +22,7 @@ window.HOLMES_PROMPTS.generic = [
       "",
       "【最重要：シナリオの物量下限】",
       "- world.spots は最低10個、推奨12〜16個",
-      "- scenario.events は最低16個、推奨18〜26個",
+      "- active scenario の events は最低16個、推奨18〜26個",
       "- ending は最低2種類、推奨3種類以上",
       "- game_over は最低2種類",
       "- actions は全イベント合計で最低18個",

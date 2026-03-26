@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>勤務記録（汎用・シングル②・モバイル）</title>
+  <style>
+    body { font-family: system-ui, -apple-system, "Hiragino Sans", "Noto Sans JP", sans-serif; margin: 12px; line-height: 1.4; }
+    .wrap { max-width: 480px; margin: 0 auto; }
+    h1 { font-size: 18px; margin: 0 0 12px; }
+    form { display: grid; gap: 12px; }
+    label { display: grid; gap: 6px; font-size: 14px; }
+    input, textarea, button { font: inherit; padding: 12px; border: 1px solid #ccc; border-radius: 10px; font-size: 16px; }
+    textarea { min-height: 90px; resize: vertical; white-space: pre-wrap; word-break: break-word; }
+    .row { display: grid; grid-template-columns: 1fr; gap: 10px; }
+    .actions { display: flex; gap: 10px; flex-direction: column; }
+    button { cursor: pointer; border: 1px solid #999; background: #f7f7f7; }
+    button.primary { background: #111; color: #fff; border-color: #111; }
+    .note { color: #555; font-size: 12px; }
+    pre {
+      background: #0b1020; color: #d7e2ff; padding: 12px; border-radius: 12px; overflow: auto;
+      white-space: pre-wrap; word-break: break-word; font-size: 14px;
+    }
+    .pill { display:inline-block; padding: 2px 8px; border-radius: 999px; background:#eee; font-size: 12px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>勤務記録 <span class="pill">汎用</span></h1>
+
+    <form id="workForm">
+      <div class="row">
+        <label>日付
+          <input type="date" id="date" required />
+        </label>
+        <label>開始時間
+          <input type="time" id="startTime" value="09:00" required />
+        </label>
+        <label>終了時間
+          <input type="time" id="endTime" value="18:00" required />
+        </label>
+      </div>
+
+      <label>
+        ②
+        <textarea id="line2" rows="3"></textarea>
+        <div class="note">デフォルトはこのHTMLのファイル名（拡張子除外）。先頭が 0800-1700（開始-終了）や 0800-1700-1800（開始-終了-残業開始）なら時間に反映し、②からは除去します。</div>
+      </label>
+
+      <label>作業内容（③）
+        <textarea id="details"></textarea>
+      </label>
+
+      <label>感想（④）
+        <textarea id="impression"></textarea>
+      </label>
+
+      <label>
+        資格勉強時間（h・任意）
+        <input type="number" id="studyHours" value="0" min="0" step="0.25" />
+        <div class="note">0 の場合は出力されません。</div>
+      </label>
+
+      <div class="actions">
+        <button type="button" class="primary" id="generateBtn">生成</button>
+        <button type="button" id="copyBtn">コピー</button>
+        <button type="button" id="clearBtn">クリア</button>
+      </div>
+
+      <div class="note">
+        残業（⑤）は <b>残業開始時刻以降</b> のみ（例：18:30終了・残業開始18:00 → 0.5h）。
+      </div>
+    </form>
+
+    <h2 style="font-size:16px;margin:18px 0 8px;">出力</h2>
+    <pre id="output"></pre>
+  </div>
+
+  <script>
+    const weekdays = ['月','火','水','木','金','土','日'];
+    let overtimeStartMin = 18 * 60; // default 18:00
+
+    function parseMin(t) {
+      const parts = (t || '').split(':');
+      const h = Number(parts[0] || 0);
+      const m = Number(parts[1] || 0);
+      return h * 60 + m;
+    }
+
+    function fmtMD(d) {
+      return (d.getMonth()+1) + '/' + d.getDate();
+    }
+
+    function overtimeText(mins) {
+      const h = Math.round((mins/60)*10)/10;
+      return (h % 1 === 0 ? h.toFixed(0) : h.toFixed(1)) + 'h';
+    }
+
+    function safeDecode(s) {
+      try { return decodeURIComponent(s); } catch { return s; }
+    }
+
+    function filenameInfo() {
+      // ファイル名（末尾）を取得して拡張子を外す
+      const base = (location.pathname || '').split('/').pop() || '';
+      let name = safeDecode(base).replace(/\.(html?|HTML?)$/, '');
+
+      // 先頭に 0800-1700 または 0800-1700-1800 のようなプレフィックスがあれば取り出す
+      // 2つ: 開始-終了
+      // 3つ: 開始-終了-残業開始（残業開始以降だけ⑤に計上）
+      const m3 = name.match(/^(\d{4})\s*[-_～〜]\s*(\d{4})\s*[-_～〜]\s*(\d{4})\s*(.*)$/);
+      if (m3) {
+        const s = m3[1], e = m3[2], o = m3[3];
+        const start = s.slice(0,2) + ':' + s.slice(2,4);
+        const end   = e.slice(0,2) + ':' + e.slice(2,4);
+        const ot    = o.slice(0,2) + ':' + o.slice(2,4);
+        const rest  = (m3[4] || '').trim();
+        return { name: rest || name, start, end, overtimeStart: ot };
+      }
+
+      const m2 = name.match(/^(\d{4})\s*[-_～〜]\s*(\d{4})\s*(.*)$/);
+      if (m2) {
+        const s = m2[1], e = m2[2];
+        const start = s.slice(0,2) + ':' + s.slice(2,4);
+        const end   = e.slice(0,2) + ':' + e.slice(2,4);
+        const rest  = (m2[3] || '').trim();
+        return { name: rest || name, start, end };
+      }
+
+      return { name };
+    }
+
+
+    (function init() {
+      const d = new Date();
+      document.getElementById('date').value =
+        d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+
+      const info = filenameInfo();
+
+      // 時間プレフィックスがあれば反映
+      if (info.start) document.getElementById('startTime').value = info.start;
+      if (info.end)   document.getElementById('endTime').value   = info.end;
+      if (info.overtimeStart) overtimeStartMin = parseMin(info.overtimeStart);
+
+      // ②は「時間部分除去済み」を入れる
+      document.getElementById('line2').value = info.name;
+    })();
+
+    function build() {
+      const dateStr = document.getElementById('date').value;
+      const s = document.getElementById('startTime').value;
+      const e = document.getElementById('endTime').value;
+      const l2 = document.getElementById('line2').value || '';
+      const det = document.getElementById('details').value || '';
+      const imp = document.getElementById('impression').value || '';
+      const study = Number(document.getElementById('studyHours').value || 0);
+
+      if (!dateStr) return '';
+      const d = new Date(dateStr + 'T00:00:00');
+      const wd = weekdays[(d.getDay()+6)%7];
+
+      const endMin = parseMin(e);
+      const otMin = Math.max(0, endMin - overtimeStartMin);
+
+      let out =
+`①${fmtMD(d)}(${wd})${s}～${e}
+②${l2}
+③${det}
+④${imp}
+⑤${overtimeText(otMin)}
+`;
+      if (study > 0) out += `資格勉強時間：${study}h\n`;
+      return out;
+    }
+
+    document.getElementById('generateBtn').addEventListener('click', () => {
+      document.getElementById('output').textContent = build();
+    });
+
+    document.getElementById('copyBtn').addEventListener('click', async () => {
+      const t = build();
+      document.getElementById('output').textContent = t;
+      try {
+        await navigator.clipboard.writeText(t);
+      } catch (e) {
+        // フォールバック
+        const ta = document.createElement('textarea');
+        ta.value = t;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+      }
+    });
+
+    document.getElementById('clearBtn').addEventListener('click', () => {
+      document.getElementById('details').value = '';
+      document.getElementById('impression').value = '';
+      document.getElementById('studyHours').value = 0;
+      document.getElementById('output').textContent = '';
+    });
+  </script>
+</body>
+</html>

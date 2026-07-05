@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>タロット占いテキスト生成ツール</title>
+  <style>
+    :root {
+      --bg: #111827;
+      --panel: #1f2937;
+      --panel2: #0f172a;
+      --text: #f9fafb;
+      --muted: #cbd5e1;
+      --accent: #c084fc;
+      --accent2: #f472b6;
+      --ok: #22c55e;
+      --border: #374151;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      padding: 16px;
+      min-height: 100vh;
+      background:
+        radial-gradient(circle at top left, rgba(192,132,252,.22), transparent 35%),
+        radial-gradient(circle at bottom right, rgba(244,114,182,.16), transparent 35%),
+        var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    .app {
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    h1 {
+      font-size: 26px;
+      margin: 0 0 8px;
+    }
+
+    p {
+      margin: 0 0 14px;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+
+    .card {
+      background: rgba(31,41,55,.92);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 16px;
+      margin-bottom: 14px;
+      box-shadow: 0 12px 32px rgba(0,0,0,.22);
+    }
+
+    label {
+      display: block;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    input, select, textarea {
+      width: 100%;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: var(--panel2);
+      color: var(--text);
+      padding: 12px;
+      font-size: 16px;
+      line-height: 1.5;
+    }
+
+    textarea {
+      min-height: 260px;
+      resize: vertical;
+      white-space: pre-wrap;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 12px;
+    }
+
+    .row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 12px;
+    }
+
+    button {
+      appearance: none;
+      border: 0;
+      border-radius: 12px;
+      padding: 12px 16px;
+      font-size: 16px;
+      font-weight: 800;
+      cursor: pointer;
+      color: #16051f;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      min-height: 46px;
+    }
+
+    button.secondary {
+      color: var(--text);
+      background: #334155;
+      border: 1px solid var(--border);
+    }
+
+    button.ok {
+      color: #052e16;
+      background: var(--ok);
+    }
+
+    .spread-note {
+      display: grid;
+      gap: 8px;
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.55;
+    }
+
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 12px;
+      margin-top: 12px;
+    }
+
+    .tarot-card {
+      background: linear-gradient(180deg, #2e1065, #111827);
+      border: 1px solid rgba(255,255,255,.14);
+      border-radius: 16px;
+      padding: 14px;
+      min-height: 130px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .position {
+      color: #f0abfc;
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    .card-name {
+      font-size: 18px;
+      font-weight: 900;
+      margin-top: 8px;
+    }
+
+    .orientation {
+      color: var(--muted);
+      font-size: 14px;
+      margin-top: 8px;
+    }
+
+    .meaning {
+      color: #e9d5ff;
+      font-size: 13px;
+      line-height: 1.5;
+      margin-top: 8px;
+    }
+
+    .status {
+      margin-top: 10px;
+      color: var(--muted);
+      min-height: 1.4em;
+    }
+
+    .small {
+      font-size: 13px;
+      color: var(--muted);
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="card">
+      <h1>タロット占いテキスト生成ツール</h1>
+      <p>占いたいテーマを入れてカードを引くと、ChatGPTに貼り付けやすい相談文つきの結果テキストを作ります。</p>
+      <label for="question">占いたいこと</label>
+      <input id="question" type="text" placeholder="例：今の仕事を続けるべき？ / あの人との関係は？" />
+
+      <div class="grid" style="margin-top:12px;">
+        <div>
+          <label for="spread">スプレッド</label>
+          <select id="spread">
+            <option value="one">1枚引き：今の答え</option>
+            <option value="three">3枚引き：過去・現在・未来</option>
+            <option value="choice">2択：A案・B案・助言</option>
+          </select>
+        </div>
+        <div>
+          <label for="tone">ChatGPTへの依頼</label>
+          <select id="tone">
+            <option value="gentle">やさしく解釈して</option>
+            <option value="deep">深掘りして</option>
+            <option value="practical">現実的な行動案にして</option>
+            <option value="story">物語っぽく神秘的に読んで</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="row">
+        <button id="drawButton" type="button">カードを引く</button>
+        <button id="copyButton" class="ok" type="button">結果をコピー</button>
+        <button id="clearButton" class="secondary" type="button">リセット</button>
+      </div>
+      <div id="status" class="status"></div>
+    </div>
+
+    <div class="card">
+      <label>引いたカード</label>
+      <div id="cards" class="cards"></div>
+      <div class="spread-note">
+        <div>※ 正位置・逆位置はランダムです。</div>
+        <div>※ 占い結果は判断材料のひとつとして扱ってください。</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <label for="output">コピー用テキスト</label>
+      <textarea id="output" readonly placeholder="ここに占い結果が出ます。"></textarea>
+      <div class="small">このテキストをコピーしてChatGPTに貼ると、そのまま解釈を依頼できます。</div>
+    </div>
+  </div>
+
+  <script>
+    const tarotDeck = [
+      { name: "愚者", up: "自由、始まり、冒険、可能性", rev: "無計画、軽率、迷走、現実逃避" },
+      { name: "魔術師", up: "創造、才能、行動力、チャンス", rev: "準備不足、空回り、見せかけ、不誠実" },
+      { name: "女教皇", up: "直感、知性、静かな洞察、秘密", rev: "疑心暗鬼、閉鎖性、考えすぎ、見えない不安" },
+      { name: "女帝", up: "豊かさ、愛情、育成、実り", rev: "甘え、停滞、過保護、浪費" },
+      { name: "皇帝", up: "安定、責任、統率、現実的判断", rev: "頑固、支配、プレッシャー、柔軟性不足" },
+      { name: "法王", up: "信頼、教え、常識、助言者", rev: "形式主義、束縛、思い込み、孤立" },
+      { name: "恋人", up: "選択、調和、ときめき、価値観の一致", rev: "迷い、誘惑、不一致、優柔不断" },
+      { name: "戦車", up: "前進、勝負、突破力、意志", rev: "暴走、焦り、衝突、制御不能" },
+      { name: "力", up: "忍耐、優しさ、内なる強さ、信頼", rev: "自信喪失、感情的、弱気、無理のしすぎ" },
+      { name: "隠者", up: "内省、探求、慎重、真理の発見", rev: "孤独、閉じこもり、疑念、停滞" },
+      { name: "運命の輪", up: "転機、流れ、幸運、タイミング", rev: "停滞、すれ違い、悪循環、機会損失" },
+      { name: "正義", up: "公平、判断、均衡、契約", rev: "不公平、偏り、迷い、責任回避" },
+      { name: "吊るされた男", up: "忍耐、視点転換、献身、待つ価値", rev: "報われなさ、停滞、自己犠牲、行き詰まり" },
+      { name: "死神", up: "終わり、再生、区切り、変化", rev: "未練、先延ばし、変化への抵抗、停滞" },
+      { name: "節制", up: "調和、調整、回復、自然体", rev: "不摂生、不安定、噛み合わなさ、極端" },
+      { name: "悪魔", up: "執着、誘惑、欲望、依存", rev: "解放、断ち切る、目覚め、距離を置く" },
+      { name: "塔", up: "崩壊、衝撃、真実の露呈、強制リセット", rev: "小さな破綻、変化の回避、警告、内側の崩れ" },
+      { name: "星", up: "希望、癒し、理想、未来への光", rev: "失望、理想倒れ、不安、希望の見失い" },
+      { name: "月", up: "不安、曖昧さ、夢、隠れた感情", rev: "霧が晴れる、誤解の解消、現実を見る、回復" },
+      { name: "太陽", up: "成功、喜び、祝福、明るい展開", rev: "過信、遅れ、子どもっぽさ、期待外れ" },
+      { name: "審判", up: "復活、決断、呼びかけ、再評価", rev: "後悔、決めきれない、過去への執着、停滞" },
+      { name: "世界", up: "完成、達成、統合、次の段階", rev: "未完成、マンネリ、詰めの甘さ、足踏み" }
+    ];
+
+    const spreadPositions = {
+      one: ["今の答え"],
+      three: ["過去", "現在", "未来"],
+      choice: ["A案", "B案", "助言"]
+    };
+
+    const toneText = {
+      gentle: "やさしく、安心できる言葉で解釈してください。",
+      deep: "象徴の意味を深掘りして、心理面まで解釈してください。",
+      practical: "現実的な行動案と注意点を中心に解釈してください。",
+      story: "少し神秘的で物語性のある文章として解釈してください。"
+    };
+
+    const questionEl = document.getElementById("question");
+    const spreadEl = document.getElementById("spread");
+    const toneEl = document.getElementById("tone");
+    const cardsEl = document.getElementById("cards");
+    const outputEl = document.getElementById("output");
+    const statusEl = document.getElementById("status");
+
+    let currentResultText = "";
+
+    function shuffle(array) {
+      const copied = [...array];
+      for (let i = copied.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [copied[i], copied[j]] = [copied[j], copied[i]];
+      }
+      return copied;
+    }
+
+    function drawCards() {
+      const question = questionEl.value.trim() || "未入力";
+      const spread = spreadEl.value;
+      const tone = toneEl.value;
+      const positions = spreadPositions[spread];
+      const drawn = shuffle(tarotDeck).slice(0, positions.length).map((card, index) => {
+        const reversed = Math.random() < 0.5;
+        return {
+          position: positions[index],
+          name: card.name,
+          orientation: reversed ? "逆位置" : "正位置",
+          meaning: reversed ? card.rev : card.up
+        };
+      });
+
+      renderCards(drawn);
+      currentResultText = buildPromptText(question, spreadEl.options[spreadEl.selectedIndex].text, toneText[tone], drawn);
+      outputEl.value = currentResultText;
+      statusEl.textContent = "カードを引きました。コピーしてChatGPTへ貼り付けできます。";
+    }
+
+    function renderCards(drawn) {
+      cardsEl.innerHTML = "";
+      drawn.forEach(card => {
+        const div = document.createElement("div");
+        div.className = "tarot-card";
+        div.innerHTML = `
+          <div>
+            <div class="position">${escapeHtml(card.position)}</div>
+            <div class="card-name">${escapeHtml(card.name)}</div>
+            <div class="orientation">${escapeHtml(card.orientation)}</div>
+          </div>
+          <div class="meaning">${escapeHtml(card.meaning)}</div>
+        `;
+        cardsEl.appendChild(div);
+      });
+    }
+
+    function buildPromptText(question, spreadLabel, toneInstruction, drawn) {
+      const cardLines = drawn.map(card => {
+        return `- ${card.position}: ${card.name}（${card.orientation}）\n  キーワード: ${card.meaning}`;
+      }).join("\n");
+
+      return [
+        "以下のタロット結果を解釈してください。",
+        "",
+        `【相談内容】${question}`,
+        `【スプレッド】${spreadLabel}`,
+        "",
+        "【カード結果】",
+        cardLines,
+        "",
+        "【解釈してほしいこと】",
+        toneInstruction,
+        "相談内容に対して、カード全体の流れ、今の状況、注意点、次に取るとよさそうな行動を日本語でわかりやすく説明してください。"
+      ].join("\n");
+    }
+
+    async function copyResult() {
+      const text = outputEl.value.trim();
+      if (!text) {
+        statusEl.textContent = "まだコピーする結果がありません。先にカードを引いてください。";
+        return;
+      }
+
+      try {
+        if (navigator.clipboard && window.isSecureContext) {
+          await navigator.clipboard.writeText(text);
+        } else {
+          outputEl.removeAttribute("readonly");
+          outputEl.select();
+          document.execCommand("copy");
+          outputEl.setAttribute("readonly", "readonly");
+          window.getSelection().removeAllRanges();
+        }
+        statusEl.textContent = "コピーしました。ChatGPTにそのまま貼り付けできます。";
+      } catch (error) {
+        statusEl.textContent = "コピーに失敗しました。テキスト欄を長押し・選択して手動コピーしてください。";
+      }
+    }
+
+    function clearAll() {
+      questionEl.value = "";
+      cardsEl.innerHTML = "";
+      outputEl.value = "";
+      currentResultText = "";
+      statusEl.textContent = "リセットしました。";
+    }
+
+    function escapeHtml(text) {
+      return String(text)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
+    document.getElementById("drawButton").addEventListener("click", drawCards);
+    document.getElementById("copyButton").addEventListener("click", copyResult);
+    document.getElementById("clearButton").addEventListener("click", clearAll);
+  </script>
+</body>
+</html>

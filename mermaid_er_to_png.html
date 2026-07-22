@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#eef2f7">
-  <title>Mermaid図 PNG変換</title>
+  <title>Mermaid図 PNG変換 v5</title>
   <style>
     :root {
       color-scheme: light;
@@ -140,11 +140,11 @@
 </head>
 <body>
 <main class="app">
-  <h1>Mermaid図 → PNG</h1>
+  <h1>Mermaid図 → PNG <small style="font-size:.45em;color:#64748b">v5</small></h1>
   <p class="lead">ER図とフローチャートのサンプルを切り替え、ブラウザ内でPNG化できます。</p>
 
   <div class="notice">
-    iPhone・iPad向けにMermaidのHTMLラベルを無効化しています。巨大な図は、「PNG 1枚」で端末上限内へ自動縮小するか、「分割PNGをZIP保存」で読みやすい複数画像に分けられます。
+    iPhone・iPad向けにMermaidのHTMLラベルを無効化しています。巨大な図は、「PNG 1枚」で端末上限内へ自動縮小するか、「高画質タイルPNGをZIP保存」で読みやすい複数画像に分けられます。
   </div>
 
   <section class="toolbar">
@@ -189,7 +189,7 @@
   <div class="action-row">
     <button id="renderBtn" class="primary" type="button">図を描画</button>
     <button id="downloadBtn" class="primary" type="button">PNG 1枚で保存</button>
-    <button id="splitPngBtn" class="primary" type="button">分割PNGをZIP保存</button>
+    <button id="splitPngBtn" class="primary" type="button">高画質タイルPNGをZIP保存</button>
     <button id="svgBtn" class="secondary" type="button">SVGを保存</button>
     <button id="fitBtn" class="secondary" type="button">原寸で見る</button>
   </div>
@@ -543,6 +543,37 @@
     });
   }
 
+  function svgTextToDataUrl(svgText) {
+    // Blob URLはローカルHTML＋Safariで
+    // "The operation is insecure" になることがあるため使わない。
+    // data: URLならブラウザ自身のSVG描画エンジンを利用でき、
+    // Mermaidの文字・CSSもプレビューに近い状態で保持できる。
+    return "data:image/svg+xml;charset=utf-8," +
+      encodeURIComponent(svgText)
+        .replace(/%0A/g, "")
+        .replace(/%20/g, " ");
+  }
+
+  async function drawSvgWithBrowser(
+    ctx,
+    svgText,
+    width,
+    height
+  ) {
+    const image = new Image();
+    image.decoding = "async";
+
+    await new Promise((resolve,reject)=>{
+      image.onload = resolve;
+      image.onerror = () => reject(
+        new Error("ブラウザによるSVG画像の読み込みに失敗しました。")
+      );
+      image.src = svgTextToDataUrl(svgText);
+    });
+
+    ctx.drawImage(image,0,0,width,height);
+  }
+
   async function renderSvgToCanvas(svgText, width, height, background) {
     const canvas = document.createElement("canvas");
     canvas.width = Math.max(1,Math.ceil(width));
@@ -556,12 +587,26 @@
       ctx.fillRect(0,0,canvas.width,canvas.height);
     }
 
-    const renderer = Canvg.fromString(ctx,svgText,{
-      ignoreAnimation:true,
-      ignoreMouse:true,
-      enableRedraw:false
-    });
-    await renderer.render();
+    try {
+      // 第一選択：Safari/Chrome自身でSVGを描画。
+      // Mermaidのtext/tspan、埋め込みCSS、サブグラフ見出しを保持する。
+      await drawSvgWithBrowser(
+        ctx,
+        svgText,
+        canvas.width,
+        canvas.height
+      );
+    } catch (browserError) {
+      // ブラウザ描画が使えない環境だけCanvgへフォールバック。
+      // 通常はここへ来ない。
+      const renderer = Canvg.fromString(ctx,svgText,{
+        ignoreAnimation:true,
+        ignoreMouse:true,
+        enableRedraw:false
+      });
+      await renderer.render();
+    }
+
     return canvas;
   }
 
@@ -661,7 +706,7 @@
       const autoReduced = safeScale < requestedScale;
       setStatus(
         autoReduced
-          ? `端末上限に収めるため自動縮小して保存しました（${width} × ${height}px）。文字を読みやすく残す場合は「分割PNGをZIP保存」を使ってください。`
+          ? `端末上限に収めるため自動縮小して保存しました（${width} × ${height}px）。文字を読みやすく残す場合は「高画質タイルPNGをZIP保存」を使ってください。`
           : `PNGを作成しました（${width} × ${height}px）。`
       );
     } catch (e) {
@@ -673,7 +718,7 @@
 
   async function downloadSplitPngZip() {
     $("#splitPngBtn").disabled = true;
-    setStatus("図を複数のPNGへ分割しています…");
+    setStatus("高画質タイルPNGを作成しています…");
 
     try {
       let svg = preview.querySelector("svg");
@@ -681,76 +726,125 @@
 
       const d = dimensions(svg);
       const requestedScale = Number(scaleSelect.value);
-      const maxPageWidthPx = 2400;
-      const maxPageHeightPx = 3200;
 
-      // 横幅をページ内へ収めつつ、指定倍率を可能な範囲で維持。
-      const pageScale = Math.min(
-        requestedScale,
-        maxPageWidthPx / d.width
-      );
+      // 文字を潰さないため、縮小せず指定倍率をそのまま使う。
+      // iPhoneで安定するよう、1タイルは最大約2000×2600px。
+      const tileWidthPx = 2000;
+      const tileHeightPx = 2600;
+      const logicalTileWidth = tileWidthPx / requestedScale;
+      const logicalTileHeight = tileHeightPx / requestedScale;
 
-      if (!(pageScale > 0)) {
-        throw new Error("図のサイズを取得できませんでした。");
+      const columns = Math.ceil(d.width / logicalTileWidth);
+      const rows = Math.ceil(d.height / logicalTileHeight);
+      const total = columns * rows;
+
+      if (total > 120) {
+        throw new Error(
+          `タイル数が${total}枚になります。PNG倍率を1倍へ下げてください。`
+        );
       }
 
-      const logicalPageHeight = maxPageHeightPx / pageScale;
-      const pageCount = Math.ceil(d.height / logicalPageHeight);
-      const pad = String(pageCount).length;
+      const rowPad = String(rows).length;
+      const colPad = String(columns).length;
       const zip = new JSZip();
       const base = safeFilename(filenameInput.value);
       const bg = backgroundSelect.value;
 
-      for (let i=0; i<pageCount; i++) {
-        setStatus(`分割PNGを作成しています… ${i+1}/${pageCount}`);
+      // 読み順の案内ファイルをZIPへ追加。
+      const manifest = [
+        `元図サイズ: ${Math.round(d.width)} × ${Math.round(d.height)} logical px`,
+        `出力倍率: ${requestedScale}倍`,
+        `分割: ${rows}行 × ${columns}列 = ${total}枚`,
+        "",
+        "読み順:",
+        "上段の左から右へ進み、次にその下の段へ進みます。",
+        "ファイル名は row_列 の順です。",
+        "例: r01_c01 → r01_c02 → r02_c01"
+      ].join("\n");
+      zip.file("README.txt", manifest);
 
-        const cropY = d.minY + i * logicalPageHeight;
-        const cropHeight = Math.min(
-          logicalPageHeight,
-          d.minY + d.height - cropY
-        );
+      let done = 0;
 
-        const crop = {
-          x:d.minX,
-          y:cropY,
-          width:d.width,
-          height:cropHeight
-        };
+      for (let row = 0; row < rows; row++) {
+        for (let col = 0; col < columns; col++) {
+          done++;
+          setStatus(
+            `高画質タイルPNGを作成しています… ${done}/${total} ` +
+            `（行${row+1}/${rows}・列${col+1}/${columns}）`
+          );
 
-        const outWidth = Math.max(1,Math.ceil(crop.width * pageScale));
-        const outHeight = Math.max(1,Math.ceil(crop.height * pageScale));
+          const cropX = d.minX + col * logicalTileWidth;
+          const cropY = d.minY + row * logicalTileHeight;
+          const cropWidth = Math.min(
+            logicalTileWidth,
+            d.minX + d.width - cropX
+          );
+          const cropHeight = Math.min(
+            logicalTileHeight,
+            d.minY + d.height - cropY
+          );
 
-        // cropしたSVGを最終ページ寸法へ直接描画する。
-        const pageCanvas = await renderSvgToCanvas(
-          serializeSvg(svg,crop,{width:outWidth,height:outHeight}),
-          outWidth,
-          outHeight,
-          bg
-        );
+          const crop = {
+            x: cropX,
+            y: cropY,
+            width: cropWidth,
+            height: cropHeight
+          };
 
-        const blob = await canvasToPngBlob(pageCanvas);
-        zip.file(
-          `${base}_${String(i+1).padStart(pad,"0")}.png`,
-          blob
-        );
+          const outWidth = Math.max(
+            1,
+            Math.ceil(cropWidth * requestedScale)
+          );
+          const outHeight = Math.max(
+            1,
+            Math.ceil(cropHeight * requestedScale)
+          );
 
-        // iOSでメモリを戻しやすくする。
-        pageCanvas.width = pageCanvas.height = 1;
-        await new Promise(resolve=>setTimeout(resolve,0));
+          const pageCanvas = await renderSvgToCanvas(
+            serializeSvg(
+              svg,
+              crop,
+              { width: outWidth, height: outHeight }
+            ),
+            outWidth,
+            outHeight,
+            bg
+          );
+
+          const blob = await canvasToPngBlob(pageCanvas);
+          const filename =
+            `${base}_r${String(row+1).padStart(rowPad,"0")}` +
+            `_c${String(col+1).padStart(colPad,"0")}.png`;
+
+          zip.file(filename, blob);
+
+          // iOS Safariのメモリを戻しやすくする。
+          pageCanvas.width = 1;
+          pageCanvas.height = 1;
+          await new Promise(resolve => setTimeout(resolve, 0));
+        }
       }
 
+      setStatus("ZIPファイルをまとめています…");
+
       const zipBlob = await zip.generateAsync({
-        type:"blob",
-        compression:"DEFLATE",
-        compressionOptions:{level:6}
+        type: "blob",
+        compression: "DEFLATE",
+        compressionOptions: { level: 5 }
       });
 
-      await saveBlob(zipBlob,`${base}_split_png.zip`);
+      await saveBlob(zipBlob, `${base}_tiles.zip`);
+
       setStatus(
-        `${pageCount}枚のPNGに分割してZIP保存しました。各画像は最大約${maxPageWidthPx} × ${maxPageHeightPx}pxです。`
+        `${total}枚の高画質PNGへ分割しました ` +
+        `（${rows}行 × ${columns}列）。` +
+        `文字は${requestedScale}倍のまま維持しています。`
       );
     } catch (e) {
-      setStatus(`分割PNGの作成に失敗しました。\n${e.message}`,true);
+      setStatus(
+        `高画質タイルPNGの作成に失敗しました。\n${e.message}`,
+        true
+      );
     } finally {
       $("#splitPngBtn").disabled = false;
     }

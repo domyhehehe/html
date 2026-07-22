@@ -144,8 +144,7 @@
   <p class="lead">ER図とフローチャートのサンプルを切り替え、ブラウザ内でPNG化できます。</p>
 
   <div class="notice">
-    iPhone・iPad向けに、MermaidのHTMLラベルを無効化してSVG文字へ統一しています。
-    これにより「The operation is insecure」が起きにくくなります。
+    iPhone・iPad向けにMermaidのHTMLラベルを無効化しています。巨大な図は、「PNG 1枚」で端末上限内へ自動縮小するか、「分割PNGをZIP保存」で読みやすい複数画像に分けられます。
   </div>
 
   <section class="toolbar">
@@ -189,7 +188,8 @@
 
   <div class="action-row">
     <button id="renderBtn" class="primary" type="button">図を描画</button>
-    <button id="downloadBtn" class="primary" type="button">PNGを保存</button>
+    <button id="downloadBtn" class="primary" type="button">PNG 1枚で保存</button>
+    <button id="splitPngBtn" class="primary" type="button">分割PNGをZIP保存</button>
     <button id="svgBtn" class="secondary" type="button">SVGを保存</button>
     <button id="fitBtn" class="secondary" type="button">原寸で見る</button>
   </div>
@@ -225,6 +225,7 @@
 <script type="module">
   import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
   import { Canvg } from "https://cdn.jsdelivr.net/npm/canvg@4.0.3/+esm";
+  import JSZip from "https://cdn.jsdelivr.net/npm/jszip@3.10.1/+esm";
 
   const samples = {
     er: String.raw`erDiagram
@@ -506,13 +507,21 @@
     };
   }
 
-  function serializeSvg(svg) {
+  function serializeSvg(svg, crop=null, outputSize=null) {
     const clone = svg.cloneNode(true);
     const d = dimensions(svg);
+    const box = crop || {
+      x:d.minX, y:d.minY, width:d.width, height:d.height
+    };
+
     clone.setAttribute("xmlns","http://www.w3.org/2000/svg");
-    clone.setAttribute("viewBox",`${d.minX} ${d.minY} ${d.width} ${d.height}`);
-    clone.setAttribute("width",String(d.width));
-    clone.setAttribute("height",String(d.height));
+    clone.setAttribute(
+      "viewBox",
+      `${box.x} ${box.y} ${box.width} ${box.height}`
+    );
+    clone.setAttribute("width",String(outputSize?.width ?? box.width));
+    clone.setAttribute("height",String(outputSize?.height ?? box.height));
+    clone.setAttribute("preserveAspectRatio","xMinYMin meet");
 
     const style = document.createElementNS("http://www.w3.org/2000/svg","style");
     style.textContent = `
@@ -525,12 +534,44 @@
     return new XMLSerializer().serializeToString(clone);
   }
 
+  async function canvasToPngBlob(canvas) {
+    return await new Promise((resolve,reject)=>{
+      canvas.toBlob(
+        b=>b?resolve(b):reject(new Error("PNGデータを生成できませんでした。")),
+        "image/png"
+      );
+    });
+  }
+
+  async function renderSvgToCanvas(svgText, width, height, background) {
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1,Math.ceil(width));
+    canvas.height = Math.max(1,Math.ceil(height));
+
+    const ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Canvasを初期化できませんでした。");
+
+    if (background !== "transparent") {
+      ctx.fillStyle = background;
+      ctx.fillRect(0,0,canvas.width,canvas.height);
+    }
+
+    const renderer = Canvg.fromString(ctx,svgText,{
+      ignoreAnimation:true,
+      ignoreMouse:true,
+      enableRedraw:false
+    });
+    await renderer.render();
+    return canvas;
+  }
+
   async function renderDiagram() {
     const code = source.value.trim();
     if (!code) throw new Error("Mermaidコードが空です。");
 
     $("#renderBtn").disabled = true;
     $("#downloadBtn").disabled = true;
+    $("#splitPngBtn").disabled = true;
     setStatus("描画しています…");
 
     try {
@@ -556,6 +597,7 @@
     } finally {
       $("#renderBtn").disabled = false;
       $("#downloadBtn").disabled = false;
+      $("#splitPngBtn").disabled = false;
     }
   }
 
@@ -583,60 +625,134 @@
 
   async function downloadPng() {
     $("#downloadBtn").disabled = true;
-    setStatus("PNGを作成しています…");
+    setStatus("1枚のPNGを作成しています…");
 
     try {
       let svg = preview.querySelector("svg");
       if (!svg) svg = await renderDiagram();
 
       const d = dimensions(svg);
-      const scale = Number(scaleSelect.value);
-      const width = Math.max(1,Math.ceil(d.width*scale));
-      const height = Math.max(1,Math.ceil(d.height*scale));
+      const requestedScale = Number(scaleSelect.value);
 
-      if (width*height > 32_000_000) {
-        throw new Error(`画像が大きすぎます（${width} × ${height}px）。倍率を下げてください。`);
-      }
+      // iPhone Safariを含む端末で安定しやすい上限。
+      const maxSide = 8192;
+      const maxPixels = 24_000_000;
 
-      const canvas = document.createElement("canvas");
-      canvas.width = width;
-      canvas.height = height;
-      const ctx = canvas.getContext("2d");
-      if (!ctx) throw new Error("Canvasを初期化できませんでした。");
-
-      const bg = backgroundSelect.value;
-      if (bg !== "transparent") {
-        ctx.fillStyle = bg;
-        ctx.fillRect(0,0,width,height);
-      }
-
-      const renderer = Canvg.fromString(ctx,serializeSvg(svg),{
-        ignoreAnimation:true,
-        ignoreMouse:true,
-        enableRedraw:false
-      });
-
-      ctx.save();
-      ctx.scale(scale,scale);
-      await renderer.render();
-      ctx.restore();
-
-      const blob = await new Promise((resolve,reject)=>{
-        canvas.toBlob(
-          b=>b?resolve(b):reject(new Error("PNGデータを生成できませんでした。")),
-          "image/png"
-        );
-      });
-
-      await saveBlob(blob,`${safeFilename(filenameInput.value)}.png`);
-      setStatus(`PNGを作成しました（${width} × ${height}px）。`);
-    } catch (e) {
-      setStatus(
-        `PNGの作成に失敗しました。\n${e.message}\n代わりに「SVGを保存」をお試しください。`,
-        true
+      const sideScale = Math.min(
+        maxSide / d.width,
+        maxSide / d.height
       );
+      const pixelScale = Math.sqrt(maxPixels / (d.width * d.height));
+      const safeScale = Math.min(requestedScale, sideScale, pixelScale);
+
+      const width = Math.max(1,Math.floor(d.width * safeScale));
+      const height = Math.max(1,Math.floor(d.height * safeScale));
+
+      const canvas = await renderSvgToCanvas(
+        serializeSvg(svg,null,{width,height}),
+        width,
+        height,
+        backgroundSelect.value
+      );
+
+      const blob = await canvasToPngBlob(canvas);
+      await saveBlob(blob,`${safeFilename(filenameInput.value)}.png`);
+
+      const autoReduced = safeScale < requestedScale;
+      setStatus(
+        autoReduced
+          ? `端末上限に収めるため自動縮小して保存しました（${width} × ${height}px）。文字を読みやすく残す場合は「分割PNGをZIP保存」を使ってください。`
+          : `PNGを作成しました（${width} × ${height}px）。`
+      );
+    } catch (e) {
+      setStatus(`PNGの作成に失敗しました。\n${e.message}`,true);
     } finally {
       $("#downloadBtn").disabled = false;
+    }
+  }
+
+  async function downloadSplitPngZip() {
+    $("#splitPngBtn").disabled = true;
+    setStatus("図を複数のPNGへ分割しています…");
+
+    try {
+      let svg = preview.querySelector("svg");
+      if (!svg) svg = await renderDiagram();
+
+      const d = dimensions(svg);
+      const requestedScale = Number(scaleSelect.value);
+      const maxPageWidthPx = 2400;
+      const maxPageHeightPx = 3200;
+
+      // 横幅をページ内へ収めつつ、指定倍率を可能な範囲で維持。
+      const pageScale = Math.min(
+        requestedScale,
+        maxPageWidthPx / d.width
+      );
+
+      if (!(pageScale > 0)) {
+        throw new Error("図のサイズを取得できませんでした。");
+      }
+
+      const logicalPageHeight = maxPageHeightPx / pageScale;
+      const pageCount = Math.ceil(d.height / logicalPageHeight);
+      const pad = String(pageCount).length;
+      const zip = new JSZip();
+      const base = safeFilename(filenameInput.value);
+      const bg = backgroundSelect.value;
+
+      for (let i=0; i<pageCount; i++) {
+        setStatus(`分割PNGを作成しています… ${i+1}/${pageCount}`);
+
+        const cropY = d.minY + i * logicalPageHeight;
+        const cropHeight = Math.min(
+          logicalPageHeight,
+          d.minY + d.height - cropY
+        );
+
+        const crop = {
+          x:d.minX,
+          y:cropY,
+          width:d.width,
+          height:cropHeight
+        };
+
+        const outWidth = Math.max(1,Math.ceil(crop.width * pageScale));
+        const outHeight = Math.max(1,Math.ceil(crop.height * pageScale));
+
+        // cropしたSVGを最終ページ寸法へ直接描画する。
+        const pageCanvas = await renderSvgToCanvas(
+          serializeSvg(svg,crop,{width:outWidth,height:outHeight}),
+          outWidth,
+          outHeight,
+          bg
+        );
+
+        const blob = await canvasToPngBlob(pageCanvas);
+        zip.file(
+          `${base}_${String(i+1).padStart(pad,"0")}.png`,
+          blob
+        );
+
+        // iOSでメモリを戻しやすくする。
+        pageCanvas.width = pageCanvas.height = 1;
+        await new Promise(resolve=>setTimeout(resolve,0));
+      }
+
+      const zipBlob = await zip.generateAsync({
+        type:"blob",
+        compression:"DEFLATE",
+        compressionOptions:{level:6}
+      });
+
+      await saveBlob(zipBlob,`${base}_split_png.zip`);
+      setStatus(
+        `${pageCount}枚のPNGに分割してZIP保存しました。各画像は最大約${maxPageWidthPx} × ${maxPageHeightPx}pxです。`
+      );
+    } catch (e) {
+      setStatus(`分割PNGの作成に失敗しました。\n${e.message}`,true);
+    } finally {
+      $("#splitPngBtn").disabled = false;
     }
   }
 
@@ -662,6 +778,7 @@
   themeSelect.addEventListener("change",()=>renderDiagram().catch(()=>{}));
   $("#renderBtn").addEventListener("click",()=>renderDiagram().catch(()=>{}));
   $("#downloadBtn").addEventListener("click",downloadPng);
+  $("#splitPngBtn").addEventListener("click",downloadSplitPngZip);
   $("#svgBtn").addEventListener("click",downloadSvg);
 
   $("#fitBtn").addEventListener("click",()=>{

@@ -1,289 +1,219 @@
 <!doctype html>
 <html lang="ja">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>勤務記録（汎用・シングル②・モバイル）</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-mu+0rZBaKzKgEhSPYXTwLji5ouPq9QOnRjkaSqszeh4='; style-src 'unsafe-inline'; connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'">
+  <title>勤務記録・月次見込み</title>
   <style>
-    body {
-      font-family: system-ui, -apple-system, "Hiragino Sans", "Noto Sans JP", sans-serif;
-      margin: 12px;
-      line-height: 1.4;
-    }
-    .wrap {
-      max-width: 480px;
-      margin: 0 auto;
-    }
-    h1 {
-      font-size: 18px;
-      margin: 0 0 12px;
-    }
-    form {
-      display: grid;
-      gap: 12px;
-    }
-    label {
-      display: grid;
-      gap: 6px;
-      font-size: 14px;
-    }
-    input, textarea, button {
-      font: inherit;
-      padding: 12px;
-      border: 1px solid #ccc;
-      border-radius: 10px;
-      font-size: 16px;
-      box-sizing: border-box;
-      width: 100%;
-    }
-    textarea {
-      min-height: 90px;
-      resize: vertical;
-      white-space: pre-wrap;
-      word-break: break-word;
-    }
-    .row {
-      display: grid;
-      grid-template-columns: 1fr;
-      gap: 10px;
-    }
-    .actions {
-      display: flex;
-      gap: 10px;
-      flex-direction: column;
-    }
-    button {
-      cursor: pointer;
-      border: 1px solid #999;
-      background: #f7f7f7;
-    }
-    button.primary {
-      background: #111;
-      color: #fff;
-      border-color: #111;
-    }
-    .note {
-      color: #555;
-      font-size: 12px;
-    }
-    pre {
-      background: #0b1020;
-      color: #d7e2ff;
-      padding: 12px;
-      border-radius: 12px;
-      overflow: auto;
-      white-space: pre-wrap;
-      word-break: break-word;
-      font-size: 14px;
-    }
-    .pill {
-      display: inline-block;
-      padding: 2px 8px;
-      border-radius: 999px;
-      background: #eee;
-      font-size: 12px;
-    }
-    .subactions {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    }
-    a.linkbtn {
-      display: inline-block;
-      text-align: center;
-      padding: 12px;
-      border: 1px solid #999;
-      border-radius: 10px;
-      background: #f7f7f7;
-      color: #111;
-      text-decoration: none;
-      font-size: 16px;
-    }
+    *{box-sizing:border-box}body{font-family:system-ui,-apple-system,"Hiragino Sans","Noto Sans JP",sans-serif;margin:12px;line-height:1.5;color:#18202b;background:#f5f6f8}.wrap{max-width:480px;margin:auto}h1{font-size:20px;margin:0 0 12px}h2{font-size:16px;margin:0 0 12px}form{display:grid;gap:12px}.panel{padding:16px;background:#fff;border:1px solid #d8dde4;border-radius:12px;display:grid;gap:12px}label{display:grid;gap:5px;font-size:14px}input,textarea,button,.linkbtn{font:inherit;font-size:16px;padding:11px;border:1px solid #bac2cd;border-radius:9px;width:100%;min-width:0}textarea{min-height:90px;resize:vertical}button,.linkbtn{background:#f7f8fa;color:#17202d;cursor:pointer;text-align:center;text-decoration:none}.primary{background:#182838;color:white;border-color:#182838}.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}.check{display:flex;align-items:center;gap:8px}.check input{width:20px;height:20px;flex-shrink:0}.note{font-size:12px;color:#566273;margin:0}.warning{color:#9a3d00}.total{font-size:28px;font-weight:700}.calendar{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}.weekday{text-align:center;font-size:12px;color:#566273}.day{padding:6px 1px;font-size:13px;border-radius:6px;min-height:52px}.day small{display:block;font-size:10px}.day.holiday{background:#fff2f1;color:#913528}.day.selected{outline:2px solid #284a6c;outline-offset:0}.day.recorded{border-bottom:3px solid #247751}.day.custom{background:#edf3fb}details summary{cursor:pointer;font-size:14px}pre{background:#0b1020;color:#d7e2ff;padding:12px;border-radius:12px;white-space:pre-wrap;overflow-wrap:anywhere;font-size:14px;margin:0}#message{min-height:22px;font-size:13px}.actions{display:grid;gap:8px}input:focus,textarea:focus,button:focus-visible{outline:2px solid #284a6c;outline-offset:2px}@media(max-width:350px){.row{grid-template-columns:1fr}}
   </style>
 </head>
 <body>
-  <div class="wrap">
-    <h1>勤務記録 <span class="pill">汎用</span></h1>
-
-    <form id="workForm">
+<main class="wrap">
+  <h1>勤務記録・月次見込み</h1>
+  <form id="workForm" autocomplete="off">
+    <section class="panel">
+      <label>日報の日付<input type="date" id="date" required></label>
       <div class="row">
-        <label>日付
-          <input type="date" id="date" required />
-        </label>
-        <label>開始時間
-          <input type="time" id="startTime" value="09:00" required />
-        </label>
-        <label>終了時間
-          <input type="time" id="endTime" value="18:00" required />
-        </label>
+        <label>開始時間<input type="time" id="startTime" value="09:00" required></label>
+        <label>終了時間<input type="time" id="endTime" value="18:00" required></label>
       </div>
+      <label class="check"><input type="checkbox" id="nextDay">終了は翌日（翌日までの勤務）</label>
+      <div class="row">
+        <label>休憩（分）<input type="number" id="breakMinutes" value="60" min="0" max="1440" step="1" required></label>
+        <label>当日の計上時間（h）<input type="number" id="actualHours" value="8" min="0" max="24" step="any" required></label>
+      </div>
+      <p class="note">計上時間は「終了−開始−休憩」で自動計算。手入力もできます。時刻・休憩を変更すると再計算します。休暇を何時間として扱うかは会社のルールに合わせてください。</p>
+      <p class="note" id="dayState"></p>
+    </section>
 
-      <label>②
-        <textarea id="line2" rows="3"></textarea>
-        <div class="note">URLテンプレから初期値を渡せます。</div>
-      </label>
+    <section class="panel">
+      <h2 id="monthTitle">当月の見込み（⑤）</h2>
+      <div class="total" id="forecast">—</div>
+      <p class="note" id="formula"></p>
+      <p class="note warning" id="holidayWarning"></p>
+      <label>月の基本予定時間（h・編集可能）<input type="number" id="baseHours" min="0" max="744" step="any" required></label>
+      <p class="note">初期値は「土日・日本の祝日を除いた日数×8h」。基本予定に、各日の「計上時間−予定時間」を加えます。基本予定の手入力は月全体の補正です。休暇・会社休日の予定変更は下のカレンダーで行うと二重控除を避けられます。</p>
+      <button type="button" id="resetBase">基本予定の手入力補正を解除</button>
+      <details id="calendarDetails">
+        <summary>月のカレンダー・日別予定を編集</summary>
+        <p class="note">日付を選ぶと、その日の日報に切り替わります。緑の下線は計上済み。未計上の日は予定時間のまま見込みに入ります。</p>
+        <div class="calendar" id="calendar"></div>
+        <label>選択日の予定時間（h）<input type="number" id="plannedHours" min="0" max="24" step="any" required></label>
+        <p class="note">通常は平日8h、土日祝0h。会社休日や勤務予定のない日は0hにできます。予定を変更すると月の基本予定も連動します。</p>
+        <button type="button" id="removeActual">選択日の計上を解除して予定に戻す</button>
+      </details>
+      <button type="button" id="applyDay">当日の時間を月次見込みに反映</button>
+    </section>
 
-      <label>作業内容（③）
-        <textarea id="details"></textarea>
-      </label>
-
-      <label>感想（④）
-        <textarea id="impression"></textarea>
-      </label>
-
-      <label>
-        資格勉強時間（h・任意）
-        <input type="number" id="studyHours" value="0" min="0" step="0.25" />
-        <div class="note">0 の場合は出力されません。</div>
-      </label>
-
+    <section class="panel">
+      <label>② PJ名／常駐先企業名／勤務場所<textarea id="line2" rows="3"></textarea></label>
+      <label>作業内容（③）<textarea id="details"></textarea></label>
+      <label>感想（④）<textarea id="impression"></textarea></label>
+      <label>資格勉強時間（h・任意）<input type="number" id="studyHours" value="0" min="0" step="any"></label>
+      <p class="note">資格勉強時間は0なら出力しません。月次勤務時間には加算しません。</p>
       <div class="actions">
-        <button type="button" class="primary" id="generateBtn">生成</button>
-        <button type="button" id="copyBtn">コピー</button>
-        <button type="button" id="clearBtn">クリア</button>
+        <button type="button" class="primary" id="generateBtn">生成・当日の時間を反映</button>
+        <button type="button" id="copyBtn">コピー・当日の時間を反映</button>
+        <button type="button" id="clearBtn">作業内容・感想・勉強時間をクリア</button>
       </div>
+      <a class="linkbtn" href="./temp.html" rel="noreferrer">テンプレ作成ページへ</a>
+    </section>
 
-      <div class="subactions">
-        <a class="linkbtn" href="./temp.html">テンプレ作成ページへ</a>
-      </div>
-
-      <div class="note">
-        残業（⑤）は <b>残業開始時刻以降</b> のみです。例：18:30終了・残業開始18:00 → 0.5h
-      </div>
-    </form>
-
-    <h2 style="font-size:16px;margin:18px 0 8px;">出力</h2>
-    <pre id="output"></pre>
-  </div>
-
-  <script>
-    const weekdays = ['月', '火', '水', '木', '金', '土', '日'];
-    let overtimeStartMin = 18 * 60; // default 18:00
-
-    function parseMin(t) {
-      const parts = (t || '').split(':');
-      const h = Number(parts[0] || 0);
-      const m = Number(parts[1] || 0);
-      return h * 60 + m;
-    }
-
-    function fmtMD(d) {
-      return (d.getMonth() + 1) + '/' + d.getDate();
-    }
-
-    function overtimeText(mins) {
-      const h = Math.round((mins / 60) * 10) / 10;
-      return (h % 1 === 0 ? h.toFixed(0) : h.toFixed(1)) + 'h';
-    }
-
-    function getQueryTemplate() {
-      const params = new URLSearchParams(location.search);
-      const raw = params.get('template');
-      if (!raw) return null;
-
-      try {
-        return JSON.parse(raw);
-      } catch (e) {
-        console.error('template parse error:', e);
-        return null;
+    <section class="panel">
+      <label class="check"><input type="checkbox" id="remember">このブラウザーに日付・時間の数値だけ保存する</label>
+      <p class="note">②〜④、出退勤時刻、休憩、勉強時間、出力文章は保存しません。初期設定は保存OFF。ONにすると日付別の予定・計上時間と月の補正を保存し、入力変更時に更新します。OFFにするとこのフォームの保存済み数値を削除します。別端末・別ブラウザーには引き継がれません。</p>
+      <p class="note" id="storageState"></p>
+      <p class="note warning" id="templateWarning"></p>
+      <button type="button" id="deleteAll">全月の時間データを削除</button>
+    </section>
+  </form>
+  <p id="message" role="status" aria-live="polite"></p>
+  <h2>出力</h2>
+  <pre id="output" tabindex="0"></pre>
+</main>
+<script>
+'use strict';
+// 外部API・外部スクリプトなし。保存するのは日付と分単位の数値だけ。
+const $ = id => document.getElementById(id);
+const KEY = 'work-report-monthly:v1';
+const WEEKDAYS = ['日','月','火','水','木','金','土'];
+// 内閣府 https://www8.cao.go.jp/chosei/shukujitsu/gaiyou.html （2026-10-02確認）
+// 振替休日・祝日法第3条第3項の休日も含む。対応年以外は自動計算を確定させない。
+const HOLIDAYS = {
+  2026: {'01-01':'元日','01-12':'成人の日','02-11':'建国記念の日','02-23':'天皇誕生日','03-20':'春分の日','04-29':'昭和の日','05-03':'憲法記念日','05-04':'みどりの日','05-05':'こどもの日','05-06':'振替休日','07-20':'海の日','08-11':'山の日','09-21':'敬老の日','09-22':'国民の休日','09-23':'秋分の日','10-12':'スポーツの日','11-03':'文化の日','11-23':'勤労感謝の日'},
+  2027: {'01-01':'元日','01-11':'成人の日','02-11':'建国記念の日','02-23':'天皇誕生日','03-21':'春分の日','03-22':'振替休日','04-29':'昭和の日','05-03':'憲法記念日','05-04':'みどりの日','05-05':'こどもの日','07-19':'海の日','08-11':'山の日','09-20':'敬老の日','09-23':'秋分の日','10-11':'スポーツの日','11-03':'文化の日','11-23':'勤労感謝の日'}
+};
+let months = Object.create(null), storageFailed = false, overtimeStartMin = 1080;
+const pad = n => String(n).padStart(2,'0');
+function dateObject(s) { const d = new Date(s+'T00:00:00'); if(!/^\d{4}-\d{2}-\d{2}$/.test(s)||isNaN(d)||`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`!==s) throw Error('日付を確認してください。'); return d; }
+function monthKey() { dateObject($('date').value); return $('date').value.slice(0,7); }
+function datesInMonth(key) { const [y,m]=key.split('-').map(Number); const last=new Date(y,m,0).getDate(); return Array.from({length:last},(_,i)=>`${key}-${pad(i+1)}`); }
+function holiday(s) { return HOLIDAYS[Number(s.slice(0,4))]?.[s.slice(5)]||''; }
+function defaultPlan(s) { const day=dateObject(s).getDay(); return day===0||day===6||holiday(s)?0:480; }
+function record() { const k=monthKey(); return months[k] ||= {adjust:0,confirmed:false,plans:{},actuals:{}}; }
+function planned(s,r=record()) { return Object.hasOwn(r.plans,s)?r.plans[s]:defaultPlan(s); }
+function planTotal(r=record()) { return datesInMonth(monthKey()).reduce((sum,s)=>sum+planned(s,r),0); }
+function totals() { const r=record(),base=planTotal(r)+r.adjust; const delta=Object.entries(r.actuals).reduce((sum,[s,min])=>sum+min-planned(s,r),0); return {base,delta,total:base+delta}; }
+function hours(min) { return (min/60).toFixed(1); }
+function editableHours(min) { return String(Number((min/60).toFixed(6))); }
+function numberMinutes(id,max) { const e=$(id); if(!e.value.trim()||!e.checkValidity()) throw Error('時間の数値を確認してください。'); const value=Number(e.value); if(!Number.isFinite(value)||value<0||value>max) throw Error('時間の数値を確認してください。'); return Math.round(value*60); }
+function clock(s) { if(!/^\d{2}:\d{2}$/.test(s)) throw Error('開始・終了時間を入力してください。'); const [h,m]=s.split(':').map(Number); if(h>23||m>59) throw Error('時刻を確認してください。'); return h*60+m; }
+function workedMinutes() { const start=clock($('startTime').value),end=clock($('endTime').value)+($('nextDay').checked?1440:0); const e=$('breakMinutes'),rest=Number(e.value); if(!e.value.trim()||!e.checkValidity()||!Number.isInteger(rest)||rest<0) throw Error('休憩時間を確認してください。'); const duration=end-start; if(duration<0) throw Error('終了が翌日なら「終了は翌日」を選んでください。'); if(duration>1440) throw Error('勤務は24時間以内で入力してください。'); if(rest>duration) throw Error('休憩が勤務の時間幅を超えています。休みの日は計上時間を0にしてください。'); return duration-rest; }
+function say(s) { $('message').textContent=s; }
+function attempt(fn) { try { fn(); } catch(e) { say(e.message||'入力を確認してください。'); } }
+function sanitize(raw) {
+  const result=Object.create(null);
+  if(!raw||raw.version!==1||!raw.months||typeof raw.months!=='object') return result;
+  for(const [key,r] of Object.entries(raw.months)) {
+    if(!/^\d{4}-(0[1-9]|1[0-2])$/.test(key)||!r||typeof r!=='object') continue;
+    const clean={adjust:Number.isInteger(r.adjust)&&Math.abs(r.adjust)<=44640?r.adjust:0,confirmed:r.confirmed===true,plans:{},actuals:{}};
+    for(const field of ['plans','actuals']) {
+      for(const [s,min] of Object.entries(r[field]&&typeof r[field]==='object'?r[field]:{})) {
+        try { dateObject(s); if(s.slice(0,7)===key&&Number.isInteger(min)&&min>=0&&min<=1440) clean[field][s]=min; } catch {}
       }
     }
-
-    function applyTemplate(t) {
-      if (!t) return;
-
-      if (t.date) document.getElementById('date').value = t.date;
-      if (t.start) document.getElementById('startTime').value = t.start;
-      if (t.end) document.getElementById('endTime').value = t.end;
-      if (t.overtimeStart) overtimeStartMin = parseMin(t.overtimeStart);
-
-      if (t.line2 !== undefined) document.getElementById('line2').value = t.line2;
-      if (t.details !== undefined) document.getElementById('details').value = t.details;
-      if (t.impression !== undefined) document.getElementById('impression').value = t.impression;
-      if (t.studyHours !== undefined) document.getElementById('studyHours').value = t.studyHours;
-    }
-
-    function setTodayIfEmpty() {
-      const dateInput = document.getElementById('date');
-      if (dateInput.value) return;
-
-      const d = new Date();
-      dateInput.value =
-        d.getFullYear() + '-' +
-        String(d.getMonth() + 1).padStart(2, '0') + '-' +
-        String(d.getDate()).padStart(2, '0');
-    }
-
-    function build() {
-      const dateStr = document.getElementById('date').value;
-      const s = document.getElementById('startTime').value;
-      const e = document.getElementById('endTime').value;
-      const l2 = document.getElementById('line2').value || '';
-      const det = document.getElementById('details').value || '';
-      const imp = document.getElementById('impression').value || '';
-      const study = Number(document.getElementById('studyHours').value || 0);
-
-      if (!dateStr) return '';
-
-      const d = new Date(dateStr + 'T00:00:00');
-      const wd = weekdays[(d.getDay() + 6) % 7];
-
-      const endMin = parseMin(e);
-      const otMin = Math.max(0, endMin - overtimeStartMin);
-
-      let out =
-`①${fmtMD(d)}(${wd})${s}～${e}
-②${l2}
-③${det}
-④${imp}
-⑤${overtimeText(otMin)}
-`;
-
-      if (study > 0) {
-        out += `資格勉強時間：${study}h\n`;
-      }
-
-      return out;
-    }
-
-    function refreshOutput() {
-      document.getElementById('output').textContent = build();
-    }
-
-    function clearForm() {
-      document.getElementById('details').value = '';
-      document.getElementById('impression').value = '';
-      document.getElementById('studyHours').value = 0;
-      document.getElementById('output').textContent = '';
-    }
-
-    async function copyText(text) {
-      try {
-        await navigator.clipboard.writeText(text);
-      } catch (e) {
-        const ta = document.createElement('textarea');
-        ta.value = text;
-        document.body.appendChild(ta);
-        ta.select();
-        document.execCommand('copy');
-        document.body.removeChild(ta);
-      }
-    }
-
-    (function init() {
-      setTodayIfEmpty();
-      applyTemplate(getQueryTemplate());
-
-      document.getElementById('generateBtn').addEventListener('click', refreshOutput);
-
-      document.getElementById('copyBtn').addEventListener('click', async () => {
-        const text = build();
-        document.getElementById('output').textContent = text;
-        await copyText(text);
-      });
-
-      document.getElementById('clearBtn').addEventListener('click', clearForm);
-    })();
-  </script>
+    result[key]=clean;
+  }
+  return result;
+}
+function storageStatus() { $('storageState').textContent=storageFailed?'端末への保存・削除に失敗しました。表示中の計算は画面内で続けられます。保存済みデータはブラウザー設定から確認してください。':$('remember').checked?'保存ON：このブラウザー内に時間の数値を保存します。':'保存OFF：再読み込みすると時間データは消えます。'; }
+function save() { if(!$('remember').checked){storageStatus();return;} try {localStorage.setItem(KEY,JSON.stringify({version:1,months}));storageFailed=false;} catch {storageFailed=true;} storageStatus(); }
+function removeStored() { try {localStorage.removeItem(KEY);storageFailed=false;} catch {storageFailed=true;} storageStatus(); }
+function loadSaved() { try {const text=localStorage.getItem(KEY);if(text){months=sanitize(JSON.parse(text));$('remember').checked=true;}} catch {storageFailed=true;} storageStatus(); }
+function renderCalendar() {
+  const grid=$('calendar'); grid.replaceChildren();
+  for(const name of ['月','火','水','木','金','土','日']) {const el=document.createElement('span');el.className='weekday';el.textContent=name;grid.append(el);}
+  const all=datesInMonth(monthKey()),offset=(dateObject(all[0]).getDay()+6)%7,r=record();
+  for(let i=0;i<offset;i++)grid.append(document.createElement('span'));
+  for(const s of all) {
+    const b=document.createElement('button');b.type='button';b.className='day';
+    if(defaultPlan(s)===0)b.classList.add('holiday');
+    if(Object.hasOwn(r.plans,s))b.classList.add('custom');
+    if(Object.hasOwn(r.actuals,s))b.classList.add('recorded');
+    if(s===$('date').value)b.classList.add('selected');
+    b.textContent=String(Number(s.slice(8))); const small=document.createElement('small');small.textContent=editableHours(planned(s,r))+'h';b.append(small);
+    b.setAttribute('aria-label',`${s} ${holiday(s)} 予定${editableHours(planned(s,r))}時間`);
+    b.setAttribute('aria-pressed',String(s===$('date').value));b.addEventListener('click',()=>attempt(()=>{ $('date').value=s;selectDate(); }));grid.append(b);
+  }
+}
+function render() {
+  const r=record(),t=totals(),known=!!HOLIDAYS[Number(monthKey().slice(0,4))];
+  $('monthTitle').textContent=monthKey()+' の見込み（⑤）';
+  $('forecast').textContent=hours(t.total)+'h';
+  $('formula').textContent=`基本予定 ${hours(t.base)}h ＋ 日別差分 ${t.delta>=0?'+':''}${hours(t.delta)}h（計上済み${Object.keys(r.actuals).length}日）`;
+  $('holidayWarning').textContent=known?'':r.confirmed?'この年の祝日は未収録です。基本予定は手入力済みです。日別の予定もカレンダーで確認してください。':'この年の祝日は未収録です。現在は土日だけを除いた暫定値です。基本予定を確認・手入力するまで生成できません。';
+  $('baseHours').value=editableHours(t.base);$('plannedHours').value=editableHours(planned($('date').value,r));
+  const saved=Object.hasOwn(r.actuals,$('date').value);
+  $('dayState').textContent=saved?`当日の計上済み時間：${editableHours(r.actuals[$('date').value])}h。入力変更は同じ日付に上書きします。`:'当日はまだ未計上です。時刻・計上時間の変更、反映、生成、コピーで月次見込みに反映します。';
+  renderCalendar();storageStatus();
+}
+function selectDate() {
+  const r=record(),s=$('date').value;
+  // 時刻は保存していないため、過去の日に切り替えたら通常時刻に戻し、計上済み数値だけ復元する。
+  $('startTime').value='09:00';$('endTime').value='18:00';$('breakMinutes').value=60;$('nextDay').checked=false;
+  $('actualHours').value=Object.hasOwn(r.actuals,s)?editableHours(r.actuals[s]):'8';
+  $('output').textContent='';render();
+}
+function commitDay() { const min=numberMinutes('actualHours',24);record().actuals[$('date').value]=min;save();$('output').textContent='';render(); }
+function ensureMonth() { if(!HOLIDAYS[Number(monthKey().slice(0,4))]&&!record().confirmed)throw Error('この年は祝日が未収録です。月の基本予定時間を確認して手入力してください。'); }
+function build() {
+  if(!$('workForm').reportValidity())throw Error('必須入力を確認してください。');
+  ensureMonth();const d=dateObject($('date').value);workedMinutes();
+  const study=Number($('studyHours').value||0);if(!Number.isFinite(study)||study<0)throw Error('資格勉強時間を確認してください。');
+  commitDay(); const total=totals().total;if(total<0)throw Error('月次見込みが負です。基本予定と日別の時間を確認してください。');
+  return `①${d.getMonth()+1}/${d.getDate()}(${WEEKDAYS[d.getDay()]})${$('startTime').value}～${$('endTime').value}${$('nextDay').checked?'（翌日）':''}\n②${$('line2').value}\n③${$('details').value}\n④${$('impression').value}\n⑤${hours(total)}h\n`+(study>0?`資格勉強時間：${study}h\n`:'');
+}
+async function copyText(text) {
+  try { await navigator.clipboard.writeText(text);return true; } catch {}
+  const ta=document.createElement('textarea');ta.value=text;ta.style.position='fixed';ta.style.top='0';ta.style.left='0';document.body.append(ta);ta.focus();ta.select();ta.setSelectionRange(0,text.length);
+  let copied=false;try{copied=document.execCommand('copy');}catch{}ta.remove();return copied;
+}
+function applyTemplate() {
+  const query=new URLSearchParams(location.search),fragment=new URLSearchParams(location.hash.slice(1));
+  const raw=fragment.get('template')||query.get('template');if(!raw)return;
+  try {
+    // 旧temp.htmlはJSONをencodeURIComponentした上で、URLSearchParamsにも渡していた。
+    // URLSearchParamsによる復号後に %7B...%7D が残る形式だけ、もう一度復号する。
+    const encodedJson=/^%7B[\s\S]*%7D$/i.test(raw);
+    const t=JSON.parse(encodedJson?decodeURIComponent(raw):raw);
+    if(!t||typeof t!=='object'||Array.isArray(t))throw Error();
+    if(typeof t.date==='string'){dateObject(t.date);$('date').value=t.date;}
+    for(const [key,id] of [['start','startTime'],['end','endTime']])if(typeof t[key]==='string'){clock(t[key]);$(id).value=t[key];}
+    for(const key of ['line2','details','impression'])if(typeof t[key]==='string')$(key).value=t[key];
+    if(t.studyHours!==undefined&&Number.isFinite(Number(t.studyHours))&&Number(t.studyHours)>=0)$('studyHours').value=Number(t.studyHours);
+    if(typeof t.overtimeStart==='string')overtimeStartMin=clock(t.overtimeStart); // 旧テンプレ互換。月次計算には使用しない。
+  }catch{$('templateWarning').textContent='テンプレートの形式が正しくありません。入力値を確認してください。';}
+  if(query.has('template'))$('templateWarning').textContent+=' URLのクエリに入れた文章は配信サーバー等に届く可能性があります。機密情報をテンプレートURLに含めないでください。';
+  try {const u=new URL(location.href);u.searchParams.delete('template');if(fragment.has('template')){fragment.delete('template');u.hash=fragment.toString();}history.replaceState(null,'',u.href);}catch{}
+}
+function init() {
+  const now=new Date();$('date').value=`${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}`;
+  loadSaved();applyTemplate();const r=record(),s=$('date').value;
+  if(Object.hasOwn(r.actuals,s))$('actualHours').value=editableHours(r.actuals[s]);
+  else {try{$('actualHours').value=editableHours(workedMinutes());}catch(e){say(e.message);}}
+  render();
+  $('workForm').addEventListener('submit',e=>e.preventDefault());
+  $('workForm').addEventListener('input',()=>{$('output').textContent='';});
+  $('date').addEventListener('change',()=>attempt(selectDate));
+  for(const id of ['startTime','endTime','breakMinutes','nextDay'])$(id).addEventListener('change',()=>attempt(()=>{$('actualHours').value=editableHours(workedMinutes());commitDay();say('当日の時間を更新しました。');}));
+  $('actualHours').addEventListener('change',()=>attempt(()=>{commitDay();say('当日の計上時間を更新しました。');}));
+  $('plannedHours').addEventListener('change',()=>attempt(()=>{const min=numberMinutes('plannedHours',24);const r=record(),s=$('date').value;if(min===defaultPlan(s))delete r.plans[s];else r.plans[s]=min;save();$('output').textContent='';render();say('当日の予定時間を更新しました。');}));
+  $('baseHours').addEventListener('change',()=>attempt(()=>{const min=numberMinutes('baseHours',744);const r=record();r.adjust=min-planTotal(r);r.confirmed=true;save();$('output').textContent='';render();say('月の基本予定時間を更新しました。');}));
+  $('resetBase').addEventListener('click',()=>attempt(()=>{record().adjust=0;record().confirmed=false;save();$('output').textContent='';render();say('月の手入力補正を解除しました。日別予定は維持しています。');}));
+  $('applyDay').addEventListener('click',()=>attempt(()=>{commitDay();say('当日の時間を反映しました。');}));
+  $('removeActual').addEventListener('click',()=>attempt(()=>{delete record().actuals[$('date').value];save();$('output').textContent='';render();say('当日の計上を解除しました。生成・コピーすると再計上されます。');}));
+  $('generateBtn').addEventListener('click',()=>attempt(()=>{$('output').textContent=build();say('日報を生成しました。');}));
+  $('copyBtn').addEventListener('click',async()=>{try{const text=build();$('output').textContent=text;say(await copyText(text)?'コピーしました。':'コピーできませんでした。出力欄を選択して手動でコピーしてください。');}catch(e){say(e.message);}});
+  $('clearBtn').addEventListener('click',()=>{for(const id of ['details','impression','output']){if(id==='output')$(id).textContent='';else $(id).value='';}$('studyHours').value=0;say('作業内容・感想・勉強時間をクリアしました。月次時間は維持しています。');});
+  $('remember').addEventListener('change',()=>{if($('remember').checked)save();else removeStored();});
+  $('deleteAll').addEventListener('click',()=>{if(!confirm('全月の予定・計上時間と月の補正を削除しますか？'))return;months=Object.create(null);$('remember').checked=false;removeStored();attempt(selectDate);say('全月の時間データを削除しました。');});
+  // 他タブによる変更は知らせる。古い画面から自動で上書きしないよう保存を一旦止める。
+  window.addEventListener('storage',e=>{if(e.key!==KEY)return;$('remember').checked=false;storageFailed=true;storageStatus();say('別のタブで時間データが変更されました。入力を控え、再読み込みして最新の時間データを確認してください。');});
+}
+attempt(init);
+</script>
 </body>
 </html>

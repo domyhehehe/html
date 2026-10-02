@@ -4,18 +4,72 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="referrer" content="no-referrer">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-mu+0rZBaKzKgEhSPYXTwLji5ouPq9QOnRjkaSqszeh4='; style-src 'unsafe-inline'; connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'">
-  <title>勤務記録・月次見込み</title>
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-OSc1kVGZAdEr5V6eI55JUwqEop6wMbSbQqKCULfLyHk='; style-src 'unsafe-inline'; connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'">
+  <title>勤務記録</title>
   <style>
-    *{box-sizing:border-box}body{font-family:system-ui,-apple-system,"Hiragino Sans","Noto Sans JP",sans-serif;margin:12px;line-height:1.5;color:#18202b;background:#f5f6f8}.wrap{max-width:480px;margin:auto}h1{font-size:20px;margin:0 0 12px}h2{font-size:16px;margin:0 0 12px}form{display:grid;gap:12px}.panel{padding:16px;background:#fff;border:1px solid #d8dde4;border-radius:12px;display:grid;gap:12px}label{display:grid;gap:5px;font-size:14px}input,textarea,button,.linkbtn{font:inherit;font-size:16px;padding:11px;border:1px solid #bac2cd;border-radius:9px;width:100%;min-width:0}textarea{min-height:90px;resize:vertical}button,.linkbtn{background:#f7f8fa;color:#17202d;cursor:pointer;text-align:center;text-decoration:none}.primary{background:#182838;color:white;border-color:#182838}.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}.check{display:flex;align-items:center;gap:8px}.check input{width:20px;height:20px;flex-shrink:0}.note{font-size:12px;color:#566273;margin:0}.warning{color:#9a3d00}.total{font-size:28px;font-weight:700}.calendar{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}.weekday{text-align:center;font-size:12px;color:#566273}.day{padding:6px 1px;font-size:13px;border-radius:6px;min-height:52px}.day small{display:block;font-size:10px}.day.holiday{background:#fff2f1;color:#913528}.day.selected{outline:2px solid #284a6c;outline-offset:0}.day.recorded{border-bottom:3px solid #247751}.day.custom{background:#edf3fb}details summary{cursor:pointer;font-size:14px}pre{background:#0b1020;color:#d7e2ff;padding:12px;border-radius:12px;white-space:pre-wrap;overflow-wrap:anywhere;font-size:14px;margin:0}#message{min-height:22px;font-size:13px}.actions{display:grid;gap:8px}input:focus,textarea:focus,button:focus-visible{outline:2px solid #284a6c;outline-offset:2px}@media(max-width:350px){.row{grid-template-columns:1fr}}
+    *{box-sizing:border-box}body{font-family:system-ui,-apple-system,"Hiragino Sans","Noto Sans JP",sans-serif;margin:12px;line-height:1.5;color:#18202b;background:#f5f6f8}.wrap{max-width:480px;margin:auto}h1{font-size:20px;margin:0 0 12px}h2{font-size:16px;margin:0 0 12px}form{display:grid;gap:12px}.panel{padding:16px;background:#fff;border:1px solid #d8dde4;border-radius:12px;display:grid;gap:12px}label{display:grid;gap:5px;font-size:14px}input,textarea,button,.linkbtn{font:inherit;font-size:16px;padding:11px;border:1px solid #bac2cd;border-radius:9px;width:100%;min-width:0}textarea{min-height:90px;resize:vertical}button,.linkbtn{background:#f7f8fa;color:#17202d;cursor:pointer;text-align:center;text-decoration:none}.primary{background:#182838;color:white;border-color:#182838}.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}.check{display:flex;align-items:center;gap:8px}.check input{width:20px;height:20px;flex-shrink:0}.note{font-size:12px;color:#566273;margin:0}.warning{color:#9a3d00}details summary{cursor:pointer;font-size:14px}pre{background:#0b1020;color:#d7e2ff;padding:12px;border-radius:12px;white-space:pre-wrap;overflow-wrap:anywhere;font-size:14px;margin:0}#message{min-height:22px;font-size:13px}.actions{display:grid;gap:8px}input:focus,textarea:focus,button:focus-visible{outline:2px solid #284a6c;outline-offset:2px}@media(max-width:350px){.row{grid-template-columns:1fr}}
+    [hidden]{display:none!important}.view-tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:14px 0}.view-tabs button{font-size:14px;padding:10px 5px}.view-tabs button[aria-selected="true"]{background:#182838;color:#fff;border-color:#182838}.mv-card{background:#fff;border:1px solid #d8dde4;border-radius:12px;padding:14px 12px;margin:0 0 8px}.mv-month{display:grid;gap:4px;max-width:220px}.mv-month input{font-size:16px;padding:7px 9px}.mv-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px 8px;margin-top:14px}.mv-metric{min-width:0}.mv-metric span{display:block;color:#67717c;font-size:12px}.mv-metric strong{display:block;font-size:19px;font-weight:500;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}.mv-columns,.mv-day{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,.78fr) minmax(0,.78fr) auto;align-items:center;gap:3px}.mv-columns{padding:9px 8px;color:#66717a;border-bottom:2px solid #d8dde4;background:#fff;font-size:13px}.mv-day{border-bottom:1px solid #d8dde4;background:#fff;padding:7px 8px;min-height:46px;font-size:14px}.mv-columns span:nth-child(3){text-align:right}.mv-sat{color:#1839ba}.mv-sun,.mv-holiday{color:#bf2727}.mv-expand{width:auto;min-width:46px;padding:6px 7px;font-size:13px;border:1px solid #9aa9b8;border-radius:7px;background:#f7f8fa}.mv-expand[aria-expanded="true"]{background:#dfe8f3}.mv-detail{white-space:pre-wrap;overflow-wrap:anywhere;background:#eef2f6;padding:10px;font-size:13px;border-bottom:1px solid #d8dde4}.mv-table{overflow:hidden;border:1px solid #d8dde4;border-radius:12px;margin-bottom:10px}.mv-status{font-size:13px;color:#9a3d00;margin:0}.mv-status:empty{display:none}@media(max-width:350px){.mv-day,.mv-columns{gap:2px;padding-left:5px;padding-right:5px;font-size:12px}.mv-expand{min-width:42px;padding:6px 4px;font-size:12px}}
+    select{font:inherit;font-size:16px;padding:10px;border:1px solid #bac2cd;border-radius:9px;width:100%;background:#fff}.mv-batch summary{font-weight:600}.mv-batch[open]{display:grid;gap:10px}.mv-planned{color:#657589}.mv-kind{display:block;color:#7b4c13;font-weight:600}.mv-time{font-size:14px;background:transparent;border:0;border-radius:5px;padding:5px 1px;min-height:35px;text-decoration:underline;text-decoration-color:#9baec0;text-underline-offset:3px;overflow-wrap:anywhere}.mv-time:hover,.mv-date:hover{background:#edf3fb}.mv-time.end{text-align:right}.day-delete{background:#fff4f2;border-color:#b97870;color:#812a21}.day-delete-confirm{display:grid;gap:8px;margin-top:8px}.day-delete-confirm p{margin:0}.mv-report{white-space:pre-wrap;overflow-wrap:anywhere;margin-top:8px}
+
+    #settingsView{display:grid;gap:10px}#settingsView label,#monthSettings label{margin-top:8px}.save-panel .primary{margin-top:2px}#dayActions button,#monthSettings button{margin-top:8px}.mv-date{border:0;background:transparent;text-align:left;padding:4px 0;font-size:14px}.mv-date small{display:block;font-size:11px}#monthSettings{margin-top:8px;border-top:1px solid #d8dde4;padding-top:8px}
   </style>
 </head>
 <body>
 <main class="wrap">
-  <h1>勤務記録・月次見込み</h1>
+  <h1>勤務記録</h1>
+  <nav class="view-tabs" aria-label="表示切替">
+    <button type="button" id="entryTab" aria-selected="true">日報入力</button>
+    <button type="button" id="monthlyTab" aria-selected="false">月次一覧</button>
+    <button type="button" id="saveTab" aria-selected="false">保存・設定</button>
+  </nav>
+  <p id="message" role="status" aria-live="polite"></p>
+  <section id="settingsView" aria-label="保存・設定" hidden>
+    <section class="panel save-panel">
+      <h2>JSONに保存</h2>
+      <p class="note" id="backupState" role="status" aria-live="polite">この画面の日報データはまだJSONに保存していません。</p>
+      <button type="button" class="primary" id="exportBtn">JSONを共有・保存</button>
+      <p class="note">iPhoneでは共有画面が開きます。「ファイルに保存」を選んでください。勤務時間、予定、休暇区分、②〜④、テンプレートが入ります。</p>
+    </section>
+    <section class="panel">
+      <details id="templateEditor">
+        <summary>テンプレートを編集・適用</summary>
+        <p class="note">②と通常の勤務時刻、③④の定型文を設定できます。保存すると新しい日付へ反映され、JSONにも含まれます。</p>
+        <label>②の定型文<textarea id="templateLine2" rows="3" maxlength="5000"></textarea></label>
+        <div class="row">
+          <label>通常の開始<input type="time" id="templateStart" value="09:00"></label>
+          <label>通常の終了<input type="time" id="templateEnd" value="18:00"></label>
+        </div>
+        <label class="check"><input type="checkbox" id="templateNextDay">終了は翌日</label>
+        <div class="row">
+          <label>通常の休憩（分）<input type="number" id="templateBreak" value="60" min="0" max="1440" step="1"></label>
+          <label>通常の勉強時間（h）<input type="number" id="templateStudy" value="0" min="0" max="24" step="any"></label>
+        </div>
+        <label>③の定型文<textarea id="templateDetails" rows="3" maxlength="5000"></textarea></label>
+        <label>④の定型文<textarea id="templateImpression" rows="3" maxlength="5000"></textarea></label>
+        <div class="actions">
+          <button type="button" id="saveTemplateBtn">テンプレートを保存</button>
+          <button type="button" id="useTemplateBtn">保存して選択日に適用</button>
+        </div>
+        <p class="note" id="templateState"></p>
+      </details>
+    </section>
+    <section class="panel">
+      <h2>読み込み・端末内保存</h2>
+      <label>保存済みJSONを読み込む<input type="file" id="importFile" accept=".json,application/json"></label>
+      <p class="note">読み込み時は画面内の全月の記録を置き換えます。JSON自体は暗号化されません。</p>
+      <label class="check"><input type="checkbox" id="remember">ブラウザー内にも自動保存（補助）</label>
+      <p class="note">初期設定はOFFです。ONの場合もJSONを保存してください。共有端末ではブラウザー内保存を使わないでください。</p>
+      <p class="note" id="storageState"></p>
+      <p class="note warning" id="templateWarning"></p>
+      <button type="button" id="deleteAll">全月の日報データを削除</button>
+    </section>
+  </section>
+  <div id="entryView">
   <form id="workForm" autocomplete="off">
     <section class="panel">
       <label>日報の日付<input type="date" id="date" required></label>
+      <div class="row"><label>編集対象<select id="editMode"><option value="actual">勤務実績</option><option value="plan">勤務予定</option></select></label>
+      <label>区分<select id="dayType"><option value="">通常勤務</option><option value="paid_full">有給（全休）</option><option value="paid_half">有給（半休）</option><option value="absence">欠勤</option><option value="holiday">休日</option></select></label></div>
       <div class="row">
         <label>開始時間<input type="time" id="startTime" value="09:00" required></label>
         <label>終了時間<input type="time" id="endTime" value="18:00" required></label>
@@ -23,146 +77,409 @@
       <label class="check"><input type="checkbox" id="nextDay">終了は翌日（翌日までの勤務）</label>
       <div class="row">
         <label>休憩（分）<input type="number" id="breakMinutes" value="60" min="0" max="1440" step="1" required></label>
-        <label>当日の計上時間（h）<input type="number" id="actualHours" value="8" min="0" max="24" step="any" required></label>
+        <label><span id="hoursLabel">当日の計上時間（h）</span><input type="number" id="actualHours" value="8" min="0" max="24" step="any" required></label>
       </div>
-      <p class="note">計上時間は「終了−開始−休憩」で自動計算。手入力もできます。時刻・休憩を変更すると再計算します。休暇を何時間として扱うかは会社のルールに合わせてください。</p>
+      <p class="note" id="modeHelp">時刻を変更すると、実績の時間を計算して反映します。予定を編集すると実績には計上しません。</p>
       <p class="note" id="dayState"></p>
-    </section>
-
-    <section class="panel">
-      <h2 id="monthTitle">当月の見込み（⑤）</h2>
-      <div class="total" id="forecast">—</div>
-      <p class="note" id="formula"></p>
-      <p class="note warning" id="holidayWarning"></p>
-      <label>月の基本予定時間（h・編集可能）<input type="number" id="baseHours" min="0" max="744" step="any" required></label>
-      <p class="note">初期値は「土日・日本の祝日を除いた日数×8h」。基本予定に、各日の「計上時間−予定時間」を加えます。基本予定の手入力は月全体の補正です。休暇・会社休日の予定変更は下のカレンダーで行うと二重控除を避けられます。</p>
-      <button type="button" id="resetBase">基本予定の手入力補正を解除</button>
-      <details id="calendarDetails">
-        <summary>月のカレンダー・日別予定を編集</summary>
-        <p class="note">日付を選ぶと、その日の日報に切り替わります。緑の下線は計上済み。未計上の日は予定時間のまま見込みに入ります。</p>
-        <div class="calendar" id="calendar"></div>
-        <label>選択日の予定時間（h）<input type="number" id="plannedHours" min="0" max="24" step="any" required></label>
-        <p class="note">通常は平日8h、土日祝0h。会社休日や勤務予定のない日は0hにできます。予定を変更すると月の基本予定も連動します。</p>
-        <button type="button" id="removeActual">選択日の計上を解除して予定に戻す</button>
+      <details id="dayActions"><summary>この日の記録を整理</summary>
+        <button type="button" id="removeActual" hidden>実績だけ取り消す（予定は残す）</button>
+      <button type="button" id="deleteDayTime" class="day-delete" hidden>この日の勤務時間・予定を削除</button>
+      <div id="deleteDayConfirm" class="day-delete-confirm" hidden>
+        <p id="deleteDayWarning"></p>
+        <button type="button" id="confirmDeleteDayTime" class="day-delete">削除を確定</button>
+        <button type="button" id="cancelDeleteDayTime">キャンセル</button>
+      </div>
+        <button type="button" id="clearBtn">③・④・勉強時間をクリア</button>
       </details>
-      <button type="button" id="applyDay">当日の時間を月次見込みに反映</button>
     </section>
 
     <section class="panel">
-      <label>② PJ名／常駐先企業名／勤務場所<textarea id="line2" rows="3"></textarea></label>
-      <label>作業内容（③）<textarea id="details"></textarea></label>
-      <label>感想（④）<textarea id="impression"></textarea></label>
+      <label>② PJ名／常駐先企業名／勤務場所<textarea id="line2" rows="3" maxlength="5000"></textarea></label>
+      <label>作業内容（③）<textarea id="details" maxlength="5000"></textarea></label>
+      <label>感想（④）<textarea id="impression" maxlength="5000"></textarea></label>
       <label>資格勉強時間（h・任意）<input type="number" id="studyHours" value="0" min="0" step="any"></label>
       <p class="note">資格勉強時間は0なら出力しません。月次勤務時間には加算しません。</p>
       <div class="actions">
-        <button type="button" class="primary" id="generateBtn">生成・当日の時間を反映</button>
-        <button type="button" id="copyBtn">コピー・当日の時間を反映</button>
-        <button type="button" id="clearBtn">作業内容・感想・勉強時間をクリア</button>
+        <button type="button" class="primary" id="copyBtn">日報を記録してコピー</button>
       </div>
-      <a class="linkbtn" href="./temp.html" rel="noreferrer">テンプレ作成ページへ</a>
+      <p class="note">②〜④は日付ごとに保持します。バックアップは「保存・設定」から行えます。</p>
     </section>
 
-    <section class="panel">
-      <label class="check"><input type="checkbox" id="remember">このブラウザーに日付・時間の数値だけ保存する</label>
-      <p class="note">②〜④、出退勤時刻、休憩、勉強時間、出力文章は保存しません。初期設定は保存OFF。ONにすると日付別の予定・計上時間と月の補正を保存し、入力変更時に更新します。OFFにするとこのフォームの保存済み数値を削除します。別端末・別ブラウザーには引き継がれません。</p>
-      <p class="note" id="storageState"></p>
-      <p class="note warning" id="templateWarning"></p>
-      <button type="button" id="deleteAll">全月の時間データを削除</button>
-    </section>
   </form>
-  <p id="message" role="status" aria-live="polite"></p>
   <h2>出力</h2>
   <pre id="output" tabindex="0"></pre>
+  </div>
+  <section id="monthlyView" aria-label="月次一覧" hidden>
+    <div class="mv-card">
+      <label class="mv-month">対象月<input id="mvMonth" type="month"></label>
+      <h2 id="mvTitle" style="margin:8px 0 0;font-size:18px"></h2>
+      <div class="mv-summary">
+        <div class="mv-metric"><span>総労働時間</span><strong id="mvWork">—</strong></div>
+        <div class="mv-metric"><span>総残業時間（参考）</span><strong id="mvOvertime">—</strong></div>
+        <div class="mv-metric"><span>総休日労働時間</span><strong id="mvHolidayWork">—</strong></div>
+        <div class="mv-metric"><span>総深夜労働時間</span><strong id="mvNight">—</strong></div>
+        <div class="mv-metric"><span>全休回数</span><strong id="mvFullLeave">0</strong></div>
+        <div class="mv-metric"><span>半休回数</span><strong id="mvHalfLeave">0</strong></div>
+        <div class="mv-metric"><span>遅刻回数</span><strong>—</strong></div>
+        <div class="mv-metric"><span>早退回数</span><strong>—</strong></div>
+      </div>
+      <p id="mvForecast" class="note" style="margin-top:10px"></p>
+      <details id="monthSettings"><summary>月の基本予定時間を調整</summary>
+        <label>基本予定時間（h）<input type="number" id="baseHours" min="0" max="744" step="any"></label>
+        <p class="note" id="holidayWarning"></p>
+        <button type="button" id="resetBase">標準の予定時間に戻す</button>
+      </details>
+    </div>
+    <p id="mvStatus" class="mv-status" role="status" aria-live="polite"></p>
+    <details id="batchDetails" class="mv-batch mv-card">
+      <summary>勤務予定を一括設定</summary>
+      <div class="row"><label>予定開始<input id="batchStart" type="time" value="09:00"></label><label>予定終了<input id="batchEnd" type="time" value="18:00"></label></div>
+      <label>休憩（分）<input id="batchBreak" type="number" value="60" min="0" max="1440" step="1"></label>
+      <label>適用範囲<select id="batchScope"><option value="missing">未登録の勤務予定日</option><option value="all">勤務予定日すべて（予定を上書き）</option></select></label>
+      <button id="batchApply" type="button">予定を一括設定</button>
+      <p class="note">予定時間が0の休日は対象外です。実績と②〜④は上書きしません。</p>
+    </details>
+    <div class="mv-table"><div class="mv-columns"><span>日付</span><span>出社</span><span>退社</span><span>日報</span></div><div id="mvRows"></div></div>
+    <p class="note">日付や時刻を押すと、共通の日報編集画面を開きます。未登録の平日はテンプレートの予定時刻を表示します。</p>
+    <p class="note">総労働時間は記録済みの計上時間です。残業は予定がある日の「計上時間−予定時間」の正の分を足した参考値で、給与上の残業とは限りません。予定0時間の勤務は休日労働に集計します。</p>
+    <p class="note">有給全休・欠勤・休日の勤務予定は0、半休は通常予定の半分として⑤を計算します。有給時間は実働の総労働時間に含めません。会社の計上ルールと違う場合は日別予定を調整してください。未登録の休暇・遅刻・早退は推定しません。</p>
+    <p class="note">休憩の時間帯が不明な深夜勤務や、古いJSONに出退勤時刻がない日は「—」と表示します。</p>
+  </section>
 </main>
 <script>
 'use strict';
-// 外部API・外部スクリプトなし。保存するのは日付と分単位の数値だけ。
+// 外部API・外部スクリプトなし。②〜④は日付別に保持する。
 const $ = id => document.getElementById(id);
 const KEY = 'work-report-monthly:v1';
 const WEEKDAYS = ['日','月','火','水','木','金','土'];
+const DEFAULT_TEMPLATE=Object.freeze({
+  line2:'',
+  start:'09:00',end:'18:00',nextDay:false,breakMinutes:60,studyHours:0,
+  details:'',impression:''
+});
 // 内閣府 https://www8.cao.go.jp/chosei/shukujitsu/gaiyou.html （2026-10-02確認）
 // 振替休日・祝日法第3条第3項の休日も含む。対応年以外は自動計算を確定させない。
 const HOLIDAYS = {
   2026: {'01-01':'元日','01-12':'成人の日','02-11':'建国記念の日','02-23':'天皇誕生日','03-20':'春分の日','04-29':'昭和の日','05-03':'憲法記念日','05-04':'みどりの日','05-05':'こどもの日','05-06':'振替休日','07-20':'海の日','08-11':'山の日','09-21':'敬老の日','09-22':'国民の休日','09-23':'秋分の日','10-12':'スポーツの日','11-03':'文化の日','11-23':'勤労感謝の日'},
   2027: {'01-01':'元日','01-11':'成人の日','02-11':'建国記念の日','02-23':'天皇誕生日','03-21':'春分の日','03-22':'振替休日','04-29':'昭和の日','05-03':'憲法記念日','05-04':'みどりの日','05-05':'こどもの日','07-19':'海の日','08-11':'山の日','09-20':'敬老の日','09-23':'秋分の日','10-11':'スポーツの日','11-03':'文化の日','11-23':'勤労感謝の日'}
 };
-let months = Object.create(null), storageFailed = false, overtimeStartMin = 1080;
+let months = Object.create(null), drafts = Object.create(null), template={...DEFAULT_TEMPLATE}, defaultLine2 = DEFAULT_TEMPLATE.line2, selectedDate = '', storageFailed = false, overtimeStartMin = 1080, needsBackup = false, hasFileBackup = false, expandedMonthly = null;
 const pad = n => String(n).padStart(2,'0');
 function dateObject(s) { const d = new Date(s+'T00:00:00'); if(!/^\d{4}-\d{2}-\d{2}$/.test(s)||isNaN(d)||`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`!==s) throw Error('日付を確認してください。'); return d; }
 function monthKey() { dateObject($('date').value); return $('date').value.slice(0,7); }
 function datesInMonth(key) { const [y,m]=key.split('-').map(Number); const last=new Date(y,m,0).getDate(); return Array.from({length:last},(_,i)=>`${key}-${pad(i+1)}`); }
 function holiday(s) { return HOLIDAYS[Number(s.slice(0,4))]?.[s.slice(5)]||''; }
 function defaultPlan(s) { const day=dateObject(s).getDay(); return day===0||day===6||holiday(s)?0:480; }
-function record() { const k=monthKey(); return months[k] ||= {adjust:0,confirmed:false,plans:{},actuals:{}}; }
-function planned(s,r=record()) { return Object.hasOwn(r.plans,s)?r.plans[s]:defaultPlan(s); }
+function record() { const k=monthKey(); return months[k] ||= {adjust:0,confirmed:false,plans:{},actuals:{},shifts:{},schedules:{},types:{}}; }
+function eraseDayTime(key,s) {const month=months[key];if(!month)return;for(const field of ['actuals','shifts','schedules','plans'])if(month[field])delete month[field][s];}
+const DAY_TYPES={paid_full:'有給（全休）',paid_half:'有給（半休）',absence:'欠勤',holiday:'休日'};
+function baseDayPlan(s,r) {
+  if(Object.hasOwn(r.plans,s))return r.plans[s];
+  const schedule=monthlyShift({shifts:r.schedules},s);
+  return schedule?Math.max(0,schedule.b-schedule.a-schedule.rest):defaultPlan(s);
+}
+function planned(s,r=record()) {
+  const base=baseDayPlan(s,r),type=r.types?.[s];
+  return type==='paid_full'||type==='absence'||type==='holiday'?0:type==='paid_half'?Math.round(base/2):base;
+}
 function planTotal(r=record()) { return datesInMonth(monthKey()).reduce((sum,s)=>sum+planned(s,r),0); }
 function totals() { const r=record(),base=planTotal(r)+r.adjust; const delta=Object.entries(r.actuals).reduce((sum,[s,min])=>sum+min-planned(s,r),0); return {base,delta,total:base+delta}; }
 function hours(min) { return (min/60).toFixed(1); }
 function editableHours(min) { return String(Number((min/60).toFixed(6))); }
 function numberMinutes(id,max) { const e=$(id); if(!e.value.trim()||!e.checkValidity()) throw Error('時間の数値を確認してください。'); const value=Number(e.value); if(!Number.isFinite(value)||value<0||value>max) throw Error('時間の数値を確認してください。'); return Math.round(value*60); }
 function clock(s) { if(!/^\d{2}:\d{2}$/.test(s)) throw Error('開始・終了時間を入力してください。'); const [h,m]=s.split(':').map(Number); if(h>23||m>59) throw Error('時刻を確認してください。'); return h*60+m; }
+function sanitizeTemplate(raw) {
+  const t=raw&&typeof raw==='object'?raw:DEFAULT_TEMPLATE;
+  const time=(value,fallback)=>{try{clock(value);return value;}catch{return fallback;}};
+  const study=Number(t.studyHours);
+  return {
+    line2:typeof t.line2==='string'?t.line2.slice(0,5000):DEFAULT_TEMPLATE.line2,
+    start:time(t.start,DEFAULT_TEMPLATE.start),end:time(t.end,DEFAULT_TEMPLATE.end),
+    nextDay:t.nextDay===true,
+    breakMinutes:Number.isInteger(t.breakMinutes)&&t.breakMinutes>=0&&t.breakMinutes<=1440?t.breakMinutes:60,
+    studyHours:Number.isFinite(study)&&study>=0&&study<=24?study:0,
+    details:typeof t.details==='string'?t.details.slice(0,5000):'',
+    impression:typeof t.impression==='string'?t.impression.slice(0,5000):''
+  };
+}
+function showTemplateEditor() {
+  $('templateLine2').value=template.line2;$('templateStart').value=template.start;$('templateEnd').value=template.end;
+  $('templateNextDay').checked=template.nextDay;$('templateBreak').value=template.breakMinutes;$('templateStudy').value=template.studyHours;
+  $('templateDetails').value=template.details;$('templateImpression').value=template.impression;
+  $('templateState').textContent='この内容が新しい日付の初期値になります。';
+}
+function storeTemplate() {
+  const start=$('templateStart').value,end=$('templateEnd').value,nextDay=$('templateNextDay').checked;
+  const duration=clock(end)+(nextDay?1440:0)-clock(start);
+  const rest=$('templateBreak'),breakMinutes=Number(rest.value);
+  const study=$('templateStudy'),studyHours=Number(study.value);
+  if(duration<0||duration>1440||!rest.value.trim()||!rest.checkValidity()||!Number.isInteger(breakMinutes)||breakMinutes>duration)throw Error('テンプレートの時刻・休憩を確認してください。');
+  if(!study.value.trim()||!study.checkValidity()||!Number.isFinite(studyHours)||studyHours<0||studyHours>24)throw Error('テンプレートの勉強時間を確認してください。');
+  template={line2:$('templateLine2').value,start,end,nextDay,breakMinutes,studyHours,details:$('templateDetails').value,impression:$('templateImpression').value};
+  defaultLine2=template.line2;save();$('templateState').textContent='テンプレートを保存しました。新しい日付の入力に使います。';
+}
+function useTemplateOnCurrentDate() {
+  storeTemplate();
+  $('line2').value=template.line2;$('details').value=template.details;$('impression').value=template.impression;
+  $('startTime').value=template.start;$('endTime').value=template.end;$('nextDay').checked=template.nextDay;
+  $('breakMinutes').value=template.breakMinutes;$('studyHours').value=template.studyHours;
+  $('actualHours').value=editableHours(workedMinutes());saveDraft();
+  if($('editMode').value==='plan')commitPlan(true);else commitDay();
+  say('テンプレートを選択日に適用しました。');
+}
 function workedMinutes() { const start=clock($('startTime').value),end=clock($('endTime').value)+($('nextDay').checked?1440:0); const e=$('breakMinutes'),rest=Number(e.value); if(!e.value.trim()||!e.checkValidity()||!Number.isInteger(rest)||rest<0) throw Error('休憩時間を確認してください。'); const duration=end-start; if(duration<0) throw Error('終了が翌日なら「終了は翌日」を選んでください。'); if(duration>1440) throw Error('勤務は24時間以内で入力してください。'); if(rest>duration) throw Error('休憩が勤務の時間幅を超えています。休みの日は計上時間を0にしてください。'); return duration-rest; }
 function say(s) { $('message').textContent=s; }
 function attempt(fn) { try { fn(); } catch(e) { say(e.message||'入力を確認してください。'); } }
 function sanitize(raw) {
   const result=Object.create(null);
-  if(!raw||raw.version!==1||!raw.months||typeof raw.months!=='object') return result;
+  if(!raw||![1,2,3,4].includes(raw.version)||!raw.months||typeof raw.months!=='object') return result;
   for(const [key,r] of Object.entries(raw.months)) {
     if(!/^\d{4}-(0[1-9]|1[0-2])$/.test(key)||!r||typeof r!=='object') continue;
-    const clean={adjust:Number.isInteger(r.adjust)&&Math.abs(r.adjust)<=44640?r.adjust:0,confirmed:r.confirmed===true,plans:{},actuals:{}};
+    const clean={adjust:Number.isInteger(r.adjust)&&Math.abs(r.adjust)<=44640?r.adjust:0,confirmed:r.confirmed===true,plans:{},actuals:{},shifts:{},schedules:{},types:{}};
     for(const field of ['plans','actuals']) {
       for(const [s,min] of Object.entries(r[field]&&typeof r[field]==='object'?r[field]:{})) {
         try { dateObject(s); if(s.slice(0,7)===key&&Number.isInteger(min)&&min>=0&&min<=1440) clean[field][s]=min; } catch {}
       }
     }
+    for(const [s,shift] of Object.entries(r.shifts&&typeof r.shifts==='object'?r.shifts:{})) {
+      try {
+        dateObject(s);
+        if(s.slice(0,7)!==key||!Object.hasOwn(clean.actuals,s)||clean.actuals[s]===0||!shift||typeof shift!=='object')continue;
+        const start=clock(shift.start),end=clock(shift.end)+(shift.nextDay===true?1440:0);
+        if(end<start||end-start>1440||!Number.isInteger(shift.breakMinutes)||shift.breakMinutes<0||shift.breakMinutes>end-start)continue;
+        clean.shifts[s]={start:shift.start,end:shift.end,nextDay:shift.nextDay===true,breakMinutes:shift.breakMinutes};
+      } catch {}
+    }
+    for(const [s,x] of Object.entries(r.schedules&&typeof r.schedules==='object'?r.schedules:{})) {
+      try {
+        dateObject(s);if(s.slice(0,7)!==key||!x||typeof x!=='object')continue;
+        const a=clock(x.start),b=clock(x.end)+(x.nextDay===true?1440:0);
+        if(b<a||b-a>1440||!Number.isInteger(x.breakMinutes)||x.breakMinutes<0||x.breakMinutes>b-a)continue;
+        clean.schedules[s]={start:x.start,end:x.end,nextDay:x.nextDay===true,breakMinutes:x.breakMinutes};
+      } catch {}
+    }
+    for(const [s,type] of Object.entries(r.types&&typeof r.types==='object'?r.types:{})) {
+      try {dateObject(s);if(s.slice(0,7)===key&&Object.hasOwn(DAY_TYPES,type))clean.types[s]=type;}catch{}
+    }
     result[key]=clean;
   }
   return result;
 }
-function storageStatus() { $('storageState').textContent=storageFailed?'端末への保存・削除に失敗しました。表示中の計算は画面内で続けられます。保存済みデータはブラウザー設定から確認してください。':$('remember').checked?'保存ON：このブラウザー内に時間の数値を保存します。':'保存OFF：再読み込みすると時間データは消えます。'; }
-function save() { if(!$('remember').checked){storageStatus();return;} try {localStorage.setItem(KEY,JSON.stringify({version:1,months}));storageFailed=false;} catch {storageFailed=true;} storageStatus(); }
-function removeStored() { try {localStorage.removeItem(KEY);storageFailed=false;} catch {storageFailed=true;} storageStatus(); }
-function loadSaved() { try {const text=localStorage.getItem(KEY);if(text){months=sanitize(JSON.parse(text));$('remember').checked=true;}} catch {storageFailed=true;} storageStatus(); }
-function renderCalendar() {
-  const grid=$('calendar'); grid.replaceChildren();
-  for(const name of ['月','火','水','木','金','土','日']) {const el=document.createElement('span');el.className='weekday';el.textContent=name;grid.append(el);}
-  const all=datesInMonth(monthKey()),offset=(dateObject(all[0]).getDay()+6)%7,r=record();
-  for(let i=0;i<offset;i++)grid.append(document.createElement('span'));
-  for(const s of all) {
-    const b=document.createElement('button');b.type='button';b.className='day';
-    if(defaultPlan(s)===0)b.classList.add('holiday');
-    if(Object.hasOwn(r.plans,s))b.classList.add('custom');
-    if(Object.hasOwn(r.actuals,s))b.classList.add('recorded');
-    if(s===$('date').value)b.classList.add('selected');
-    b.textContent=String(Number(s.slice(8))); const small=document.createElement('small');small.textContent=editableHours(planned(s,r))+'h';b.append(small);
-    b.setAttribute('aria-label',`${s} ${holiday(s)} 予定${editableHours(planned(s,r))}時間`);
-    b.setAttribute('aria-pressed',String(s===$('date').value));b.addEventListener('click',()=>attempt(()=>{ $('date').value=s;selectDate(); }));grid.append(b);
+function sanitizeDrafts(raw) {
+  const result=Object.create(null);
+  if(![2,3,4].includes(raw?.version)||!raw.drafts||typeof raw.drafts!=='object'||Array.isArray(raw.drafts))return result;
+  for(const [date,draft] of Object.entries(raw.drafts)) {
+    try { dateObject(date); } catch { continue; }
+    if(!draft||typeof draft!=='object')continue;
+    result[date]={};
+    for(const field of ['line2','details','impression'])result[date][field]=typeof draft[field]==='string'?draft[field].slice(0,5000):'';
   }
+  return result;
+}
+function snapshot() { return {version:4,months,drafts,template,defaultLine2}; }
+function storageStatus() { $('storageState').textContent=storageFailed?'端末への保存・削除に失敗しました。表示中の入力は画面内で続けられます。保存済みデータはブラウザー設定から確認してください。':$('remember').checked?'保存ON：日付・時間と②〜④をこのブラウザー内に保存します。':'保存OFF：再読み込みするとJSONから読み込んでいない変更は消えます。'; }
+function backupStatus() { $('backupState').textContent=needsBackup?'日報データに未バックアップの変更があります。JSONを保存してください。':hasFileBackup?'現在の日報データはJSONに保存・読み込み済みです。':'この画面の日報データはまだJSONに保存していません。'; }
+function save() { needsBackup=true;backupStatus();if($('monthlyView').hidden===false)renderMonthly();if(!$('remember').checked){storageStatus();return;} try {localStorage.setItem(KEY,JSON.stringify(snapshot()));storageFailed=false;} catch {storageFailed=true;} storageStatus(); }
+function removeStored() { try {localStorage.removeItem(KEY);storageFailed=false;} catch {storageFailed=true;} storageStatus(); }
+function loadSaved() { try {const text=localStorage.getItem(KEY);if(text){const data=JSON.parse(text);months=sanitize(data);drafts=sanitizeDrafts(data);template=sanitizeTemplate(data.template);defaultLine2=typeof data.defaultLine2==='string'&&data.defaultLine2?data.defaultLine2.slice(0,5000):template.line2;$('remember').checked=true;}} catch {storageFailed=true;} storageStatus(); }
+function saveDraft() {
+  if(!selectedDate)return;
+  const draft={line2:$('line2').value,details:$('details').value,impression:$('impression').value};
+  if(draft.line2===drafts[selectedDate]?.line2&&draft.details===drafts[selectedDate]?.details&&draft.impression===drafts[selectedDate]?.impression)return;
+  drafts[selectedDate]=draft;defaultLine2=draft.line2;save();
+}
+async function exportBackup() {
+  saveDraft();
+  const fileName=`work-report-${$('monthlyView').hidden===false?$('mvMonth').value:monthKey()}.json`;
+  const json=JSON.stringify(snapshot(),null,2);
+  const type='application/json;charset=utf-8',blob=new Blob([json],{type});
+  let shared=false;
+  if(typeof File==='function'&&typeof navigator.share==='function'){
+    const file=new File([json],fileName,{type:'application/json'}),shareData={files:[file],title:'勤務記録のJSON'};
+    if(typeof navigator.canShare!=='function'||navigator.canShare(shareData)){
+      try {await navigator.share(shareData);shared=true;}
+      catch(e){if(e?.name==='AbortError'){say('JSONの共有をキャンセルしました。');return;}}
+    }
+  }
+  if(!shared){
+    const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=fileName;
+    document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),60000);
+  }
+  needsBackup=false;hasFileBackup=true;backupStatus();say(shared?'JSONの共有を完了しました。保存先を確認してください。':'JSONを開きました。iPhoneでは共有ボタンから「ファイルに保存」を選んでください。');
+}
+async function importBackup() {
+  const file=$('importFile').files?.[0];if(!file)return;
+  try {
+    if(file.size>10*1024*1024)throw Error('10MB以下のJSONを選んでください。');
+    const data=JSON.parse(await file.text());
+    if(!data||![1,2,3,4].includes(data.version)||!data.months||typeof data.months!=='object'||Array.isArray(data.months))throw Error('このアプリの日報データJSONではありません。');
+    if(!confirm('現在の画面内の全月の日報データを、選択したJSONで置き換えますか？'))return;
+    months=sanitize(data);drafts=sanitizeDrafts(data);template=sanitizeTemplate(data.template);
+    defaultLine2=typeof data.defaultLine2==='string'&&data.defaultLine2?data.defaultLine2.slice(0,5000):template.line2;
+    needsBackup=false;hasFileBackup=true;backupStatus();
+    if($('remember').checked){try{localStorage.setItem(KEY,JSON.stringify(snapshot()));storageFailed=false;}catch{storageFailed=true;}}
+    $('output').textContent='';showTemplateEditor();selectDate();
+    const importedMonths=Object.keys(months).sort();if(importedMonths.length)$('mvMonth').value=importedMonths.at(-1);
+    if($('monthlyView').hidden===false)renderMonthly();say('日報データとテンプレートを読み込みました。');
+  }catch(e){say(e.message||'JSONを読み込めませんでした。');}
+  finally{$('importFile').value='';storageStatus();}
 }
 function render() {
-  const r=record(),t=totals(),known=!!HOLIDAYS[Number(monthKey().slice(0,4))];
-  $('monthTitle').textContent=monthKey()+' の見込み（⑤）';
-  $('forecast').textContent=hours(t.total)+'h';
-  $('formula').textContent=`基本予定 ${hours(t.base)}h ＋ 日別差分 ${t.delta>=0?'+':''}${hours(t.delta)}h（計上済み${Object.keys(r.actuals).length}日）`;
-  $('holidayWarning').textContent=known?'':r.confirmed?'この年の祝日は未収録です。基本予定は手入力済みです。日別の予定もカレンダーで確認してください。':'この年の祝日は未収録です。現在は土日だけを除いた暫定値です。基本予定を確認・手入力するまで生成できません。';
-  $('baseHours').value=editableHours(t.base);$('plannedHours').value=editableHours(planned($('date').value,r));
-  const saved=Object.hasOwn(r.actuals,$('date').value);
-  $('dayState').textContent=saved?`当日の計上済み時間：${editableHours(r.actuals[$('date').value])}h。入力変更は同じ日付に上書きします。`:'当日はまだ未計上です。時刻・計上時間の変更、反映、生成、コピーで月次見込みに反映します。';
-  renderCalendar();storageStatus();
+  const r=record(),s=$('date').value,hasActual=Object.hasOwn(r.actuals,s),mode=$('editMode').value;
+  $('dayType').value=r.types?.[s]||'';
+  $('dayState').textContent=`${DAY_TYPES[r.types?.[s]]||'通常勤務'} / 予定 ${formatClock(planned(s,r))} / 実績 ${hasActual?formatClock(r.actuals[s]):'未記録'}`;
+  $('hoursLabel').textContent=mode==='plan'?'この日の予定時間（h）':'当日の計上時間（h）';
+  $('modeHelp').textContent=mode==='plan'?'時刻または時間を変えると、この日の予定を保存します。実績には計上しません。':'時刻または計上時間を変えると、この日の実績を記録します。未記録のまま日報をコピーするときも実績を記録します。';
+  $('copyBtn').hidden=mode==='plan';
+  $('removeActual').hidden=!hasActual;
+  $('deleteDayTime').hidden=!['actuals','shifts','schedules','plans'].some(field=>Object.hasOwn(r[field]||{},s))||!$('deleteDayConfirm').hidden;
+  storageStatus();
+}
+function formatClock(min) { return `${Math.floor(min/60)}:${pad(min%60)}`; }
+function monthlyShift(r,s) {
+  const x=r?.shifts?.[s];if(!x||typeof x!=='object')return null;
+  try {
+    const a=clock(x.start),b=clock(x.end)+(x.nextDay===true?1440:0),rest=x.breakMinutes;
+    if(b<a||b-a>1440||!Number.isInteger(rest)||rest<0||rest>b-a)return null;
+    return {start:x.start,end:x.end,nextDay:x.nextDay===true,a,b,rest};
+  } catch {return null;}
+}
+function nightMinutes(x) {
+  let result=0;
+  for(let day=-1;day<=1;day++)result+=Math.max(0,Math.min(x.b,day*1440+1740)-Math.max(x.a,day*1440+1320));
+  return result;
+}
+function checkedSchedule(start,end,nextDay,restValue) {
+  const a=clock(start),b=clock(end)+(nextDay?1440:0),rest=Number(restValue);
+  if(b<a||b-a>1440||String(restValue).trim()===''||!Number.isInteger(rest)||rest<0||rest>b-a||b-a-rest<=0)throw Error('予定時刻と休憩を確認してください。勤務時間は0より大きく、24時間以内にしてください。');
+  return {start,end,nextDay,breakMinutes:rest};
+}
+function applyBatchSchedule() {
+  const key=$('mvMonth').value;if(!/^\d{4}-(0[1-9]|1[0-2])$/.test(key))throw Error('対象月を選んでください。');
+  const x=checkedSchedule($('batchStart').value,$('batchEnd').value,false,$('batchBreak').value),scope=$('batchScope').value;
+  if(!['missing','all'].includes(scope))throw Error('適用範囲を確認してください。');
+  const r=months[key] ||= {adjust:0,confirmed:false,plans:{},actuals:{},shifts:{},schedules:{},types:{}};
+  r.schedules ||= {};r.types ||= {};
+  const days=datesInMonth(key).filter(s=>{
+    if(['paid_full','absence','holiday'].includes(r.types[s]))return false;
+    if(scope==='missing')return defaultPlan(s)>0&&!Object.hasOwn(r.actuals,s)&&!Object.hasOwn(r.schedules,s)&&!Object.hasOwn(r.plans,s)&&!Object.hasOwn(r.types,s);
+    return baseDayPlan(s,r)>0;
+  });
+  if(!days.length){$('mvStatus').textContent='一括設定の対象日はありません。';return;}
+  if(scope==='all'&&!confirm(`${days.length}日分の勤務予定時刻を上書きします。実績と日報本文はそのままです。続けますか？`))return;
+  for(const s of days){r.schedules[s]={...x};if(scope==='all')delete r.plans[s];}
+  save();render();$('mvStatus').textContent=`${days.length}日分の勤務予定を設定しました。実績には計上していません。JSONを保存してください。`;
+}
+function renderMonthly() {
+  const key=$('mvMonth').value;
+  if(!/^\d{4}-(0[1-9]|1[0-2])$/.test(key))throw Error('対象月を選んでください。');
+  const days=datesInMonth(key),r=months[key]||{plans:{},actuals:{},shifts:{},schedules:{},types:{},adjust:0},rows=$('mvRows');rows.replaceChildren();expandedMonthly=null;
+  $('mvTitle').textContent=`${Number(key.slice(0,4))}年${Number(key.slice(5))}月度`;
+  let work=0,ot=0,holidayWork=0,night=0,nightUnknown=false,planSum=0,delta=0,count=0,fullLeave=0,halfLeave=0,absences=0,customHolidays=0;
+  for(const s of days) {
+    const expected=planned(s,r),hasActual=Object.hasOwn(r.actuals,s),actual=hasActual?r.actuals[s]:null,type=r.types?.[s];
+    if(type==='paid_full')fullLeave++;if(type==='paid_half')halfLeave++;if(type==='absence')absences++;if(type==='holiday')customHolidays++;
+    planSum+=expected;
+    if(hasActual){count++;work+=actual;delta+=actual-expected;if(expected===0&&type!=='paid_full'&&type!=='absence')holidayWork+=actual;else if(expected>0&&type!=='paid_half')ot+=Math.max(0,actual-expected);}
+    const shift=hasActual&&actual>0?monthlyShift(r,s):null;
+    if(hasActual&&actual>0){if(!shift)nightUnknown=true;else{const overlap=nightMinutes(shift);if(overlap&&shift.rest)nightUnknown=true;else night+=overlap;}}
+    const d=dateObject(s),row=document.createElement('div');row.className='mv-day';
+    const dateCell=document.createElement('button');dateCell.type='button';dateCell.className='mv-date';dateCell.textContent=`${pad(d.getMonth()+1)}/${pad(d.getDate())}(${WEEKDAYS[d.getDay()]})`;
+    if(type){const badge=document.createElement('small');badge.className='mv-kind';badge.textContent=DAY_TYPES[type];dateCell.append(badge);}
+    if(type==='holiday'||holiday(s))dateCell.classList.add('mv-holiday');else if(d.getDay()===6)dateCell.classList.add('mv-sat');else if(d.getDay()===0)dateCell.classList.add('mv-sun');
+    const schedule=monthlyShift({shifts:r.schedules},s);
+    const standard=!hasActual&&!schedule&&!type&&!Object.hasOwn(r.plans||{},s)&&defaultPlan(s)>0?{start:template.start,end:template.end,nextDay:template.nextDay}:null;
+    const shownSchedule=schedule||standard;
+    const start=document.createElement('button'),end=document.createElement('button');
+    start.type='button';end.type='button';start.className='mv-time';end.className='mv-time end';
+    start.textContent=shift?.start??(shownSchedule&&type!=='paid_full'&&type!=='absence'&&type!=='holiday'?`予定${shownSchedule.start}`:'—');
+    end.textContent=shift?shift.end+(shift.nextDay?' 翌日':''):(shownSchedule&&type!=='paid_full'&&type!=='absence'&&type!=='holiday'?`予定${shownSchedule.end}${shownSchedule.nextDay?'翌':''}`:'—');
+    if(!shift&&shownSchedule){start.classList.add('mv-planned');end.classList.add('mv-planned');}
+    const editMode=hasActual?'actual':'plan';
+    dateCell.addEventListener('click',()=>attempt(()=>openDay(s,'actual','date')));
+    start.addEventListener('click',()=>attempt(()=>openDay(s,editMode,'startTime')));
+    end.addEventListener('click',()=>attempt(()=>openDay(s,editMode,'endTime')));
+    const expand=document.createElement('button');expand.type='button';expand.className='mv-expand';expand.textContent='見る';
+    expand.setAttribute('aria-label',`${s}の日報を見る`);expand.setAttribute('aria-expanded','false');
+    const detail=document.createElement('div');detail.className='mv-detail';detail.hidden=true;detail.id=`mv-detail-${s}`;expand.setAttribute('aria-controls',detail.id);
+    const note=document.createElement('div');note.textContent=`区分 ${DAY_TYPES[type]||'通常勤務'} / 予定 ${formatClock(expected)} / 実績 ${hasActual?formatClock(actual):'未記録'}`;detail.append(note);
+    const draft=drafts[s],preview=document.createElement('div');preview.className='mv-report';preview.textContent=draft?`②${draft.line2||''}\n③${draft.details||''}\n④${draft.impression||''}`:'②〜④の保存済み内容はありません。';detail.append(preview);
+    const close=()=>{detail.hidden=true;expand.textContent='見る';expand.setAttribute('aria-expanded','false');};
+    expand.addEventListener('click',()=>{
+      if(!detail.hidden){close();expandedMonthly=null;return;}
+      if(expandedMonthly)expandedMonthly.close();$('batchDetails').open=false;
+      detail.hidden=false;expand.textContent='閉じる';expand.setAttribute('aria-expanded','true');expandedMonthly={close};
+    });
+    row.append(dateCell,start,end,expand);rows.append(row,detail);
+  }
+  $('mvWork').textContent=formatClock(work);$('mvOvertime').textContent=formatClock(ot);$('mvHolidayWork').textContent=formatClock(holidayWork);$('mvNight').textContent=nightUnknown?'—':formatClock(night);
+  $('mvFullLeave').textContent=String(fullLeave);$('mvHalfLeave').textContent=String(halfLeave);
+  $('mvForecast').textContent=`当月見込み（⑤の計算） ${formatClock(planSum+r.adjust+delta)}　/　記録済み ${count}日　/　欠勤 ${absences}日・休日指定 ${customHolidays}日`;
+  $('baseHours').value=editableHours(planSum+r.adjust);
+  $('holidayWarning').textContent=HOLIDAYS[Number(key.slice(0,4))]?'':r.confirmed?'祝日未収録の年です。基本予定時間を手入力済みです。':'祝日未収録の年です。基本予定時間を確認し、手入力してください。';
+  $('mvStatus').textContent='';
+}
+function showView(view) {
+  if(view!=='entry')saveDraft();
+  const monthly=view==='monthly',settings=view==='settings';
+  $('entryView').hidden=view!=='entry';$('monthlyView').hidden=!monthly;$('settingsView').hidden=!settings;
+  $('entryTab').setAttribute('aria-selected',String(view==='entry'));$('monthlyTab').setAttribute('aria-selected',String(monthly));$('saveTab').setAttribute('aria-selected',String(settings));
+  $('useTemplateBtn').hidden=monthly;
+  if(monthly)renderMonthly();if(typeof window.scrollTo==='function')window.scrollTo(0,0);
+}
+function openDay(s,mode='actual',focus='date') {
+  saveDraft();$('date').value=s;$('editMode').value=mode;selectDate();showView('entry');
+  $(focus).focus();
 }
 function selectDate() {
   const r=record(),s=$('date').value;
-  // 時刻は保存していないため、過去の日に切り替えたら通常時刻に戻し、計上済み数値だけ復元する。
-  $('startTime').value='09:00';$('endTime').value='18:00';$('breakMinutes').value=60;$('nextDay').checked=false;
-  $('actualHours').value=Object.hasOwn(r.actuals,s)?editableHours(r.actuals[s]):'8';
+  $('deleteDayConfirm').hidden=true;
+  const mode=$('editMode').value;
+  const shift=mode==='plan'?r.schedules?.[s]:r.shifts?.[s]??r.schedules?.[s];
+  $('startTime').value=shift?.start??template.start;$('endTime').value=shift?.end??template.end;
+  $('breakMinutes').value=shift?.breakMinutes??template.breakMinutes;$('nextDay').checked=shift?.nextDay??template.nextDay;
+  $('actualHours').value=mode==='plan'?editableHours(planned(s,r)):Object.hasOwn(r.actuals,s)?editableHours(r.actuals[s]):editableHours(planned(s,r));
+  selectedDate=s;
+  const draft=drafts[s];
+  $('line2').value=draft?.line2??defaultLine2;
+  $('details').value=draft?.details??template.details;
+  $('impression').value=draft?.impression??template.impression;
+  $('studyHours').value=template.studyHours;
   $('output').textContent='';render();
 }
-function commitDay() { const min=numberMinutes('actualHours',24);record().actuals[$('date').value]=min;save();$('output').textContent='';render(); }
+function commitDay() {
+  const min=numberMinutes('actualHours',24),r=record(),s=$('date').value;
+  const before=JSON.stringify({actual:r.actuals[s],shift:r.shifts?.[s],type:r.types?.[s]});
+  if(min>0&&['paid_full','absence'].includes(r.types?.[s]))delete r.types[s];
+  r.actuals[s]=min;
+  if(min===0)delete r.shifts[s];
+  else {
+    try {workedMinutes();r.shifts[s]={start:$('startTime').value,end:$('endTime').value,nextDay:$('nextDay').checked,breakMinutes:Number($('breakMinutes').value)};}
+    catch {delete r.shifts[s];}
+  }
+  if(before!==JSON.stringify({actual:r.actuals[s],shift:r.shifts?.[s],type:r.types?.[s]}))save();
+  $('output').textContent='';render();
+}
+function commitPlan(fromTime) {
+  const r=record(),s=$('date').value;
+  if(fromTime){
+    const x=checkedSchedule($('startTime').value,$('endTime').value,$('nextDay').checked,$('breakMinutes').value);
+    r.schedules ||= {};r.schedules[s]=x;delete r.plans[s];
+    $('actualHours').value=editableHours(clock(x.end)+(x.nextDay?1440:0)-clock(x.start)-x.breakMinutes);
+  }else{
+    const min=numberMinutes('actualHours',24),x=monthlyShift({shifts:r.schedules},s);
+    const base=x?x.b-x.a-x.rest:defaultPlan(s);
+    if(min===base)delete r.plans[s];else r.plans[s]=min;
+  }
+  save();$('output').textContent='';render();
+}
 function ensureMonth() { if(!HOLIDAYS[Number(monthKey().slice(0,4))]&&!record().confirmed)throw Error('この年は祝日が未収録です。月の基本予定時間を確認して手入力してください。'); }
 function build() {
+  if($('editMode').value!=='actual')throw Error('勤務実績を選んでから日報をコピーしてください。');
   if(!$('workForm').reportValidity())throw Error('必須入力を確認してください。');
   ensureMonth();const d=dateObject($('date').value);workedMinutes();
   const study=Number($('studyHours').value||0);if(!Number.isFinite(study)||study<0)throw Error('資格勉強時間を確認してください。');
+  saveDraft();
   commitDay(); const total=totals().total;if(total<0)throw Error('月次見込みが負です。基本予定と日別の時間を確認してください。');
   return `①${d.getMonth()+1}/${d.getDate()}(${WEEKDAYS[d.getDay()]})${$('startTime').value}～${$('endTime').value}${$('nextDay').checked?'（翌日）':''}\n②${$('line2').value}\n③${$('details').value}\n④${$('impression').value}\n⑤${hours(total)}h\n`+(study>0?`資格勉強時間：${study}h\n`:'');
 }
@@ -185,31 +502,91 @@ function applyTemplate() {
     for(const key of ['line2','details','impression'])if(typeof t[key]==='string')$(key).value=t[key];
     if(t.studyHours!==undefined&&Number.isFinite(Number(t.studyHours))&&Number(t.studyHours)>=0)$('studyHours').value=Number(t.studyHours);
     if(typeof t.overtimeStart==='string')overtimeStartMin=clock(t.overtimeStart); // 旧テンプレ互換。月次計算には使用しない。
+    template=sanitizeTemplate({...template,...Object.fromEntries(['line2','details','impression','start','end','studyHours'].filter(key=>t[key]!==undefined).map(key=>[key,t[key]]))});
+    if(typeof t.line2==='string')defaultLine2=t.line2;
   }catch{$('templateWarning').textContent='テンプレートの形式が正しくありません。入力値を確認してください。';}
-  if(query.has('template'))$('templateWarning').textContent+=' テンプレートURLの扱いには注意してください。';
+  if(query.has('template'))$('templateWarning').textContent+=' URLのクエリに入れた文章は配信サーバー等に届く可能性があります。機密情報をテンプレートURLに含めないでください。';
   try {const u=new URL(location.href);u.searchParams.delete('template');if(fragment.has('template')){fragment.delete('template');u.hash=fragment.toString();}history.replaceState(null,'',u.href);}catch{}
 }
 function init() {
   const now=new Date();$('date').value=`${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}`;
-  loadSaved();applyTemplate();const r=record(),s=$('date').value;
+  loadSaved();backupStatus();
+  $('startTime').value=template.start;$('endTime').value=template.end;$('nextDay').checked=template.nextDay;
+  $('breakMinutes').value=template.breakMinutes;$('studyHours').value=template.studyHours;
+  $('details').value=template.details;$('impression').value=template.impression;
+  applyTemplate();showTemplateEditor();const r=record(),s=$('date').value;
+  selectedDate=s;
+  if(drafts[s]){
+    $('line2').value=drafts[s].line2;
+    $('details').value=drafts[s].details;
+    $('impression').value=drafts[s].impression;
+  } else if(!$('line2').value) $('line2').value=defaultLine2;
+  if(!drafts[s]&&($('line2').value||$('details').value||$('impression').value))saveDraft();
   if(Object.hasOwn(r.actuals,s))$('actualHours').value=editableHours(r.actuals[s]);
   else {try{$('actualHours').value=editableHours(workedMinutes());}catch(e){say(e.message);}}
   render();
+  $('mvMonth').value=$('date').value.slice(0,7);
+  $('entryTab').addEventListener('click',()=>attempt(()=>{$('editMode').value='actual';selectDate();showView('entry');}));
+  $('monthlyTab').addEventListener('click',()=>attempt(()=>showView('monthly')));
+  $('saveTab').addEventListener('click',()=>attempt(()=>showView('settings')));
+  $('mvMonth').addEventListener('change',()=>attempt(renderMonthly));
+  $('batchDetails').addEventListener('toggle',()=>{
+    if($('batchDetails').open&&expandedMonthly){expandedMonthly.close();expandedMonthly=null;}
+  });
+  $('batchApply').addEventListener('click',()=>attempt(applyBatchSchedule));
   $('workForm').addEventListener('submit',e=>e.preventDefault());
   $('workForm').addEventListener('input',()=>{$('output').textContent='';});
-  $('date').addEventListener('change',()=>attempt(selectDate));
-  for(const id of ['startTime','endTime','breakMinutes','nextDay'])$(id).addEventListener('change',()=>attempt(()=>{$('actualHours').value=editableHours(workedMinutes());commitDay();say('当日の時間を更新しました。');}));
-  $('actualHours').addEventListener('change',()=>attempt(()=>{commitDay();say('当日の計上時間を更新しました。');}));
-  $('plannedHours').addEventListener('change',()=>attempt(()=>{const min=numberMinutes('plannedHours',24);const r=record(),s=$('date').value;if(min===defaultPlan(s))delete r.plans[s];else r.plans[s]=min;save();$('output').textContent='';render();say('当日の予定時間を更新しました。');}));
-  $('baseHours').addEventListener('change',()=>attempt(()=>{const min=numberMinutes('baseHours',744);const r=record();r.adjust=min-planTotal(r);r.confirmed=true;save();$('output').textContent='';render();say('月の基本予定時間を更新しました。');}));
-  $('resetBase').addEventListener('click',()=>attempt(()=>{record().adjust=0;record().confirmed=false;save();$('output').textContent='';render();say('月の手入力補正を解除しました。日別予定は維持しています。');}));
-  $('applyDay').addEventListener('click',()=>attempt(()=>{commitDay();say('当日の時間を反映しました。');}));
-  $('removeActual').addEventListener('click',()=>attempt(()=>{delete record().actuals[$('date').value];save();$('output').textContent='';render();say('当日の計上を解除しました。生成・コピーすると再計上されます。');}));
-  $('generateBtn').addEventListener('click',()=>attempt(()=>{$('output').textContent=build();say('日報を生成しました。');}));
+  for(const id of ['line2','details','impression'])$(id).addEventListener('input',saveDraft);
+  $('saveTemplateBtn').addEventListener('click',()=>attempt(()=>{storeTemplate();say('テンプレートを保存しました。');}));
+  $('useTemplateBtn').addEventListener('click',()=>attempt(useTemplateOnCurrentDate));
+  $('templateEditor').addEventListener('input',()=>{$('templateState').textContent='編集中です。「テンプレートを保存」を押すと反映されます。';});
+  $('date').addEventListener('change',()=>attempt(()=>{$('editMode').value='actual';selectDate();}));
+  $('editMode').addEventListener('change',()=>attempt(()=>{saveDraft();selectDate();}));
+  $('dayType').addEventListener('change',()=>attempt(()=>{
+    const r=record(),s=$('date').value,type=$('dayType').value;
+    if(type&&!Object.hasOwn(DAY_TYPES,type))throw Error('区分を確認してください。');
+    if(['paid_full','absence'].includes(type)&&r.actuals[s]>0&&!confirm(`${s} の勤務実績を解除して、${DAY_TYPES[type]}に変更しますか？`)){render();return;}
+    r.types ||= {};if(type)r.types[s]=type;else delete r.types[s];
+    if(['paid_full','absence'].includes(type)){delete r.actuals[s];delete r.shifts[s];}
+    save();selectDate();say(`${s} の区分を更新しました。`);
+  }));
+  let pendingDeleteDate='';
+  $('deleteDayTime').addEventListener('click',()=>{
+    pendingDeleteDate=$('date').value;$('deleteDayWarning').textContent=`${pendingDeleteDate} の勤務実績・予定時刻・予定時間を削除します。②〜④と休暇区分は残ります。`;
+    $('deleteDayTime').hidden=true;$('deleteDayConfirm').hidden=false;
+  });
+  $('cancelDeleteDayTime').addEventListener('click',()=>{$('deleteDayConfirm').hidden=true;render();});
+  $('confirmDeleteDayTime').addEventListener('click',()=>attempt(()=>{
+    if(pendingDeleteDate!==$('date').value){$('deleteDayConfirm').hidden=true;selectDate();return;}
+    eraseDayTime(monthKey(),pendingDeleteDate);$('deleteDayConfirm').hidden=true;save();selectDate();
+    say(`${pendingDeleteDate} の勤務時間と予定を削除しました。表示中の入力欄はテンプレートの初期値です。コピーすると再計上されます。JSONを保存してください。`);
+  }));
+  for(const id of ['startTime','endTime','breakMinutes','nextDay'])$(id).addEventListener('change',()=>attempt(()=>{
+    if($('editMode').value==='plan')commitPlan(true);else{$('actualHours').value=editableHours(workedMinutes());commitDay();}
+    say(`${$('date').value} の${$('editMode').value==='plan'?'予定':'実績'}を更新しました。`);
+  }));
+  $('actualHours').addEventListener('change',()=>attempt(()=>{
+    if($('editMode').value==='plan')commitPlan(false);else commitDay();
+    say(`${$('date').value} の${$('editMode').value==='plan'?'予定':'実績'}時間を更新しました。`);
+  }));
+  $('baseHours').addEventListener('change',()=>attempt(()=>{
+    const min=numberMinutes('baseHours',744),key=$('mvMonth').value,r=months[key] ||= {adjust:0,confirmed:false,plans:{},actuals:{},shifts:{},schedules:{},types:{}};
+    r.adjust=min-datesInMonth(key).reduce((sum,s)=>sum+planned(s,r),0);r.confirmed=true;save();say('月の基本予定時間を更新しました。');
+  }));
+  $('resetBase').addEventListener('click',()=>attempt(()=>{const r=months[$('mvMonth').value];if(r){r.adjust=0;r.confirmed=false;}save();say('月の手入力補正を解除しました。');}));
+  $('removeActual').addEventListener('click',()=>attempt(()=>{const r=record(),s=$('date').value;delete r.actuals[s];delete r.shifts[s];save();selectDate();say('実績を取り消し、予定へ戻しました。②〜④は残ります。');}));
   $('copyBtn').addEventListener('click',async()=>{try{const text=build();$('output').textContent=text;say(await copyText(text)?'コピーしました。':'コピーできませんでした。出力欄を選択して手動でコピーしてください。');}catch(e){say(e.message);}});
-  $('clearBtn').addEventListener('click',()=>{for(const id of ['details','impression','output']){if(id==='output')$(id).textContent='';else $(id).value='';}$('studyHours').value=0;say('作業内容・感想・勉強時間をクリアしました。月次時間は維持しています。');});
-  $('remember').addEventListener('change',()=>{if($('remember').checked)save();else removeStored();});
-  $('deleteAll').addEventListener('click',()=>{if(!confirm('全月の予定・計上時間と月の補正を削除しますか？'))return;months=Object.create(null);$('remember').checked=false;removeStored();attempt(selectDate);say('全月の時間データを削除しました。');});
+  $('clearBtn').addEventListener('click',()=>{
+    const s=$('date').value;
+    if(!confirm(`${s} の作業内容（③）・感想（④）・資格勉強時間を消します。②と勤務時間は残ります。続けますか？`))return;
+    $('details').value='';$('impression').value='';$('studyHours').value=0;$('output').textContent='';
+    saveDraft();$('dayActions').open=false;say('③・④・勉強時間をクリアしました。②と勤務時間は維持しています。');
+  });
+  $('remember').addEventListener('change',()=>{if($('remember').checked){saveDraft();save();}else removeStored();});
+  $('exportBtn').addEventListener('click',async()=>{try{await exportBackup();}catch(e){say(e.message||'JSONを保存できませんでした。');}});
+  $('importFile').addEventListener('change',importBackup);
+  $('deleteAll').addEventListener('click',()=>{if(!confirm('全月の予定・計上時間と②〜④の文章を削除しますか？'))return;months=Object.create(null);drafts=Object.create(null);defaultLine2=template.line2;needsBackup=true;backupStatus();$('remember').checked=false;removeStored();attempt(selectDate);renderMonthly();say('画面内の全月の日報データを削除しました。テンプレートは維持しています。過去に保存したJSONは手動で削除してください。');});
+  window.addEventListener('beforeunload',e=>{if(needsBackup){e.preventDefault();e.returnValue='';}});
   // 他タブによる変更は知らせる。古い画面から自動で上書きしないよう保存を一旦止める。
   window.addEventListener('storage',e=>{if(e.key!==KEY)return;$('remember').checked=false;storageFailed=true;storageStatus();say('別のタブで時間データが変更されました。入力を控え、再読み込みして最新の時間データを確認してください。');});
 }

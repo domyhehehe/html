@@ -186,7 +186,7 @@ function applyTemplate() {
     if(t.studyHours!==undefined&&Number.isFinite(Number(t.studyHours))&&Number(t.studyHours)>=0)$('studyHours').value=Number(t.studyHours);
     if(typeof t.overtimeStart==='string')overtimeStartMin=clock(t.overtimeStart); // 旧テンプレ互換。月次計算には使用しない。
   }catch{$('templateWarning').textContent='テンプレートの形式が正しくありません。入力値を確認してください。';}
-  if(query.has('template'))$('templateWarning').textContent+=' URLのクエリに入れた文章は配信サーバー等に届く可能性があります。機密情報をテンプレートURLに含めないでください。';
+  if(query.has('template'))$('templateWarning').textContent+=' テンプレートURLの扱いには注意してください。';
   try {const u=new URL(location.href);u.searchParams.delete('template');if(fragment.has('template')){fragment.delete('template');u.hash=fragment.toString();}history.replaceState(null,'',u.href);}catch{}
 }
 function init() {
